@@ -33,6 +33,6 @@ uvicorn backend.app.main:app --reload
 pytest
 ```
 
-接口约定见 [docs/api-contract.md](docs/api-contract.md)，维护规则见 [docs/maintenance-decision.md](docs/maintenance-decision.md)。
+接口约定见 [docs/api-contract.md](docs/api-contract.md)，第一轮联调步骤见 [docs/integration-guide.md](docs/integration-guide.md)，维护规则见 [docs/maintenance-decision.md](docs/maintenance-decision.md)，待 A 确认的事项见 [docs/maintenance-rule-review.md](docs/maintenance-rule-review.md)。
 
 完整项目背景见 [项目总说明与协作规范](docs/第十届中国大学生工程实践与创新能力大赛_更新版_CARE数据集.docx)。
