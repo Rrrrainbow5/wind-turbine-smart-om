@@ -89,6 +89,55 @@ def test_unavailable_window_requires_replan(tmp_path) -> None:
         assert response.json()["requires_replan"] is True
 
 
+def test_replan_preserves_source_plan_and_records_decision_inputs(tmp_path) -> None:
+    with create_client(tmp_path) as client:
+        client.post("/api/ai-results", json=ai_payload())
+        original = client.post(
+            "/api/maintenance/optimize",
+            json={
+                "turbine_id": "WT02",
+                "component_id": "WT02_COMPONENT_01",
+                "decision_origin": "SIMULATED",
+                "conditions_origin": "ASSUMED",
+                "rule_version": "trial-v0.1",
+            },
+        ).json()
+
+        replanned = client.post(
+            "/api/maintenance/replan",
+            json={
+                "turbine_id": "WT02",
+                "component_id": "WT02_COMPONENT_01",
+                "source_plan_id": original["plan_id"],
+                "failure_risk": 0.91,
+                "warning_level": "HIGH",
+                "maintenance_window_available": False,
+                "personnel_available": True,
+                "decision_origin": "ASSUMED",
+                "conditions_origin": "SIMULATED",
+                "rule_version": "trial-v0.2",
+                "replan_trigger": "weather_window_closed",
+                "confirmed_by": "D",
+                "confirmed_at": "2026-09-19T12:00:00+08:00",
+            },
+        )
+
+        assert replanned.status_code == 201
+        plan = replanned.json()
+        assert plan["parent_plan_id"] == original["plan_id"]
+        assert plan["replan_trigger"] == "weather_window_closed"
+        assert plan["rule_version"] == "trial-v0.2"
+        assert plan["input_failure_risk"] == 0.91
+        assert plan["maintenance_window_available"] is False
+        assert plan["conditions_origin"] == "SIMULATED"
+        assert plan["confirmed_by"] == "D"
+
+        history = client.get("/api/maintenance/history?turbine_id=WT02").json()
+        original_row = next(row for row in history if row["plan_id"] == original["plan_id"])
+        assert original_row["status"] == "REPLANNED"
+        assert original_row["parent_plan_id"] is None
+
+
 def test_execute_and_retest_flow(tmp_path) -> None:
     with create_client(tmp_path) as client:
         client.post("/api/ai-results", json=ai_payload())

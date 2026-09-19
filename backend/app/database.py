@@ -53,6 +53,16 @@ CREATE TABLE IF NOT EXISTS maintenance_plans (
     rationale TEXT NOT NULL,
     requires_replan INTEGER NOT NULL DEFAULT 0,
     decision_origin TEXT NOT NULL,
+    conditions_origin TEXT NOT NULL DEFAULT 'SIMULATED',
+    rule_version TEXT NOT NULL DEFAULT 'trial-v0.1',
+    input_failure_risk REAL NOT NULL DEFAULT 0,
+    input_warning_level TEXT NOT NULL DEFAULT 'NORMAL',
+    maintenance_window_available INTEGER NOT NULL DEFAULT 1,
+    personnel_available INTEGER NOT NULL DEFAULT 1,
+    parent_plan_id TEXT REFERENCES maintenance_plans(plan_id),
+    replan_trigger TEXT,
+    confirmed_by TEXT,
+    confirmed_at TEXT,
     created_at TEXT NOT NULL
 );
 
@@ -92,6 +102,30 @@ class Database:
     def initialize(self) -> None:
         with self.connect() as connection:
             connection.executescript(SCHEMA)
+            self._migrate_maintenance_plans(connection)
+
+    @staticmethod
+    def _migrate_maintenance_plans(connection: sqlite3.Connection) -> None:
+        columns = {
+            str(row[1])
+            for row in connection.execute("PRAGMA table_info(maintenance_plans)").fetchall()
+        }
+        migrations = {
+            "conditions_origin": "TEXT NOT NULL DEFAULT 'SIMULATED'",
+            "rule_version": "TEXT NOT NULL DEFAULT 'trial-v0.1'",
+            "input_failure_risk": "REAL NOT NULL DEFAULT 0",
+            "input_warning_level": "TEXT NOT NULL DEFAULT 'NORMAL'",
+            "maintenance_window_available": "INTEGER NOT NULL DEFAULT 1",
+            "personnel_available": "INTEGER NOT NULL DEFAULT 1",
+            "parent_plan_id": "TEXT",
+            "replan_trigger": "TEXT",
+            "confirmed_by": "TEXT",
+            "confirmed_at": "TEXT",
+        }
+        for name, definition in migrations.items():
+            if name not in columns:
+                connection.execute(f"ALTER TABLE maintenance_plans ADD COLUMN {name} {definition}")
+        connection.commit()
 
     def execute(self, sql: str, parameters: Iterable[Any] = ()) -> int:
         with self.connect() as connection:

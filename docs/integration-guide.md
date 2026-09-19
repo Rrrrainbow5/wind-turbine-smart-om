@@ -76,6 +76,24 @@ console.log(plan.priority);
 console.log(plan.candidates);
 ```
 
+条件变化后重新规划时，保留原方案 ID 和触发原因：
+
+```json
+{
+  "turbine_id": "WT02",
+  "component_id": "WT02_COMPONENT_01",
+  "source_plan_id": "原维护方案 ID",
+  "maintenance_window_available": false,
+  "personnel_available": true,
+  "decision_origin": "ASSUMED",
+  "conditions_origin": "SIMULATED",
+  "rule_version": "trial-v0.1",
+  "replan_trigger": "weather_window_closed"
+}
+```
+
+D 会在响应中返回 `parent_plan_id`、`replan_trigger`、实际风险输入和资源条件；原方案不会被覆盖，而是保留在维护历史中并标记为 `REPLANNED`。
+
 C 必须处理以下状态：
 
 - 接口尚无 AI 结果时显示“暂无分析结果”。
