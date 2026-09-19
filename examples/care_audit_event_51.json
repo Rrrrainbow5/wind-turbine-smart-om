@@ -1,0 +1,31 @@
+{
+  "farm": "Wind Farm A",
+  "event_id": 51,
+  "event_label": "anomaly",
+  "event_description": "Gearbox bearings damaged",
+  "event_start": "2023-10-06 01:30:00",
+  "event_end": "2023-10-17 16:10:00",
+  "event_start_id": 52331,
+  "event_end_id": 54003,
+  "data_shape": {
+    "rows": 54436,
+    "columns": 86
+  },
+  "asset_ids": [
+    "21"
+  ],
+  "train_test_counts": {
+    "train": 52043,
+    "prediction": 2393
+  },
+  "prediction_range": {
+    "start": "2023-10-04 01:30:00",
+    "end": "2023-10-20 16:10:00"
+  },
+  "missing_values": {
+    "sensor_14_avg": 1,
+    "sensor_22_avg": 1
+  },
+  "average_feature_count": 54,
+  "feature_description_rows": 54
+}
