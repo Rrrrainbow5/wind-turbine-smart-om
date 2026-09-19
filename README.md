@@ -1,8 +1,11 @@
 # 风电装备智能运维后端 MVP
 
+
 本仓库当前包含 D 负责的第一版后端闭环：AI 结果入库、风机状态查询、基础维护决策、维护执行记录与复测记录。
 
+
 ## 当前范围
+
 
 - FastAPI 接口与自动生成的 Swagger 文档
 - SQLite 数据库及最小初始化数据
@@ -11,7 +14,9 @@
 - 可解释的规则型维护决策与重新规划
 - 数据来源类型标记：`REAL`、`DERIVED`、`SIMULATED`、`ASSUMED`、`REFERENCE`
 
+
 ## 本地启动
+
 
 ```powershell
 python -m venv .venv
@@ -20,19 +25,33 @@ python -m pip install -r requirements-dev.txt
 uvicorn backend.app.main:app --reload
 ```
 
+
 启动后访问：
+
 
 - Swagger：<http://127.0.0.1:8000/docs>
 - 健康检查：<http://127.0.0.1:8000/health>
 
+
 默认数据库为项目根目录下的 `windcare.db`。可通过环境变量 `WINDCARE_DB_PATH` 指定其他位置。
 
+
 ## 测试
+
 
 ```powershell
 pytest
 ```
 
+
 接口约定见 [docs/api-contract.md](docs/api-contract.md)，第一轮联调步骤见 [docs/integration-guide.md](docs/integration-guide.md)，维护规则见 [docs/maintenance-decision.md](docs/maintenance-decision.md)，待 A 确认的事项见 [docs/maintenance-rule-review.md](docs/maintenance-rule-review.md)。
 
-完整项目背景见 [项目总说明与协作规范](docs/第十届中国大学生工程实践与创新能力大赛_更新版_CARE数据集.docx)。
+## A 工程与数据文档
+
+- [CARE 数据资产登记](docs/data/care-dataset-register.md)
+- [Event 51 证据报告](docs/data/care-event-51-evidence.md)
+- [事件登记表](docs/data/event-register.csv)
+- [字段字典](docs/data/field-dictionary.csv)
+- [工程决策登记表](docs/engineering/decision-register.md)
+- [A 工程审查记录](docs/integration/a-review-log.md)
+- [A 状态与交接说明](docs/integration/a-status-and-handover-v0.1.md)
