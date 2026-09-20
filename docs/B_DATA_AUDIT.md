@@ -67,18 +67,19 @@ Wind Farm A 的字段说明可以支持具体工程解释。例如：
 
 ```json
 {
-  "turbine_id": "21",
-  "component_id": "WT21_COMPONENT_GBX_BEARING",
-  "timestamp": "2023-10-06T01:30:00",
+  "turbine_id": "WT02",
+  "component_id": "WT02_COMPONENT_01",
+  "timestamp": "2023-10-06T01:30:00+00:00",
   "health_index": 0.0,
   "anomaly_score": 0.0,
   "failure_risk": 0.0,
   "warning_level": "NORMAL",
-  "model_version": "v0.1.0"
+  "model_version": "robust-z-v0.1.0",
+  "data_origin": "DERIVED"
 }
 ```
 
-这里的 `component_id` 是项目内部稳定 ID；只有在团队确认接口后，前端才使用它。`failure_risk` 在第一版应被称为风险评分，不能直接宣称为经过校准的真实故障概率。
+这里的 `component_id` 是团队当前统一的中性稳定 ID，正式映射确认前不得改成具体部件名称。CARE 时间戳经过匿名化且未提供明确时区，`+00:00` 是系统联调采用的显式 UTC 约定，不代表原风场的真实时区。`failure_risk` 在第一版应被称为风险评分，不能直接宣称为经过校准的真实故障概率。
 
 ## 7. 下一步
 

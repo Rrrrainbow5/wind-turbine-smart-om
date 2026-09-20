@@ -13,7 +13,7 @@ def read_semicolon_csv(path: Path) -> pd.DataFrame:
     return pd.read_csv(path, sep=";")
 
 
-def audit_case(farm_dir: Path, event_id: int) -> dict:
+def audit_case(farm_dir: Path, event_id: int) -> dict[str, object]:
     event_info = read_semicolon_csv(farm_dir / "event_info.csv")
     feature_description = read_semicolon_csv(farm_dir / "feature_description.csv")
     event_row = event_info.loc[event_info["event_id"] == event_id]
@@ -24,6 +24,8 @@ def audit_case(farm_dir: Path, event_id: int) -> dict:
     data = read_semicolon_csv(data_path)
     event = event_row.iloc[0]
     prediction = data.loc[data["train_test"] == "prediction"]
+    if prediction.empty:
+        raise ValueError(f"event_id={event_id} has no prediction rows")
 
     return {
         "farm": farm_dir.name,

@@ -1,0 +1,30 @@
+{
+  "dataset_version": "CARE to Compare Version 6",
+  "wind_farm": "Wind Farm A",
+  "event_id": 51,
+  "asset_id": "21",
+  "features": [
+    "sensor_11_avg",
+    "sensor_12_avg",
+    "sensor_18_avg",
+    "sensor_52_avg",
+    "power_29_avg",
+    "wind_speed_3_avg"
+  ],
+  "split": {
+    "method": "chronological 60/20/20 within train rows",
+    "fit_rows": 31225,
+    "validation_rows": 10409,
+    "holdout_rows": 10409
+  },
+  "missing_value_method": "fit-window median imputation",
+  "outlier_method": "robust median/MAD scaling; no unverified physical clipping",
+  "threshold": 4.590854747756781,
+  "risk_definition": "clip(robust_z / (2 * validation_p99), 0, 1); relative score, not calibrated probability",
+  "precision": 0.5681818181818182,
+  "recall": 0.014943215780035863,
+  "f1": 0.029120559114735,
+  "roc_auc": 0.46592116623497376,
+  "first_pre_event_alert": "2023-10-04T12:30:00",
+  "source_timezone_note": "CARE timestamps are anonymized and timezone-naive; UTC is an explicit integration convention, not a claim about the original wind-farm timezone."
+}

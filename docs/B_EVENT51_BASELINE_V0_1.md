@@ -53,4 +53,26 @@ For the integration JSON, `anomaly_score` and `failure_risk` are relative normal
 
 `clip(max_robust_z / (2 * validation_threshold), 0, 1)`
 
-The Event 51 start-time row has a robust score of approximately `1.9877`, giving a relative risk score of approximately `0.2165`, a health index of approximately `78.3`, and warning level `LOW` under the current assumed thresholds. This low warning level is consistent with the weak baseline and should not be interpreted as evidence that the event was safe.
+The Event 51 start-time row has a robust score of approximately `1.9877`, giving a relative risk score of `0.216481`, a health index of `78.3519`, and warning level `LOW` under the current assumed thresholds. This low warning level is consistent with the weak baseline and should not be interpreted as evidence that the event was safe.
+
+## Reproduction and API output
+
+The result is generated from the CARE files rather than manually entered:
+
+```powershell
+python -m ai.event51_baseline `
+  "E:\CARE_To_Compare\CARE_To_Compare\Wind Farm A" `
+  --output examples\ai-result-derived-event51.json `
+  --metrics-output examples\event51-baseline-metrics.json `
+  --source-timezone UTC
+```
+
+CARE timestamps are anonymized and timezone-naive. The generated API timestamp uses explicit UTC (`+00:00`) as an integration convention, not as a claim about the original wind-farm timezone.
+
+The generated JSON can be submitted using:
+
+```powershell
+python examples\b_submit_ai_result.py --input examples\ai-result-derived-event51.json
+```
+
+The complete machine-readable evaluation is stored in `examples/event51-baseline-metrics.json`.
