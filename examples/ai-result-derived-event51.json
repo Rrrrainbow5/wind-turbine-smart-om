@@ -1,0 +1,11 @@
+{
+  "turbine_id": "WT02",
+  "component_id": "WT02_COMPONENT_01",
+  "timestamp": "2023-10-06T01:30:00",
+  "health_index": 78.3,
+  "anomaly_score": 0.2165,
+  "failure_risk": 0.2165,
+  "warning_level": "LOW",
+  "model_version": "robust-z-v0.1.0",
+  "data_origin": "DERIVED"
+}
