@@ -8,3 +8,8 @@ __pycache__/
 .coverage
 htmlcov/
 .codex-doc-review/
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/*.log
+frontend/*.tsbuildinfo

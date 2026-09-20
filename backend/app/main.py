@@ -118,9 +118,9 @@ def create_app(db_path: Path | None = None) -> FastAPI:
         )
         return AIResult(id=result_id, created_at=created_at, **payload.model_dump())
 
-    @app.post("/api/maintenance/optimize", response_model=MaintenancePlan, status_code=201)
-    @app.post("/api/maintenance/replan", response_model=MaintenancePlan, status_code=201)
-    def optimize_maintenance(payload: MaintenanceOptimizeRequest) -> MaintenancePlan:
+    def create_maintenance_plan(
+        payload: MaintenanceOptimizeRequest, *, is_replan: bool
+    ) -> MaintenancePlan:
         ensure_ids_exist(database, payload.turbine_id, payload.component_id)
         failure_risk, warning_level = resolve_risk(database, payload)
         action, priority, rationale, requires_replan, candidates = decide_maintenance(
@@ -129,6 +129,23 @@ def create_app(db_path: Path | None = None) -> FastAPI:
             maintenance_window_available=payload.maintenance_window_available,
             personnel_available=payload.personnel_available,
         )
+        parent_plan_id = payload.source_plan_id if is_replan else None
+        replan_trigger = payload.replan_trigger if is_replan else None
+        if is_replan and not replan_trigger:
+            replan_trigger = "maintenance_conditions_changed"
+        source_plan = None
+        if parent_plan_id:
+            source_plan = database.fetch_one(
+                "SELECT plan_id, turbine_id, component_id FROM maintenance_plans WHERE plan_id = ?",
+                (parent_plan_id,),
+            )
+            if not source_plan:
+                raise HTTPException(status_code=404, detail="Source maintenance plan not found")
+            if (
+                source_plan["turbine_id"] != payload.turbine_id
+                or source_plan["component_id"] != payload.component_id
+            ):
+                raise HTTPException(status_code=409, detail="Source plan does not match turbine/component")
         created_at = datetime.now(timezone.utc)
         plan = MaintenancePlan(
             plan_id=str(uuid4()),
@@ -139,29 +156,67 @@ def create_app(db_path: Path | None = None) -> FastAPI:
             rationale=rationale,
             requires_replan=requires_replan,
             decision_origin=payload.decision_origin,
+            conditions_origin=payload.conditions_origin,
+            rule_version=payload.rule_version,
+            input_failure_risk=failure_risk,
+            input_warning_level=warning_level,
+            maintenance_window_available=payload.maintenance_window_available,
+            personnel_available=payload.personnel_available,
+            parent_plan_id=parent_plan_id,
+            replan_trigger=replan_trigger,
+            confirmed_by=payload.confirmed_by,
+            confirmed_at=payload.confirmed_at,
             candidates=candidates,
             created_at=created_at,
         )
-        database.execute(
-            """
-            INSERT INTO maintenance_plans (
-                plan_id, turbine_id, component_id, action, priority, status,
-                rationale, requires_replan, decision_origin, created_at
-            ) VALUES (?, ?, ?, ?, ?, 'PROPOSED', ?, ?, ?, ?)
-            """,
-            (
-                plan.plan_id,
-                plan.turbine_id,
-                plan.component_id,
-                plan.recommended_action.value,
-                plan.priority.value,
-                plan.rationale,
-                int(plan.requires_replan),
-                plan.decision_origin.value,
-                iso(plan.created_at),
-            ),
-        )
+        with database.connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO maintenance_plans (
+                    plan_id, turbine_id, component_id, action, priority, status,
+                    rationale, requires_replan, decision_origin, conditions_origin,
+                    rule_version, input_failure_risk, input_warning_level,
+                    maintenance_window_available, personnel_available, parent_plan_id,
+                    replan_trigger, confirmed_by, confirmed_at, created_at
+                ) VALUES (?, ?, ?, ?, ?, 'PROPOSED', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    plan.plan_id,
+                    plan.turbine_id,
+                    plan.component_id,
+                    plan.recommended_action.value,
+                    plan.priority.value,
+                    plan.rationale,
+                    int(plan.requires_replan),
+                    plan.decision_origin.value,
+                    plan.conditions_origin.value,
+                    plan.rule_version,
+                    plan.input_failure_risk,
+                    plan.input_warning_level.value,
+                    int(plan.maintenance_window_available),
+                    int(plan.personnel_available),
+                    plan.parent_plan_id,
+                    plan.replan_trigger,
+                    plan.confirmed_by,
+                    iso(plan.confirmed_at) if plan.confirmed_at else None,
+                    iso(plan.created_at),
+                ),
+            )
+            if source_plan:
+                connection.execute(
+                    "UPDATE maintenance_plans SET status = 'REPLANNED' WHERE plan_id = ?",
+                    (source_plan["plan_id"],),
+                )
+            connection.commit()
         return plan
+
+    @app.post("/api/maintenance/optimize", response_model=MaintenancePlan, status_code=201)
+    def optimize_maintenance(payload: MaintenanceOptimizeRequest) -> MaintenancePlan:
+        return create_maintenance_plan(payload, is_replan=False)
+
+    @app.post("/api/maintenance/replan", response_model=MaintenancePlan, status_code=201)
+    def replan_maintenance(payload: MaintenanceOptimizeRequest) -> MaintenancePlan:
+        return create_maintenance_plan(payload, is_replan=True)
 
     @app.post("/api/maintenance/execute", response_model=MaintenanceRecord, status_code=201)
     def execute_maintenance(payload: MaintenanceExecuteRequest) -> MaintenanceRecord:
@@ -241,6 +296,28 @@ def create_app(db_path: Path | None = None) -> FastAPI:
             ),
         )
         return retest
+
+    @app.get(
+        "/api/maintenance/records/{record_id}/retests",
+        response_model=list[RetestRecord],
+    )
+    def list_retests(record_id: str) -> list[RetestRecord]:
+        record = database.fetch_one(
+            "SELECT record_id FROM maintenance_records WHERE record_id = ?", (record_id,)
+        )
+        if not record:
+            raise HTTPException(status_code=404, detail="Maintenance record not found")
+        rows = database.fetch_all(
+            """
+            SELECT retest_id, record_id, observed_at, health_index, failure_risk,
+                   conclusion, data_origin, created_at
+            FROM retest_records
+            WHERE record_id = ?
+            ORDER BY observed_at DESC, created_at DESC
+            """,
+            (record_id,),
+        )
+        return [RetestRecord.model_validate(row) for row in rows]
 
     return app
 

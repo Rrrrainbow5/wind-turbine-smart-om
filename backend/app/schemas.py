@@ -70,6 +70,12 @@ class MaintenanceOptimizeRequest(BaseModel):
     maintenance_window_available: bool = True
     personnel_available: bool = True
     decision_origin: DataOrigin = DataOrigin.SIMULATED
+    conditions_origin: DataOrigin = DataOrigin.SIMULATED
+    rule_version: str = Field(default="trial-v0.1", min_length=1)
+    source_plan_id: str | None = Field(default=None, min_length=1)
+    replan_trigger: str | None = Field(default=None, min_length=1)
+    confirmed_by: str | None = Field(default=None, min_length=1)
+    confirmed_at: datetime | None = None
 
     @model_validator(mode="after")
     def require_complete_manual_risk(self) -> "MaintenanceOptimizeRequest":
@@ -93,6 +99,16 @@ class MaintenancePlan(BaseModel):
     rationale: str
     requires_replan: bool
     decision_origin: DataOrigin
+    conditions_origin: DataOrigin
+    rule_version: str
+    input_failure_risk: float
+    input_warning_level: WarningLevel
+    maintenance_window_available: bool
+    personnel_available: bool
+    parent_plan_id: str | None = None
+    replan_trigger: str | None = None
+    confirmed_by: str | None = None
+    confirmed_at: datetime | None = None
     candidates: list[CandidateAction]
     created_at: datetime
 
