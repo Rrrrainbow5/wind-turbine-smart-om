@@ -1,10 +1,6 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  optimizeDeps: {
-    noDiscovery: true,
-    include: [],
-  },
   server: {
     proxy: {
       '/api': {
