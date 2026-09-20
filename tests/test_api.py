@@ -176,6 +176,20 @@ def test_execute_and_retest_flow(tmp_path) -> None:
         assert retest.status_code == 201
         assert retest.json()["failure_risk"] == 0.31
 
+        retests = client.get(
+            f"/api/maintenance/records/{record['record_id']}/retests"
+        )
+        assert retests.status_code == 200
+        assert len(retests.json()) == 1
+        assert retests.json()[0]["retest_id"] == retest.json()["retest_id"]
+        assert retests.json()[0]["data_origin"] == "SIMULATED"
+
         history = client.get("/api/maintenance/history?turbine_id=WT02").json()
         assert history[0]["status"] == "EXECUTED"
         assert history[0]["record_id"] == record["record_id"]
+
+
+def test_retest_query_rejects_unknown_maintenance_record(tmp_path) -> None:
+    with create_client(tmp_path) as client:
+        response = client.get("/api/maintenance/records/missing-record/retests")
+        assert response.status_code == 404

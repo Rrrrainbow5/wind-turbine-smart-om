@@ -297,6 +297,28 @@ def create_app(db_path: Path | None = None) -> FastAPI:
         )
         return retest
 
+    @app.get(
+        "/api/maintenance/records/{record_id}/retests",
+        response_model=list[RetestRecord],
+    )
+    def list_retests(record_id: str) -> list[RetestRecord]:
+        record = database.fetch_one(
+            "SELECT record_id FROM maintenance_records WHERE record_id = ?", (record_id,)
+        )
+        if not record:
+            raise HTTPException(status_code=404, detail="Maintenance record not found")
+        rows = database.fetch_all(
+            """
+            SELECT retest_id, record_id, observed_at, health_index, failure_risk,
+                   conclusion, data_origin, created_at
+            FROM retest_records
+            WHERE record_id = ?
+            ORDER BY observed_at DESC, created_at DESC
+            """,
+            (record_id,),
+        )
+        return [RetestRecord.model_validate(row) for row in rows]
+
     return app
 
 

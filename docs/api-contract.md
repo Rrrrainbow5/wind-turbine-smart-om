@@ -56,6 +56,7 @@
 | POST | `/api/maintenance/execute` | 记录维护执行结果 |
 | GET | `/api/maintenance/history` | 查询维护方案和执行记录 |
 | POST | `/api/retests` | 保存维护后复测结果 |
+| GET | `/api/maintenance/records/{record_id}/retests` | 查询一次维护执行的复测结果 |
 
 接口实现和实时请求示例以 FastAPI 自动生成的 `/docs` 页面为准。
 
@@ -79,5 +80,15 @@
 ```
 
 响应中的 `parent_plan_id` 指向原方案，原方案保留在历史记录中并标记为 `REPLANNED`。不提供 `source_plan_id` 时仍会生成独立的新方案，但 `replan_trigger` 会记录为默认的 `maintenance_conditions_changed`。
+
+### 维护后复测查询
+
+`POST /api/maintenance/execute` 返回 `record_id`。保存复测结果后，C 可以使用该 ID 查询：
+
+```text
+GET /api/maintenance/records/{record_id}/retests
+```
+
+接口按 `observed_at` 从新到旧返回复测记录数组。合法维护记录尚无复测结果时返回空数组；维护记录不存在时返回 HTTP `404`。复测产生的健康指数、风险评分和结论必须保留其实际 `data_origin`，模拟维护效果应标记为 `SIMULATED`。
 
 本地前端默认允许从 `localhost:5173` 和 `127.0.0.1:5173` 跨域访问。其他部署地址通过 `WINDCARE_ALLOWED_ORIGINS` 配置，多个地址使用英文逗号分隔。
