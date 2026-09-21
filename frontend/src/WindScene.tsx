@@ -165,7 +165,8 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
 
     const hillMaterial = new THREE.MeshStandardMaterial({ color: 0x91aa98, roughness: 1 })
     const farHillMaterial = new THREE.MeshStandardMaterial({ color: 0x7f9c91, roughness: 1 })
-    ;[[-31, -13, 16, 5.5, 10, farHillMaterial], [27, -17, 19, 6.5, 12, farHillMaterial], [-29, 18, 15, 4.5, 9, hillMaterial], [29, 17, 17, 5, 11, hillMaterial]].forEach(([x, z, sx, sy, sz, material]) => {
+    const hills: Array<[number, number, number, number, number, THREE.Material]> = [[-31, -13, 16, 5.5, 10, farHillMaterial], [27, -17, 19, 6.5, 12, farHillMaterial], [-29, 18, 15, 4.5, 9, hillMaterial], [29, 17, 17, 5, 11, hillMaterial]]
+    hills.forEach(([x, z, sx, sy, sz, material]) => {
       const hill = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 12), material as THREE.Material)
       hill.position.set(x, sy * .42, z); hill.scale.set(sx, sy, sz); hill.receiveShadow = true; scene.add(hill)
     })
