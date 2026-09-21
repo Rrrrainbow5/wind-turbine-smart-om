@@ -141,3 +141,17 @@ export function executeMaintenance(planId: string) {
     }),
   })
 }
+
+export interface ApiRetest {
+  retest_id: string
+  record_id: string
+  observed_at: string
+  health_index: number
+  failure_risk: number
+  conclusion: string
+  data_origin: SourceKind
+}
+
+export function fetchRetests(recordId: string) {
+  return request<ApiRetest[]>(`/api/maintenance/records/${encodeURIComponent(recordId)}/retests`)
+}
