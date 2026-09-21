@@ -162,6 +162,19 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
     ground.rotation.x = -Math.PI / 2
     ground.receiveShadow = true
     scene.add(ground)
+
+    const hillMaterial = new THREE.MeshStandardMaterial({ color: 0x91aa98, roughness: 1 })
+    const farHillMaterial = new THREE.MeshStandardMaterial({ color: 0x7f9c91, roughness: 1 })
+    ;[[-31, -13, 16, 5.5, 10, farHillMaterial], [27, -17, 19, 6.5, 12, farHillMaterial], [-29, 18, 15, 4.5, 9, hillMaterial], [29, 17, 17, 5, 11, hillMaterial]].forEach(([x, z, sx, sy, sz, material]) => {
+      const hill = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 12), material as THREE.Material)
+      hill.position.set(x, sy * .42, z); hill.scale.set(sx, sy, sz); hill.receiveShadow = true; scene.add(hill)
+    })
+    const stationGroup = new THREE.Group(); stationGroup.position.set(24, .2, -3)
+    const station = new THREE.Mesh(new THREE.BoxGeometry(4, 1.25, 2.5), new THREE.MeshStandardMaterial({ color: 0x697a73, roughness: .75 }))
+    station.castShadow = true; stationGroup.add(station)
+    const mastMaterial = new THREE.MeshStandardMaterial({ color: 0xb5c3bb, metalness: .4, roughness: .5 })
+    for (let index = 0; index < 3; index++) { const mast = new THREE.Mesh(new THREE.CylinderGeometry(.035, .035, 2.1, 8), mastMaterial); mast.position.set(-1.2 + index * 1.2, 1.55, 0); stationGroup.add(mast) }
+    scene.add(stationGroup)
     const trackMaterial = new THREE.MeshStandardMaterial({ color: 0x9eafa8, roughness: 1 })
     for (const [x, z, w, h, rotation] of [[0, -2, 44, .58, -.12], [-4, -7, .55, 14, .1], [8, -1, .55, 15, -.2]] as number[][]) {
       const path = new THREE.Mesh(new THREE.PlaneGeometry(w, h), trackMaterial)
