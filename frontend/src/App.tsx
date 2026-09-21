@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Activity, AlertTriangle, ArrowRight, Check, ChevronDown, Clock3, CloudSun, Database, Gauge, Layers3, MapPin, RotateCcw, Server, Settings2, Wrench, X } from 'lucide-react'
 import WindScene from './WindScene'
-import { executeMaintenance, fetchTurbines, optimizeMaintenance, replanMaintenance, type ApiMaintenancePlan } from './api'
+import { executeMaintenance, fetchRetests, fetchTurbines, optimizeMaintenance, replanMaintenance, type ApiMaintenancePlan, type ApiRetest } from './api'
 import { demoTurbines, getDemoPlans, warningText, type MaintenancePlan, type Turbine } from './data'
 
 type Mode = 'demo' | 'api'
@@ -65,23 +65,27 @@ export default function App() {
   const [showSources, setShowSources] = useState(false)
   const [engineeringView, setEngineeringView] = useState(true)
   const [apiPlan, setApiPlan] = useState<ApiMaintenancePlan | null>(null)
+  const [maintenanceRecordId, setMaintenanceRecordId] = useState('')
+  const [retests, setRetests] = useState<ApiRetest[]>([])
+  const [retestLoading, setRetestLoading] = useState(false)
 
   const selected = turbines.find(t => t.turbine_id === selectedId) || turbines[0]
   const plans = useMemo(() => mode === 'api' ? (apiPlan ? mapApiPlans(apiPlan) : [emptyApiPlan]) : getDemoPlans(weatherRestricted), [apiPlan, mode, weatherRestricted])
   const plan = plans.find(p => p.id === selectedPlan) || plans[0]
   const highCount = turbines.filter(t => t.has_analysis !== false && t.warning_level === 'HIGH').length
+  const retest = retests[0]
 
   useEffect(() => {
     if (mode === 'demo') {
       setTurbines(demoTurbines); setSelectedId('WT02'); setError(''); setLoading(false); setApiPlan(null)
-      setView('overview'); setServiced(false)
+      setView('overview'); setServiced(false); setMaintenanceRecordId(''); setRetests([])
       return
     }
     let active = true
     setLoading(true); setError('')
     fetchTurbines().then(data => {
       if (!active) return
-      setTurbines(data); setSelectedId(data[0].turbine_id); setView('overview'); setServiced(false); setApiPlan(null)
+      setTurbines(data); setSelectedId(data.find(item => item.turbine_id === 'WT02')?.turbine_id || data[0].turbine_id); setView('overview'); setServiced(false); setApiPlan(null); setMaintenanceRecordId(''); setRetests([])
     }).catch(reason => {
       if (active) { setTurbines([]); setError(reason instanceof Error ? reason.message : '接口连接失败') }
     }).finally(() => { if (active) setLoading(false) })
@@ -89,7 +93,7 @@ export default function App() {
   }, [mode])
 
   const selectTurbine = (id: string) => {
-    setSelectedId(id); setView('overview'); setServiced(false); setSelectedPlan('inspect'); setApiPlan(null)
+    setSelectedId(id); setView('overview'); setServiced(false); setSelectedPlan('inspect'); setApiPlan(null); setMaintenanceRecordId(''); setRetests([])
   }
 
   const loadApiPlan = async (restricted: boolean, replan: boolean) => {
@@ -129,8 +133,15 @@ export default function App() {
       if (!apiPlan) { setError('尚未生成可执行的维护方案。'); return }
       try {
         setLoading(true); setError('')
-        await executeMaintenance(apiPlan.plan_id)
+        const record = await executeMaintenance(apiPlan.plan_id)
+        setMaintenanceRecordId(record.record_id)
+        setRetests([])
         setServiced(true)
+        setRetestLoading(true)
+        try { setRetests(await fetchRetests(record.record_id)) } catch (reason) {
+          const message = reason instanceof Error ? reason.message : '复测结果尚未生成'
+          if (!message.includes('404')) setError(message)
+        } finally { setRetestLoading(false) }
       } catch (reason) { setError(reason instanceof Error ? reason.message : '维护请求失败') }
       finally { setLoading(false) }
     } else { setServiced(true) }
@@ -172,6 +183,7 @@ export default function App() {
             <div className="plans">{plans.map((p: MaintenancePlan) => <button key={p.id} disabled={p.available === false || (mode === 'api' && !p.recommended)} className={`plan-option ${plan.id === p.id ? 'selected' : ''}`} onClick={() => { setSelectedPlan(p.id); setServiced(false) }}><span className="plan-radio">{plan.id === p.id && <span />}</span><span className="plan-copy"><strong>{p.title}{p.recommended && <em>建议</em>}</strong><small><Clock3 size={13} /> {p.timing} · 风险 {p.risk}</small><span>{p.action}</span></span></button>)}</div>
             <div className="plan-facts"><div><span>预计停机</span><strong>{plan.downtime}</strong></div><div><span>资源成本</span><strong>{plan.cost}</strong></div><div><span>风险水平</span><strong>{plan.risk}</strong></div></div>
             {serviced ? <div className="success-message"><Check size={17} /><div><strong>{mode === 'api' ? '维护执行记录已保存' : '演示维护已记录'}</strong><span>状态改善不自动推断，需以后端复测结果确认。</span></div></div> : <button className="primary-action" disabled={loading || (mode === 'api' && !apiPlan)} onClick={executePlan}><Check size={17} /> {mode === 'api' ? '记录维护执行' : '模拟执行方案'} <ArrowRight size={17} /></button>}
+            {mode === 'api' && (maintenanceRecordId || retestLoading) && <div className="retest-card"><div className="retest-head"><span>维护后复测</span><em>{retest?.data_origin || (retestLoading ? '查询中' : '待复测')}</em></div>{retest ? <><div className="retest-values"><div><span>健康指数</span><strong>{retest.health_index.toFixed(1)}</strong></div><div><span>相对风险</span><strong>{retest.failure_risk.toFixed(3)}</strong></div></div><p>{retest.conclusion}</p><small>复测来源：{retest.data_origin} · 不代表真实维护效果</small></> : <p>{retestLoading ? '正在查询复测记录...' : '待复测。当前没有后端复测结果。'}</p>}</div>}
             <button className="secondary-action" onClick={() => { setView('overview'); setServiced(false) }}><RotateCcw size={16} /> 返回设备状态</button>
           </>}
           <div className="data-footnote"><span>{mode === 'demo' ? 'SIMULATED · 演示样例' : `${selected.source} · API`}</span><span>{selected.model_version} · {selected.updated_at}</span></div>
