@@ -50,7 +50,7 @@ pnpm run dev
 
 场景中的红色齿轮箱轴承是 Event 51 的工程定位高亮，不代表当前页面已经完成真实传感器诊断。其余机组仍用于展示风场级选择与状态交互。关闭剖切视图会返回全风场镜头。
 
-外形已经接入 Sketchfab 上 Digital BIM Solutions 的 [Wind Turbine](https://sketchfab.com/3d-models/wind-turbine-a7a12edcc72b4ac88c9276df1f80856d)，来源页面标注为 CC BY 4.0。下载文件经检查为 glTF 2.0，包含 80 个节点、30 个网格、29,743 个顶点和 57,591 个三角面。项目将其缩放后复用于风场机组；项目组自建的内部工程层继续保留独立对象 ID 和数据绑定边界。完整署名及文件哈希见 `public/assets/ATTRIBUTION.md`。外形加载失败时页面会使用程序化备用外形，不影响数据面板和工程对象演示。
+八台演示风机均使用项目提供的 SolidWorks/STEP 工程模型转换版本 `public/assets/wind-turbine-engineering.glb`。前端将原CAD节点规范映射为叶片、轮毂、塔筒、机舱、主轴、齿轮、轴承和发电机等工程对象，并保留原始CAD名称用于追溯。模型加载失败时页面仍有程序化应急外形，但旧的第三方风机外形已不参与正常加载和显示。
 
 ## 后续对接清单
 

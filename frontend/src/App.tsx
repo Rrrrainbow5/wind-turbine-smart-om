@@ -63,7 +63,7 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showSources, setShowSources] = useState(false)
-  const [engineeringView, setEngineeringView] = useState(true)
+  const [engineeringView, setEngineeringView] = useState(false)
   const [apiPlan, setApiPlan] = useState<ApiMaintenancePlan | null>(null)
   const [maintenanceRecordId, setMaintenanceRecordId] = useState('')
   const [retests, setRetests] = useState<ApiRetest[]>([])
@@ -157,9 +157,9 @@ export default function App() {
     <main className="workspace">
       <section className="scene-panel" aria-label="风电场三维场景">
         <div className="scene-heading"><div><div className="eyebrow"><MapPin size={13} /> 风电场数字场景 <span className="source-tag">{mode === 'demo' ? '演示数据' : '接口数据'}</span></div><h1>风场运行总览</h1><p>选择风机，查看状态与维护决策</p></div><div className="scene-weather"><CloudSun size={19} /><span>环境状态<small>{weatherRestricted ? '维护窗口受限' : '维护窗口正常'}</small></span></div></div>
-        <WindScene turbines={turbines} selectedId={selectedId} onSelect={selectTurbine} serviced={serviced} engineeringView={engineeringView} />
-        {engineeringView && selected?.event_id === 51 && <div className="engineering-caption"><span className="engineering-caption-dot" />CARE v6 Event 51 <strong>齿轮箱轴承高亮</strong><small>Digital BIM 外形 · 自建剖切</small></div>}
-        <div className="scene-bottom"><div className="scene-legend"><span><i className="legend-normal" />正常</span><span><i className="legend-low" />关注</span><span><i className="legend-high" />高风险</span></div><span className="scene-hint">点击风机查看详情</span></div>
+        <WindScene turbines={turbines} selectedId={selectedId} onSelect={selectTurbine} serviced={serviced} engineeringView={engineeringView} onOpenEngineering={() => setEngineeringView(true)} />
+        {engineeringView && selected?.event_id === 51 && <div className="engineering-caption"><span className="engineering-caption-dot" />CARE v6 Event 51 <strong>齿轮箱轴承高亮</strong><small>项目CAD整机 · 真实零件节点</small></div>}
+        <div className="scene-bottom"><div className="scene-legend"><span><i className="legend-normal" />正常</span><span><i className="legend-low" />关注</span><span><i className="legend-high" />高风险</span></div><span className="scene-hint">海上风场 · 点击风机定位 · 再点机舱查看内部部件</span></div>
       </section>
 
       <aside className="inspector" aria-label="风机信息">
@@ -177,7 +177,7 @@ export default function App() {
             <div className="component-line"><div className="component-symbol"><Settings2 size={18} /></div><div><strong>{selected.component_label}</strong><span>{selected.component_id}{selected.event_id ? ` · CARE Event ${selected.event_id}` : ''}{selected.mapping_status === 'UNVERIFIED' ? ' · 映射待核验' : ''}</span></div><ChevronDown size={17} /></div>
             <button className="primary-action" onClick={openMaintenance}><Wrench size={17} /> 查看维护方案 <ArrowRight size={17} /></button>
           </> : <>
-            <div className="decision-intro"><div className="decision-icon"><Wrench size={20} /></div><div><h3>维护决策</h3><p>{selected.turbine_id} · {selected.component_label}</p></div></div>
+            <div className="decision-intro"><div className="decision-icon"><Wrench size={20} /></div><div><h3>维护决策</h3><p>{selected.turbine_id} · {selected.component_label}</p><small>先读风险信号，再核对窗口与人员，最后记录执行和复测</small></div></div>
             <div className="constraint-row"><div><CloudSun size={17} /><span>天气窗口限制<small>调整条件，比较方案变化</small></span></div><button className={`toggle ${weatherRestricted ? 'on' : ''}`} role="switch" aria-checked={weatherRestricted} aria-label="天气窗口限制" onClick={toggleWeather}><span /></button></div>
             <div className="section-title plan-title"><h3>可选方案</h3><span>{mode === 'demo' ? '规则演示 / 假设参数' : apiPlan ? `后端决策 · ${apiPlan.priority}` : '等待后端决策'}</span></div>
             <div className="plans">{plans.map((p: MaintenancePlan) => <button key={p.id} disabled={p.available === false || (mode === 'api' && !p.recommended)} className={`plan-option ${plan.id === p.id ? 'selected' : ''}`} onClick={() => { setSelectedPlan(p.id); setServiced(false) }}><span className="plan-radio">{plan.id === p.id && <span />}</span><span className="plan-copy"><strong>{p.title}{p.recommended && <em>建议</em>}</strong><small><Clock3 size={13} /> {p.timing} · 风险 {p.risk}</small><span>{p.action}</span></span></button>)}</div>
@@ -190,6 +190,6 @@ export default function App() {
         </>}
       </aside>
     </main>
-    {showSources && <div className="modal-backdrop" onClick={() => setShowSources(false)}><section className="source-modal" role="dialog" aria-modal="true" aria-label="数据来源说明" onClick={e => e.stopPropagation()}><div className="modal-head"><div><Database size={19} /><h2>数据来源说明</h2></div><button className="icon-button" title="关闭" aria-label="关闭" onClick={() => setShowSources(false)}><X size={18} /></button></div><p>当前演示模式中的风机数据、健康指数、风险评分、趋势和维护参数均为模拟样例，仅用于验证 C 模块的交互流程，不代表 CARE 数据集实测或 AI 模型结果。</p><p>当前工程剖切以 Wind Farm A 的 CARE v6 Event 51（Gearbox bearings damaged）为主案例。三维外形已经接入 Digital BIM Solutions 的 Wind Turbine（CC BY 4.0）；内部工程对象由项目组建立并命名为可绑定节点。</p><p>接口模式读取 D 的风机与组件状态，并通过 <code>/api/maintenance/optimize</code>、<code>/api/maintenance/replan</code> 和 <code>/api/maintenance/execute</code> 完成维护决策闭环。映射状态为 <code>UNVERIFIED</code> 时保持中性部件名称。</p><p>风险评分默认作为 0-1 指标显示；若未完成概率校准，不称为“故障概率”。执行维护后需要后端提供复测结果，前端才会更新真实健康状态。</p><button className="modal-done" onClick={() => setShowSources(false)}>了解</button></section></div>}
+    {showSources && <div className="modal-backdrop" onClick={() => setShowSources(false)}><section className="source-modal" role="dialog" aria-modal="true" aria-label="数据来源说明" onClick={e => e.stopPropagation()}><div className="modal-head"><div><Database size={19} /><h2>数据来源说明</h2></div><button className="icon-button" title="关闭" aria-label="关闭" onClick={() => setShowSources(false)}><X size={18} /></button></div><p>当前演示模式中的风机数据、健康指数、风险评分、趋势和维护参数均为模拟样例，仅用于验证 C 模块的交互流程，不代表 CARE 数据集实测或 AI 模型结果。</p><p>八台演示风机均使用项目提供的 SolidWorks/STEP 工程模型转换版本。叶片、轮毂、塔筒、机舱、主轴、齿轮、轴承和发电机均绑定到模型中的CAD零件节点，不再使用旧外形模型或程序化内部零件作为正式显示对象。</p><p>接口模式读取 D 的风机与组件状态，并通过 <code>/api/maintenance/optimize</code>、<code>/api/maintenance/replan</code> 和 <code>/api/maintenance/execute</code> 完成维护决策闭环。映射状态为 <code>UNVERIFIED</code> 时保持中性部件名称。</p><p>风险评分默认作为 0-1 指标显示；若未完成概率校准，不称为“故障概率”。执行维护后需要后端提供复测结果，前端才会更新真实健康状态。</p><button className="modal-done" onClick={() => setShowSources(false)}>了解</button></section></div>}
   </div>
 }

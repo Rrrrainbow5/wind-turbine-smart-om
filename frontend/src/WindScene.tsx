@@ -1,6 +1,9 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
+import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import type { Turbine } from './data'
 
 interface Props {
@@ -9,6 +12,7 @@ interface Props {
   onSelect: (id: string) => void
   serviced: boolean
   engineeringView: boolean
+  onOpenEngineering: () => void
 }
 
 const colors = { NORMAL: 0x75a79b, LOW: 0xe4af55, MEDIUM: 0xd47d43, HIGH: 0xd9584e }
@@ -21,19 +25,211 @@ type TurbineSceneObject = {
   exterior: THREE.Group
   nacelle: THREE.Object3D
   engineering: THREE.Group
-  gearboxBearing: THREE.Group
+  gearboxBearing: THREE.Object3D
+  cadModel: THREE.Object3D | null
+  cadLabels: THREE.Group | null
 }
 
-function setOpacity(root: THREE.Object3D, opacity: number) {
+const engineeringModelUrl = '/assets/wind-turbine-engineering.glb'
+// Turbines follow two connected ridgelines, similar to an aerial mountain
+// wind-farm layout. They deliberately avoid a regular grid.
+const ridgeLayout: Record<string, [number, number]> = {
+  WT01: [-25, -12], WT02: [-9, -8], WT03: [9, -12], WT04: [27, -7],
+  WT05: [-18, 14], WT06: [0, 17], WT07: [20, 13], WT08: [6, 38],
+}
+
+function terrainHeight(_x: number, _z: number) {
+  return 0
+}
+
+type CadPart = { id: string; label: string; category: string }
+
+function identifyCadPart(sourceName: string, turbineId: string): CadPart | null {
+  const name = sourceName.toLowerCase()
+  if (/^wt02_blade_\d+/.test(name)) return { id: `${turbineId}_ROTOR_BLADE`, label: '风轮叶片', category: 'ROTOR' }
+  if (name === 'generator-1' || name.includes('kuci歵e generatora') || name.includes('rotor generatora') || name.includes('stator')) return { id: `${turbineId}_GENERATOR`, label: '发电机总成', category: 'GENERATOR' }
+  if (name.startsWith('radial ball bearing') || name.startsWith('taper roller bearing')) return { id: `${turbineId}_BEARING`, label: '滚动轴承', category: 'BEARING' }
+  if ((name.includes('kuci') && name.includes('le瀉j')) || name.includes('bearing housing')) return { id: `${turbineId}_GEARBOX_BEARING`, label: '传动链轴承座', category: 'GEARBOX_BEARING' }
+  if (name.startsWith('spur gear') || name.startsWith('internal spur gear') || name.startsWith('svi planetarni zupcanici')) return { id: `${turbineId}_GEAR`, label: '齿轮传动件', category: 'GEARBOX' }
+  if (name.includes('glavno vratilo') && !name.includes('civija') && !name.includes('navrtka') && !name.includes('歳af')) return { id: `${turbineId}_MAIN_SHAFT`, label: '主轴', category: 'DRIVETRAIN' }
+  if (name.includes('sve u gondoli') || name.includes('gondol')) return { id: `${turbineId}_NACELLE`, label: '机舱及机舱附件', category: 'NACELLE' }
+  if (name.includes('koren stuba') || name.includes('stub')) return { id: `${turbineId}_TOWER`, label: '塔筒及连接件', category: 'TOWER' }
+  if (name.includes('haub')) return { id: `${turbineId}_ROTOR_HUB`, label: '轮毂及整流罩连接件', category: 'ROTOR' }
+  if (name === 'wt02_rotor' || name.includes('rotor')) return { id: `${turbineId}_ROTOR`, label: '风轮总成', category: 'ROTOR' }
+  return null
+}
+
+function bindCadPartNames(root: THREE.Object3D, turbineId: string) {
+  const counters = new Map<string, number>()
   root.traverse(object => {
+    const sourceName = object.name
+    const part = identifyCadPart(sourceName, turbineId)
+    object.userData.turbineId = turbineId
+    object.userData.sourceCadName = sourceName
+    object.userData.modelOrigin = 'PROJECT_ENGINEERING_CAD'
+    if (!part) return
+    const index = (counters.get(part.id) || 0) + 1
+    counters.set(part.id, index)
+    const normalizedId = `${part.id}_${String(index).padStart(3, '0')}`
+    object.name = normalizedId
+    object.userData.componentId = normalizedId
+    object.userData.componentGroupId = part.id
+    object.userData.componentLabel = part.label
+    object.userData.componentCategory = part.category
+  })
+}
+
+function makeRealGearboxBearingGroup(root: THREE.Object3D, turbineId: string) {
+  const group = new THREE.Group()
+  group.name = `${turbineId}_REAL_GEARBOX_BEARINGS`
+  const targets: THREE.Mesh[] = []
+  root.traverse(object => {
+    const source = String(object.userData.sourceCadName || '').toLowerCase()
+    if (!(object instanceof THREE.Mesh) || (!source.includes('bearing') && !source.includes('le瀉j'))) return
+    const ancestry: string[] = []
+    let parent = object.parent
+    while (parent && parent !== root) {
+      ancestry.push(String(parent.userData.sourceCadName || parent.name).toLowerCase())
+      parent = parent.parent
+    }
+    const chain = ancestry.join(' > ')
+    const insideNacelle = chain.includes('sve u gondoli')
+    const excluded = chain.includes('generator') || chain.includes('pitch motor') || source.includes('washer') || source.includes('podlo') || source.includes('歳af')
+    if (!insideNacelle || excluded) return
+    object.userData.componentId = `${turbineId}_GEARBOX_BEARING_${String(targets.length + 1).padStart(2, '0')}`
+    object.userData.componentGroupId = `${turbineId}_GEARBOX_BEARING`
+    object.userData.componentLabel = '齿轮箱轴承'
+    object.userData.componentCategory = 'GEARBOX_BEARING'
+    targets.push(object)
+  })
+  group.userData.targets = targets
+  return group
+}
+
+const engineeringColors: Record<string, number> = {
+  GENERATOR: 0x16b8c8,
+  GEARBOX: 0xe5a83d,
+  GEARBOX_BEARING: 0xff493d,
+  BEARING: 0xff785f,
+  DRIVETRAIN: 0xb9d0d5,
+  ROTOR: 0x80939a,
+}
+
+function effectiveCadCategory(object: THREE.Object3D, root: THREE.Object3D) {
+  if (object === root) return ''
+  return object.userData.componentCategory ? String(object.userData.componentCategory) : ''
+}
+
+function isCadExterior(object: THREE.Object3D, category: string) {
+  const source = String(object.userData.sourceCadName || '').toLowerCase()
+  if (category === 'TOWER' || category === 'ROTOR') return true
+  if (category === 'NACELLE') return source.includes('poklopac') || source.includes('gondol') || source.includes('haub')
+  const mainNacelleShell = source.startsWith('kuci') && (source.endsWith(' 1-1') || source.endsWith(' 2-1'))
+  return mainNacelleShell || source.includes('kuci歵e gornje') || source.includes('gornje kuci') || source.startsWith('wt02_blade_') || source.includes('koren stuba') ||
+    source.includes('poklopac za gondolu') || source.includes('za haubu prednja') ||
+    source.includes('za haubu zadnja') || source.includes('hauba')
+}
+
+function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
+  if (!model) return
+  model.traverse(object => {
     if (!(object instanceof THREE.Mesh)) return
+    const category = effectiveCadCategory(object, model)
+    const highlightedInternal = ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'BEARING', 'DRIVETRAIN'].includes(category)
+    const exterior = isCadExterior(object, category)
+    const source = String(object.userData.sourceCadName || '').toLowerCase()
+    object.geometry.computeBoundingBox()
+    const localSize = object.geometry.boundingBox?.getSize(new THREE.Vector3()) || new THREE.Vector3()
+    // The upper nacelle cover is removed for the engineering cutaway; side/lower
+    // housings remain as a translucent reference so the real drivetrain stays readable.
+    const isUpperNacelleCover = source.includes('kuci歵e gornje') || source.includes('gornje kuci')
+    const isMainNacelleShell = isUpperNacelleCover || (source.startsWith('kuci') && Math.max(localSize.x, localSize.y, localSize.z) > 2.2)
+    if (object.userData.engineeringOriginalVisible === undefined) object.userData.engineeringOriginalVisible = object.visible
+    // Keep the large white top cover out of the normal and cutaway views.
+    object.visible = isUpperNacelleCover ? false : (active && isMainNacelleShell ? false : Boolean(object.userData.engineeringOriginalVisible))
     const materials = Array.isArray(object.material) ? object.material : [object.material]
     materials.forEach(material => {
-      material.transparent = opacity < 1
-      material.opacity = opacity
-      material.depthWrite = opacity >= 1
+      const stored = material.userData.engineeringOriginal as { color?: number; opacity: number; transparent: boolean; depthWrite: boolean; emissive?: number } | undefined
+      if (!stored) {
+        const standard = material as THREE.MeshStandardMaterial
+        material.userData.engineeringOriginal = {
+          color: standard.color?.getHex(), opacity: material.opacity, transparent: material.transparent,
+          depthWrite: material.depthWrite, emissive: standard.emissive?.getHex(),
+        }
+      }
+      const original = material.userData.engineeringOriginal
+      const standard = material as THREE.MeshStandardMaterial
+      if (!active) {
+        material.opacity = original.opacity
+        material.transparent = original.transparent
+        material.depthWrite = original.depthWrite
+        if (original.color !== undefined && standard.color) standard.color.setHex(original.color)
+        if (original.emissive !== undefined && standard.emissive) standard.emissive.setHex(original.emissive)
+        return
+      }
+      if (highlightedInternal) {
+        material.opacity = 1
+        material.transparent = false
+        material.depthWrite = true
+        if (standard.color) standard.color.setHex(engineeringColors[category] || 0xc8d7da)
+        if (standard.emissive) standard.emissive.setHex(category === 'GEARBOX_BEARING' ? 0x66120d : 0x071a20)
+      } else if (exterior) {
+        material.opacity = category === 'TOWER' ? .08 : .045
+        material.transparent = true
+        material.depthWrite = false
+        if (standard.color) standard.color.setHex(0x76a7b1)
+        if (standard.emissive) standard.emissive.setHex(0x06171c)
+      } else {
+        // Unclassified meshes inside the nacelle are still real mechanical
+        // parts (supports, housings, couplings and fasteners), not shell.
+        material.opacity = 1
+        material.transparent = false
+        material.depthWrite = true
+        if (original.color !== undefined && standard.color) standard.color.setHex(original.color)
+        if (standard.emissive) standard.emissive.setHex(0x061216)
+      }
     })
   })
+}
+
+function makeCadLabels(model: THREE.Object3D) {
+  const group = new THREE.Group()
+  group.name = 'CAD_ENGINEERING_LABELS'
+  const definitions = [
+    ['GEARBOX', '齿轮传动', '#ffd36a'],
+    ['GEARBOX_BEARING', '齿轮箱轴承', '#ff796e'],
+    ['DRIVETRAIN', '主轴', '#d8edf1'],
+  ] as const
+  definitions.forEach(([category, text, color]) => {
+    const points: THREE.Vector3[] = []
+    model.traverse(object => {
+      if (!(object instanceof THREE.Mesh) || effectiveCadCategory(object, model) !== category) return
+      object.updateWorldMatrix(true, false)
+      points.push(new THREE.Box3().setFromObject(object).getCenter(new THREE.Vector3()))
+    })
+    if (!points.length) return
+    const center = points.reduce((sum, point) => sum.add(point), new THREE.Vector3()).multiplyScalar(1 / points.length)
+    model.worldToLocal(center)
+    const label = makeLabel(text, color)
+    label.position.copy(center).add(new THREE.Vector3(0, .45, 0))
+    label.scale.set(.9, .16, 1)
+    group.add(label)
+  })
+  group.visible = false
+  return group
+}
+
+function getEngineeringBounds(model: THREE.Object3D | null) {
+  const bounds = new THREE.Box3()
+  if (!model) return bounds
+  model.updateWorldMatrix(true, true)
+  model.traverse(object => {
+    if (!(object instanceof THREE.Mesh)) return
+    const category = effectiveCadCategory(object, model)
+    if (!['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'BEARING', 'DRIVETRAIN'].includes(category)) return
+    bounds.expandByObject(object)
+  })
+  return bounds
 }
 
 function makeBearing(componentId: string, metal: THREE.Material, ring: THREE.Material) {
@@ -82,7 +278,8 @@ function makeGear(name: string, radius: number, material: THREE.Material) {
 }
 
 function setBearingState(bearing: THREE.Object3D, active: boolean) {
-  bearing.traverse(object => {
+  const targets = (bearing.userData.targets as THREE.Object3D[] | undefined) || [bearing]
+  targets.forEach(target => target.traverse(object => {
     if (!(object instanceof THREE.Mesh)) return
     const materials = Array.isArray(object.material) ? object.material : [object.material]
     materials.forEach(material => {
@@ -90,6 +287,24 @@ function setBearingState(bearing: THREE.Object3D, active: boolean) {
       material.color.setHex(active ? 0xd9584e : 0xc5d6cf)
       material.emissive.setHex(active ? 0x5c1715 : 0x1b332f)
       material.emissiveIntensity = active ? .5 : .08
+    })
+  }))
+}
+
+function setFaultPartState(model: THREE.Object3D | null, category: Turbine['fault_category'], level: Turbine['warning_level']) {
+  if (!model || !category) return
+  const color = level === 'HIGH' ? 0xff3028 : 0xffbd35
+  model.traverse(object => {
+    if (!(object instanceof THREE.Mesh) || effectiveCadCategory(object, model) !== category) return
+    const materials = Array.isArray(object.material) ? object.material : [object.material]
+    materials.forEach(material => {
+      const standard = material as THREE.MeshStandardMaterial
+      if (standard.color) standard.color.setHex(color)
+      if (standard.emissive) standard.emissive.setHex(level === 'HIGH' ? 0x7a0905 : 0x5a3400)
+      standard.emissiveIntensity = level === 'HIGH' ? .75 : .45
+      material.opacity = 1
+      material.transparent = false
+      material.depthWrite = true
     })
   })
 }
@@ -112,20 +327,30 @@ function makeLabel(text: string, color: string) {
   return sprite
 }
 
-export default function WindScene({ turbines, selectedId, onSelect, serviced, engineeringView }: Props) {
+export default function WindScene({ turbines, selectedId, onSelect, serviced, engineeringView, onOpenEngineering }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const onSelectRef = useRef(onSelect)
+  const onOpenEngineeringRef = useRef(onOpenEngineering)
   const objectsRef = useRef<Map<string, TurbineSceneObject>>(new Map())
   const sceneRef = useRef<THREE.Scene | null>(null)
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
   const selectedIdRef = useRef(selectedId)
   const engineeringViewRef = useRef(engineeringView)
+  const controlsRef = useRef<OrbitControls | null>(null)
+  const presetRef = useRef<(preset: number) => void>(() => {})
+  const flyToRef = useRef<(position: THREE.Vector3, target: THREE.Vector3, duration?: number) => void>(() => {})
+  const flightRef = useRef<{
+    fromPosition: THREE.Vector3; toPosition: THREE.Vector3
+    fromTarget: THREE.Vector3; toTarget: THREE.Vector3
+    startedAt: number; duration: number
+  } | null>(null)
   const viewRef = useRef({
     position: new THREE.Vector3(24, 23, 42),
     target: new THREE.Vector3(0, 3, 0),
   })
 
   useEffect(() => { onSelectRef.current = onSelect }, [onSelect])
+  useEffect(() => { onOpenEngineeringRef.current = onOpenEngineering }, [onOpenEngineering])
   useEffect(() => {
     selectedIdRef.current = selectedId
     engineeringViewRef.current = engineeringView
@@ -137,18 +362,60 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
     scene.background = new THREE.Color(0xdce8e5)
     scene.fog = new THREE.FogExp2(0xdce8e5, 0.007)
     sceneRef.current = scene
-    const camera = new THREE.PerspectiveCamera(34, 1, .1, 350)
-    camera.position.set(24, 23, 42)
-    camera.lookAt(0, 3, 0)
+    const camera = new THREE.PerspectiveCamera(42, 1, .1, 350)
+    const initialPosition = ridgeLayout[selectedIdRef.current] || [0, 0]
+    camera.position.set(initialPosition[0] + 3.8, 9.8, initialPosition[1] + 4.6)
+    camera.lookAt(initialPosition[0], 8.7, initialPosition[1])
     cameraRef.current = camera
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    renderer.toneMapping = THREE.ACESFilmicToneMapping
+    renderer.toneMappingExposure = .72
     renderer.outputColorSpace = THREE.SRGBColorSpace
     renderer.shadowMap.enabled = true
     renderer.shadowMap.type = THREE.PCFSoftShadowMap
     host.appendChild(renderer.domElement)
+    const controls = new OrbitControls(camera, renderer.domElement)
+    controls.enableDamping = false
+    controls.screenSpacePanning = true
+    controls.minDistance = 1.1
+    controls.maxDistance = 115
+    controls.maxPolarAngle = Math.PI * .49
+    controls.target.set(0, 3, 0)
+    controlsRef.current = controls
 
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x879c97, 2.6))
+    const flyTo = (position: THREE.Vector3, target: THREE.Vector3, duration = 1500) => {
+      flightRef.current = {
+        fromPosition: camera.position.clone(), toPosition: position.clone(),
+        fromTarget: controls.target.clone(), toTarget: target.clone(),
+        startedAt: performance.now(), duration,
+      }
+      controls.enabled = false
+    }
+    flyToRef.current = flyTo
+
+    const applyPreset = (preset: number) => {
+      const selected = turbines.find(turbine => turbine.turbine_id === selectedIdRef.current)
+      const selectedPosition = selected ? (ridgeLayout[selected.turbine_id] || selected.position) : [0, 0]
+      const x = selectedPosition[0]
+      const z = selectedPosition[1]
+      const y = terrainHeight(x, z)
+      const position = new THREE.Vector3()
+      const target = new THREE.Vector3()
+      if (preset === 1) { position.set(x + 3.8, y + 9.8, z + 4.6); target.set(x, y + 8.7, z) }
+      if (preset === 2) { position.set(x + .25, y + 8.9, z - 5.2); target.set(x, y + 8.85, z) }
+      if (preset === 3) { position.set(x + 4.1, y + 9.25, z + .7); target.set(x, y + 8.9, z) }
+      if (preset === 4) { position.set(46, 28, 66); target.set(0, 4, 8) }
+      flyTo(position, target, preset === 4 ? 2200 : 1400)
+    }
+    presetRef.current = applyPreset
+    const keyPreset = (event: KeyboardEvent) => {
+      const preset = Number(event.key)
+      if (preset >= 1 && preset <= 4) applyPreset(preset)
+    }
+    window.addEventListener('keydown', keyPreset)
+
+    scene.add(new THREE.HemisphereLight(0xeaf7ff, 0x123849, 2.35))
     const sun = new THREE.DirectionalLight(0xfff5dc, 2.4)
     sun.position.set(-16, 34, 20)
     sun.castShadow = true
@@ -158,41 +425,49 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
     sun.shadow.bias = -.0003
     scene.add(sun)
 
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(110, 90), new THREE.MeshStandardMaterial({ color: 0xb9cfc3, roughness: 1 }))
-    ground.rotation.x = -Math.PI / 2
-    ground.receiveShadow = true
-    scene.add(ground)
+    new EXRLoader().load('/assets/environment/DaySkyHDRI070B_2K_HDR.exr', texture => {
+      if (disposed) { texture.dispose(); return }
+      texture.mapping = THREE.EquirectangularReflectionMapping
+      scene.background = texture
+      scene.environment = texture
+      scene.backgroundRotation.set(0, Math.PI * .08, 0)
+      scene.environmentRotation.set(0, Math.PI * .08, 0)
+      scene.backgroundIntensity = .82
+      scene.environmentIntensity = .7
+      scene.fog = new THREE.FogExp2(0xa9cad3, .0065)
+    }, undefined, error => console.error('DaySky HDRI environment could not be loaded.', error))
 
-    const hillMaterial = new THREE.MeshStandardMaterial({ color: 0x91aa98, roughness: 1 })
-    const farHillMaterial = new THREE.MeshStandardMaterial({ color: 0x7f9c91, roughness: 1 })
-    const hills: Array<[number, number, number, number, number, THREE.Material]> = [[-31, -13, 16, 5.5, 10, farHillMaterial], [27, -17, 19, 6.5, 12, farHillMaterial], [-29, 18, 15, 4.5, 9, hillMaterial], [29, 17, 17, 5, 11, hillMaterial]]
-    hills.forEach(([x, z, sx, sy, sz, material]) => {
-      const hill = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 12), material as THREE.Material)
-      hill.position.set(x, sy * .42, z); hill.scale.set(sx, sy, sz); hill.receiveShadow = true; scene.add(hill)
+    const seaGeometry = new THREE.PlaneGeometry(420, 420, 180, 180)
+    seaGeometry.rotateX(-Math.PI / 2)
+    const seaPosition = seaGeometry.getAttribute('position') as THREE.BufferAttribute
+    const seaBase = new Float32Array(seaPosition.array as ArrayLike<number>)
+    const seaMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0x287c91,
+      roughness: .24,
+      metalness: .05,
+      transmission: .08,
+      transparent: true,
+      opacity: .94,
+      clearcoat: .8,
+      clearcoatRoughness: .18,
+      envMapIntensity: 1.15,
     })
-    const stationGroup = new THREE.Group(); stationGroup.position.set(24, .2, -3)
-    const station = new THREE.Mesh(new THREE.BoxGeometry(4, 1.25, 2.5), new THREE.MeshStandardMaterial({ color: 0x697a73, roughness: .75 }))
-    station.castShadow = true; stationGroup.add(station)
-    const mastMaterial = new THREE.MeshStandardMaterial({ color: 0xb5c3bb, metalness: .4, roughness: .5 })
-    for (let index = 0; index < 3; index++) { const mast = new THREE.Mesh(new THREE.CylinderGeometry(.035, .035, 2.1, 8), mastMaterial); mast.position.set(-1.2 + index * 1.2, 1.55, 0); stationGroup.add(mast) }
-    scene.add(stationGroup)
-    const trackMaterial = new THREE.MeshStandardMaterial({ color: 0x9eafa8, roughness: 1 })
-    for (const [x, z, w, h, rotation] of [[0, -2, 44, .58, -.12], [-4, -7, .55, 14, .1], [8, -1, .55, 15, -.2]] as number[][]) {
-      const path = new THREE.Mesh(new THREE.PlaneGeometry(w, h), trackMaterial)
-      path.rotation.x = -Math.PI / 2; path.rotation.z = rotation; path.position.set(x, .015, z)
-      scene.add(path)
-    }
+    const sea = new THREE.Mesh(seaGeometry, seaMaterial)
+    sea.receiveShadow = true
+    scene.add(sea)
 
-    const shrubMat = new THREE.MeshStandardMaterial({ color: 0x91b5a2, roughness: 1 })
-    const shrubGeo = new THREE.IcosahedronGeometry(.3, 0)
-    for (let i = 0; i < 100; i++) {
-      const x = Math.sin(i * 17.21) * 33, z = Math.cos(i * 11.37) * 23
-      if (Math.abs(x) < 17 && Math.abs(z) < 8) continue
-      const shrub = new THREE.Mesh(shrubGeo, shrubMat)
-      shrub.position.set(x, .23, z)
-      shrub.scale.set(1 + (i % 4) * .35, .55, 1 + (i % 3) * .25)
-      scene.add(shrub)
-    }
+    // Soft concentric wake rings make every offshore foundation visibly meet
+    // the water plane instead of appearing to float above it.
+    Object.values(ridgeLayout).forEach(([x, z], index) => {
+      const wake = new THREE.Mesh(
+        new THREE.RingGeometry(.95, 1.04, 48),
+        new THREE.MeshBasicMaterial({ color: 0xc7f4f6, transparent: true, opacity: .2 + index % 2 * .06, side: THREE.DoubleSide, depthWrite: false }),
+      )
+      wake.rotation.x = -Math.PI / 2
+      wake.position.set(x, .035, z)
+      scene.add(wake)
+    })
+
 
     const towerMat = new THREE.MeshStandardMaterial({ color: 0xf5f7f2, metalness: .25, roughness: .45 })
     const edgeMat = new THREE.MeshStandardMaterial({ color: 0xb9c5bf, metalness: .45, roughness: .42 })
@@ -205,10 +480,29 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
     const rootMap = objectsRef.current
     turbines.forEach(turbine => {
       const root = new THREE.Group()
-      root.position.set(turbine.position[0], 0, turbine.position[1])
+      const position = ridgeLayout[turbine.turbine_id] || turbine.position
+      root.position.set(position[0], terrainHeight(position[0], position[1]), position[1])
       root.userData.turbineId = turbine.turbine_id
-      root.userData.externalBasis = 'digital-bim-wind-turbine'
-      root.userData.assetSlot = 'public/assets/digital-bim-wind-turbine.glb'
+      root.userData.externalBasis = 'project-engineering-cad'
+      root.userData.assetSlot = 'public/assets/wind-turbine-engineering.glb'
+      const monopile = new THREE.Mesh(
+        new THREE.CylinderGeometry(.62, .78, 4.8, 28),
+        new THREE.MeshStandardMaterial({ color: 0xdde4e2, roughness: .48, metalness: .28 }),
+      )
+      monopile.position.y = -2.18
+      monopile.castShadow = true
+      monopile.userData.turbineId = turbine.turbine_id
+      monopile.userData.componentId = `${turbine.turbine_id}_MONOPILE`
+      root.add(monopile)
+      const transitionPiece = new THREE.Mesh(
+        new THREE.CylinderGeometry(.7, .7, .72, 28),
+        new THREE.MeshStandardMaterial({ color: 0xe7b83f, roughness: .42, metalness: .22 }),
+      )
+      transitionPiece.position.y = .18
+      transitionPiece.castShadow = true
+      transitionPiece.userData.turbineId = turbine.turbine_id
+      transitionPiece.userData.componentId = `${turbine.turbine_id}_TRANSITION_PIECE`
+      root.add(transitionPiece)
       const exterior = new THREE.Group()
       exterior.name = `${turbine.turbine_id}_PROCEDURAL_FALLBACK`
       root.add(exterior)
@@ -286,25 +580,40 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       root.add(engineering)
       const ring = new THREE.Mesh(new THREE.RingGeometry(1.58, 1.68, 64), new THREE.MeshBasicMaterial({ color: 0x203c38, transparent: true, opacity: .65, side: THREE.DoubleSide }))
       ring.rotation.x = -Math.PI / 2; ring.position.y = .035; root.add(ring)
-      const beacon = new THREE.Mesh(new THREE.SphereGeometry(.22, 16, 12), new THREE.MeshStandardMaterial({ color: colors[turbine.warning_level], emissive: colors[turbine.warning_level], emissiveIntensity: .55 }))
-      beacon.position.set(0, 9.52, 0); root.add(beacon)
+      const beacon = new THREE.Mesh(new THREE.SphereGeometry(.115, 16, 12), new THREE.MeshStandardMaterial({ color: colors[turbine.warning_level], emissive: colors[turbine.warning_level], emissiveIntensity: .8 }))
+      // Keep the state lamp physically tied to the tower base. This remains
+      // readable from overview while making turbine ownership unambiguous.
+      beacon.position.set(.82, .3, 0); beacon.userData.turbineId = turbine.turbine_id; root.add(beacon)
       scene.add(root)
-      rootMap.set(turbine.turbine_id, { beacon, ring, blades, root, exterior, nacelle, engineering, gearboxBearing })
+      rootMap.set(turbine.turbine_id, { beacon, ring, blades, root, exterior, nacelle, engineering, gearboxBearing, cadModel: null, cadLabels: null })
     })
 
     let disposed = false
     const loader = new GLTFLoader()
-    loader.load('/assets/digital-bim-wind-turbine.glb', gltf => {
+    const dracoLoader = new DRACOLoader()
+    dracoLoader.setDecoderPath('/draco/')
+    loader.setDRACOLoader(dracoLoader)
+    // One decoded CAD template is cloned for all eight turbines. Geometry and
+    // textures remain shared; only materials are cloned where state styling is needed.
+    loader.load(engineeringModelUrl, gltf => {
       if (disposed) return
       const template = gltf.scene
       template.updateMatrixWorld(true)
       const bounds = new THREE.Box3().setFromObject(template)
-      const scale = .085
+      const size = bounds.getSize(new THREE.Vector3())
+      const scale = 10.8 / Math.max(size.x, size.y, size.z)
       rootMap.forEach((object, id) => {
         const imported = template.clone(true)
-        imported.name = `${id}_DIGITAL_BIM_EXTERIOR`
+        imported.name = `${id}_ENGINEERING_CAD_MODEL`
+        bindCadPartNames(imported, id)
         imported.scale.setScalar(scale)
-        imported.position.set(0, -bounds.min.y * scale, 0)
+        // Source CAD is exported with its tower axis along model Y. After glTF
+        // conversion that axis lies horizontally, so stand the complete assembly up.
+        imported.rotation.x = Math.PI / 2
+        imported.updateMatrixWorld(true)
+        const uprightBounds = new THREE.Box3().setFromObject(imported)
+        const uprightCenter = uprightBounds.getCenter(new THREE.Vector3())
+        imported.position.set(-uprightCenter.x, -uprightBounds.min.y, -uprightCenter.z)
         imported.traverse(child => {
           if (!(child instanceof THREE.Mesh)) return
           child.material = Array.isArray(child.material)
@@ -312,20 +621,48 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
             : child.material.clone()
           child.castShadow = true
           child.receiveShadow = true
+          const materials = Array.isArray(child.material) ? child.material : [child.material]
+          materials.forEach(material => {
+            const standard = material as THREE.MeshStandardMaterial
+            if (standard.color) standard.color.setHex(0xf4f5f2)
+            standard.roughness = .58
+            standard.metalness = Math.min(standard.metalness || 0, .3)
+          })
         })
+        const realBearings = makeRealGearboxBearingGroup(imported, id)
+        imported.add(realBearings)
+        const cadLabels = makeCadLabels(imported)
+        imported.add(cadLabels)
         object.root.add(imported)
         object.exterior.visible = false
-        const importedBlades = imported.getObjectByName('blades') || imported.getObjectByName('rotor')
-        if (importedBlades) {
-          importedBlades.userData.spinAxis = 'y'
-          importedBlades.visible = !(engineeringViewRef.current && selectedIdRef.current === id)
-          object.blades = importedBlades
+        object.engineering.visible = false
+        object.gearboxBearing = realBearings
+        object.cadModel = imported
+        object.cadLabels = cadLabels
+        object.nacelle = imported.getObjectByName(`${id}_NACELLE_001`) || imported
+        // The marker belongs to the same root and sits beside the real CAD base.
+        // Scale its offset to the imported footprint instead of using a world-space guess.
+        object.beacon.position.set(Math.max(.55, uprightBounds.getSize(new THREE.Vector3()).x * .42), .3, 0)
+        const engineeringActive = engineeringViewRef.current && selectedIdRef.current === id
+        setEngineeringCadView(imported, engineeringActive)
+        const turbine = turbines.find(item => item.turbine_id === id)
+        if (engineeringActive && turbine) setFaultPartState(imported, turbine.fault_category, turbine.warning_level)
+        cadLabels.visible = engineeringActive
+        setBearingState(realBearings, engineeringActive && id === 'WT02')
+        if (engineeringActive) {
+          object.root.updateWorldMatrix(true, true)
+          const focusBounds = getEngineeringBounds(imported)
+          if (!focusBounds.isEmpty()) {
+            const focus = focusBounds.getCenter(new THREE.Vector3())
+            const focusSize = focusBounds.getSize(new THREE.Vector3())
+            const distance = Math.max(1.4, focusSize.length() * 1.8)
+            viewRef.current.target.copy(focus)
+            viewRef.current.position.copy(focus).add(new THREE.Vector3(distance * .55, distance * .24, distance))
+          }
         }
-        object.nacelle = imported.getObjectByName('turbine') || imported
-        setOpacity(object.nacelle, engineeringViewRef.current && selectedIdRef.current === id ? .16 : 1)
       })
     }, undefined, error => {
-      console.error('Digital BIM wind turbine could not be loaded; using fallback exterior.', error)
+      console.error('Engineering CAD wind turbine could not be loaded; using fallback exterior.', error)
     })
 
     const raycaster = new THREE.Raycaster()
@@ -338,9 +675,34 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       pointer.set((event.clientX - rect.left) / rect.width * 2 - 1, -(event.clientY - rect.top) / rect.height * 2 + 1)
       raycaster.setFromCamera(pointer, camera)
       const hits = raycaster.intersectObjects([...rootMap.values()].map(o => o.root), true)
-      let target: THREE.Object3D | null = hits[0]?.object || null
-      while (target && !target.userData.turbineId) target = target.parent
-      if (target?.userData.turbineId) onSelectRef.current(target.userData.turbineId)
+      for (const hit of hits) {
+        let part: THREE.Object3D | null = hit.object
+        let clickedNacelle = false
+        while (part) {
+          const category = String(part.userData.componentCategory || '')
+          const source = String(part.userData.sourceCadName || '').toLowerCase()
+          if (category === 'NACELLE' || source.includes('gondol') || source.startsWith('kuci')) clickedNacelle = true
+          if (part.userData.turbineId) break
+          part = part.parent
+        }
+        let target: THREE.Object3D | null = hit.object
+        while (target && !target.userData.turbineId) target = target.parent
+        if (target?.userData.turbineId) {
+          const turbineId = target.userData.turbineId as string
+          const wasSelected = selectedIdRef.current === turbineId
+          onSelectRef.current(turbineId)
+          const turbine = turbines.find(item => item.turbine_id === turbineId)
+          const position = turbine ? (ridgeLayout[turbineId] || turbine.position) : [0, 0]
+          const y = terrainHeight(position[0], position[1])
+          flyTo(
+            new THREE.Vector3(position[0] + 3.8, y + 9.8, position[1] + 4.6),
+            new THREE.Vector3(position[0], y + 8.7, position[1]),
+            1800,
+          )
+          if (wasSelected && clickedNacelle) onOpenEngineeringRef.current()
+          break
+        }
+      }
     }
     renderer.domElement.addEventListener('pointerdown', pointerDown)
     renderer.domElement.addEventListener('pointerup', pointerUp)
@@ -356,16 +718,35 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
     const observer = new ResizeObserver(resize)
     observer.observe(host); resize()
     let frame = 0, raf = 0
-    const lookTarget = new THREE.Vector3(0, 3, 0)
     const render = () => {
       frame++
+      const flight = flightRef.current
+      if (flight) {
+        const rawProgress = Math.min(1, (performance.now() - flight.startedAt) / flight.duration)
+        const eased = rawProgress < .5
+          ? 4 * rawProgress * rawProgress * rawProgress
+          : 1 - Math.pow(-2 * rawProgress + 2, 3) / 2
+        camera.position.lerpVectors(flight.fromPosition, flight.toPosition, eased)
+        controls.target.lerpVectors(flight.fromTarget, flight.toTarget, eased)
+        if (rawProgress >= 1) {
+          flightRef.current = null
+          controls.enabled = true
+        }
+      }
+      const time = frame * .018
+      for (let index = 0; index < seaPosition.count; index++) {
+        const x = seaBase[index * 3]
+        const z = seaBase[index * 3 + 2]
+        const wave = Math.sin(x * .16 + time) * .075 + Math.cos(z * .13 - time * .82) * .055 + Math.sin((x + z) * .07 + time * .55) * .035
+        seaPosition.setY(index, wave)
+      }
+      seaPosition.needsUpdate = true
+      if (frame % 8 === 0) seaGeometry.computeVertexNormals()
       rootMap.forEach(o => {
         if (o.blades.userData.spinAxis === 'y') o.blades.rotation.y += .0035
         else o.blades.rotation.z += .0035
       })
-      camera.position.lerp(viewRef.current.position, .065)
-      lookTarget.lerp(viewRef.current.target, .065)
-      camera.lookAt(lookTarget)
+      controls.update()
       renderer.render(scene, camera)
       raf = requestAnimationFrame(render)
     }
@@ -389,6 +770,12 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
         }
       })
       renderer.dispose()
+      controls.dispose()
+      flightRef.current = null
+      flyToRef.current = () => {}
+      window.removeEventListener('keydown', keyPreset)
+      controlsRef.current = null
+      dracoLoader.dispose()
       rootMap.clear()
       sceneRef.current = null; cameraRef.current = null
     }
@@ -396,13 +783,26 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
 
   useEffect(() => {
     const selected = turbines.find(turbine => turbine.turbine_id === selectedId)
+    const controls = controlsRef.current
+    const camera = cameraRef.current
+    if (!controls || !camera) return
     if (selected && engineeringView) {
-      viewRef.current.position.set(selected.position[0] + 3.2, 9.8, selected.position[1] + 7.7)
-      viewRef.current.target.set(selected.position[0], 8.95, selected.position[1] + .08)
+      const selectedObject = objectsRef.current.get(selectedId)
+      const focusBounds = getEngineeringBounds(selectedObject?.cadModel || null)
+      if (!focusBounds.isEmpty()) {
+        const focus = focusBounds.getCenter(new THREE.Vector3())
+        const focusSize = focusBounds.getSize(new THREE.Vector3())
+        const distance = Math.max(1.4, focusSize.length() * 1.8)
+        viewRef.current.target.copy(focus)
+        viewRef.current.position.copy(focus).add(new THREE.Vector3(distance * .55, distance * .24, distance))
+      }
     } else {
-      viewRef.current.position.set(24, 23, 42)
-      viewRef.current.target.set(0, 3, 0)
+      const selectedPosition = selected ? (ridgeLayout[selected.turbine_id] || selected.position) : [0, 0]
+      const y = terrainHeight(selectedPosition[0], selectedPosition[1])
+      viewRef.current.position.set(selectedPosition[0] + 3.8, y + 9.8, selectedPosition[1] + 4.6)
+      viewRef.current.target.set(selectedPosition[0], y + 8.7, selectedPosition[1])
     }
+    flyToRef.current(viewRef.current.position, viewRef.current.target, engineeringView ? 1200 : 1750)
   }, [selectedId, engineeringView, turbines])
 
   useEffect(() => {
@@ -416,14 +816,30 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       ringMaterial.color.setHex(id === selectedId ? 0x173c35 : 0x7d9d91)
       ringMaterial.opacity = id === selectedId ? .9 : .24
       object.ring.scale.setScalar(id === selectedId ? 1.2 : 1)
+      object.ring.visible = false
       object.root.visible = !engineeringView || id === selectedId
-      object.blades.visible = !(engineeringView && id === selectedId)
+      object.blades.visible = false
       object.beacon.visible = !(engineeringView && id === selectedId)
-      object.engineering.visible = engineeringView && id === selectedId
-      setOpacity(object.nacelle, engineeringView && id === selectedId ? .16 : 1)
+      object.engineering.visible = false
+      const engineeringActive = engineeringView && id === selectedId
+      setEngineeringCadView(object.cadModel, engineeringActive)
+      if (engineeringActive) setFaultPartState(object.cadModel, turbine.fault_category, turbine.warning_level)
+      if (object.cadLabels) object.cadLabels.visible = engineeringActive
       setBearingState(object.gearboxBearing, turbine.event_id === 51 && id === selectedId)
     })
   }, [selectedId, serviced, turbines, engineeringView])
 
-  return <div className="scene-canvas" ref={containerRef} aria-label="可点击的三维风电场" />
+  return <div className="scene-canvas" ref={containerRef} aria-label="可点击的三维风电场">
+    <div className="drone-hud" aria-hidden="true">
+      <span className="drone-corner drone-corner-tl" /><span className="drone-corner drone-corner-tr" />
+      <span className="drone-corner drone-corner-bl" /><span className="drone-corner drone-corner-br" />
+      <div className="drone-reticle"><i /><b /></div>
+      <div className="drone-status"><strong>UAV INSPECTION</strong><span>目标 {selectedId}</span><span>安全距离约 45 m</span><span>机舱高度约 100 m</span></div>
+      <div className="drone-rec"><i /> REC</div>
+    </div>
+    <div className="camera-presets" aria-label="预设视角">
+      {[['1', '巡检'], ['2', '叶轮'], ['3', '机舱'], ['4', '全场']].map(([key, label]) =>
+        <button key={key} onClick={() => presetRef.current(Number(key))}><b>{key}</b>{label}</button>)}
+    </div>
+  </div>
 }

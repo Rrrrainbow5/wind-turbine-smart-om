@@ -1,11 +1,14 @@
 # 3D Asset Attribution
 
-## Wind Turbine
+## Project engineering CAD turbine
 
-- Creator: Digital BIM Solutions (`@digitalbimsolutions`)
-- Source: https://sketchfab.com/3d-models/wind-turbine-a7a12edcc72b4ac88c9276df1f80856d
-- License shown on source page: Creative Commons Attribution 4.0 International (CC BY 4.0)
-- Local file: `digital-bim-wind-turbine.glb`
-- SHA-256: `78E782407348D77B6BFE883F5FCE5753445B5FDA418E1C5548645ADBE2CD05CF`
+- Local file: `wind-turbine-engineering.glb`
+- Role: exterior and mechanical assembly used for all eight displayed turbines
+- Source: project-provided SolidWorks/STEP assembly converted to GLB
+- Naming: original CAD node names are retained in `sourceCadName`; the application adds normalized engineering identifiers for rotor blades, rotor/hub, tower, nacelle, shaft, gears, bearings, and generator parts.
+- Evidence boundary: the visible CAD bearing and gearbox parts are engineering-model components. Until the CARE asset-to-component mapping is formally verified, they must not be presented as the officially confirmed physical component represented by `WT02_COMPONENT_01`.
 
-The asset is used as the exterior basis. WindCare adds its own engineering cutaway objects, component identifiers, state visualization, camera behavior, and CARE Event 51 mapping. The internal drivetrain is an illustrative engineering assembly and is not claimed to reproduce the source wind farm's exact turbine or gearbox design.
+## Environment materials
+
+- `environment/Grass005_2K-JPG_*`: Grass005 2K PBR material supplied by the project user; color, OpenGL normal, roughness, and ambient-occlusion maps are used on the wind-farm lawn.
+- `environment/DaySkyHDRI070B_2K_HDR.exr`: DaySkyHDRI070B 2K environment supplied by the project user; used as the visible sky and image-based environment lighting.

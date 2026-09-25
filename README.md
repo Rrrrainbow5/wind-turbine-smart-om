@@ -13,7 +13,8 @@
 - AI 结果的统一接入和最新状态查询
 - 可解释的规则型维护决策与重新规划
 - 数据来源类型标记：`REAL`、`DERIVED`、`SIMULATED`、`ASSUMED`、`REFERENCE`
-- Digital BIM 风机外形、CARE Event 51 工程剖切与零部件状态高亮
+- 项目提供的 SolidWorks/STEP 工程风机 GLB、CARE Event 51 工程剖切与零部件状态高亮
+- 海上风场无人机巡检场景：动态海面、单桩基础、黄色防撞段、离岸阵列和巡检 HUD
 - 风场总览、状态趋势、维护优化、条件变化重规划和执行记录前端流程
 
 
@@ -47,7 +48,7 @@ pytest
 
 ## C 三维数字孪生前端
 
-前端位于 [`frontend/`](frontend/)，默认演示案例为 CARE Version 6、Wind Farm A、Event 51（`Gearbox bearings damaged`）。外形使用 Digital BIM Solutions 的 Wind Turbine，内部齿轮箱、轴承、齿轮级、联轴器和发电机对象由项目组构建。模型授权、来源和文件哈希见 [`frontend/public/assets/ATTRIBUTION.md`](frontend/public/assets/ATTRIBUTION.md)。
+前端位于 [`frontend/`](frontend/)，默认案例为 CARE Version 6、Wind Farm A、Event 51（`Gearbox bearings damaged`）。当前显示版本为海上风场无人机巡检场景，8 台风机使用项目提供的 SolidWorks/STEP 工程装配转换模型 `frontend/public/assets/wind-turbine-engineering.glb`。模型包含真实 CAD 层级，并支持机舱透明、轴承/齿轮/发电机等零件高亮。模型与环境素材说明见 [`frontend/public/assets/ATTRIBUTION.md`](frontend/public/assets/ATTRIBUTION.md)。陆上山地版本备份不在仓库内，位于本机 `D:\工创赛\backups\wind-turbine-smart-om_frontend_onshore_2026-09-24`。
 
 ```powershell
 cd frontend
@@ -71,6 +72,19 @@ pnpm run build
 
 
 接口约定见 [docs/api-contract.md](docs/api-contract.md)，第一轮联调步骤见 [docs/integration-guide.md](docs/integration-guide.md)，维护规则见 [docs/maintenance-decision.md](docs/maintenance-decision.md)，待 A 确认的事项见 [docs/maintenance-rule-review.md](docs/maintenance-rule-review.md)。
+
+当前前后端联调启动方式：
+
+```powershell
+# 终端 1，在仓库根目录
+python -m uvicorn backend.app.main:create_app --factory --host 127.0.0.1 --port 8000
+
+# 终端 2
+cd frontend
+npm run dev -- --host 127.0.0.1
+```
+
+打开 <http://127.0.0.1:5173/> 后，点击右上角“接口”切换到后端数据。后端 Swagger 地址为 <http://127.0.0.1:8000/docs>。
 
 ## A 工程与数据文档
 
