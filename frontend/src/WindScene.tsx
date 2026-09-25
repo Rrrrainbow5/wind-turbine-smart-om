@@ -636,8 +636,20 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
         const cadBlades: THREE.Object3D[] = []
         imported.traverse(child => {
           const source = String(child.userData.sourceCadName || '').toLowerCase()
-          if (source.includes('lopat') || source.includes('blade')) cadBlades.push(child)
+          if (child instanceof THREE.Mesh && /^lopatice\.step\d*$/.test(source)) cadBlades.push(child)
         })
+        imported.updateWorldMatrix(true, true)
+        // Six meshes form three blades. Their paired CAD origins are the
+        // three blade roots; the centroid is on the hub's shaft axis.
+        const roots = cadBlades.filter((_, i) => i % 2 === 0).map(blade => blade.getWorldPosition(new THREE.Vector3()))
+        if (roots.length === 3) {
+          const pivot = roots.reduce((sum, p) => sum.add(p), new THREE.Vector3()).divideScalar(3)
+          const axis = new THREE.Vector3().subVectors(roots[1], roots[0]).cross(new THREE.Vector3().subVectors(roots[2], roots[0])).normalize()
+          cadBlades.forEach(blade => {
+            blade.userData.rotorAnimation = { pivot, axis, initial: blade.matrixWorld.clone(), inverseParent: blade.parent!.matrixWorld.clone().invert() }
+            blade.matrixAutoUpdate = false
+          })
+        }
         const cadLabels = makeCadLabels(imported)
         imported.add(cadLabels)
         object.root.add(imported)
@@ -757,7 +769,15 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
         // Rotate its real blade nodes too; otherwise only the hidden demo rotor moves.
         // Rotate only the blade meshes. Never rotate their assembly parent:
         // SolidWorks parents can include the nacelle and would move the body.
-        o.cadBlades.forEach(blade => { blade.rotation.z += .018 })
+        o.cadBlades.forEach(blade => {
+          const motion = blade.userData.rotorAnimation
+          if (!motion) return
+          const rotation = new THREE.Matrix4().makeRotationAxis(motion.axis, performance.now() * .0008)
+          const transform = new THREE.Matrix4().makeTranslation(motion.pivot.x, motion.pivot.y, motion.pivot.z)
+            .multiply(rotation).multiply(new THREE.Matrix4().makeTranslation(-motion.pivot.x, -motion.pivot.y, -motion.pivot.z))
+          blade.matrix.copy(motion.inverseParent).multiply(transform).multiply(motion.initial)
+          blade.matrixWorldNeedsUpdate = true
+        })
       })
       controls.update()
       renderer.render(scene, camera)
