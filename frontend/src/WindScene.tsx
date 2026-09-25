@@ -28,7 +28,7 @@ type TurbineSceneObject = {
   gearboxBearing: THREE.Object3D
   cadModel: THREE.Object3D | null
   cadLabels: THREE.Group | null
-  cadBlades: THREE.Object3D[]
+  cadRotor: THREE.Group | null
 }
 
 const engineeringModelUrl = '/assets/wind-turbine-engineering.glb'
@@ -587,7 +587,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       // readable from overview while making turbine ownership unambiguous.
       beacon.position.set(.82, .3, 0); beacon.userData.turbineId = turbine.turbine_id; root.add(beacon)
       scene.add(root)
-      rootMap.set(turbine.turbine_id, { beacon, ring, blades, root, exterior, nacelle, engineering, gearboxBearing, cadModel: null, cadLabels: null, cadBlades: [] })
+      rootMap.set(turbine.turbine_id, { beacon, ring, blades, root, exterior, nacelle, engineering, gearboxBearing, cadModel: null, cadLabels: null, cadRotor: null })
     })
 
     let disposed = false
@@ -642,13 +642,18 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
         // Six meshes form three blades. Their paired CAD origins are the
         // three blade roots; the centroid is on the hub's shaft axis.
         const roots = cadBlades.filter((_, i) => i % 2 === 0).map(blade => blade.getWorldPosition(new THREE.Vector3()))
+        let cadRotor: THREE.Group | null = null
         if (roots.length === 3) {
           const pivot = roots.reduce((sum, p) => sum.add(p), new THREE.Vector3()).divideScalar(3)
           const axis = new THREE.Vector3().subVectors(roots[1], roots[0]).cross(new THREE.Vector3().subVectors(roots[2], roots[0])).normalize()
-          cadBlades.forEach(blade => {
-            blade.userData.rotorAnimation = { pivot, axis, initial: blade.matrixWorld.clone(), inverseParent: blade.parent!.matrixWorld.clone().invert() }
-            blade.matrixAutoUpdate = false
-          })
+          cadRotor = new THREE.Group()
+          cadRotor.name = `${id}_CAD_ROTOR`
+          imported.add(cadRotor)
+          const localPivot = imported.worldToLocal(pivot.clone())
+          cadRotor.position.copy(localPivot)
+          const localAxis = axis.clone().transformDirection(imported.matrixWorld.clone().invert()).normalize()
+          cadRotor.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), localAxis)
+          cadBlades.forEach(blade => cadRotor!.attach(blade))
         }
         const cadLabels = makeCadLabels(imported)
         imported.add(cadLabels)
@@ -657,7 +662,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
         object.engineering.visible = false
         object.gearboxBearing = realBearings
         object.cadModel = imported
-        object.cadBlades = cadBlades
+        object.cadRotor = cadRotor
         object.cadLabels = cadLabels
         object.nacelle = imported.getObjectByName(`${id}_NACELLE_001`) || imported
         // The marker belongs to the same root and sits beside the real CAD base.
@@ -769,15 +774,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
         // Rotate its real blade nodes too; otherwise only the hidden demo rotor moves.
         // Rotate only the blade meshes. Never rotate their assembly parent:
         // SolidWorks parents can include the nacelle and would move the body.
-        o.cadBlades.forEach(blade => {
-          const motion = blade.userData.rotorAnimation
-          if (!motion) return
-          const rotation = new THREE.Matrix4().makeRotationAxis(motion.axis, performance.now() * .0008)
-          const transform = new THREE.Matrix4().makeTranslation(motion.pivot.x, motion.pivot.y, motion.pivot.z)
-            .multiply(rotation).multiply(new THREE.Matrix4().makeTranslation(-motion.pivot.x, -motion.pivot.y, -motion.pivot.z))
-          blade.matrix.copy(motion.inverseParent).multiply(transform).multiply(motion.initial)
-          blade.matrixWorldNeedsUpdate = true
-        })
+        if (o.cadRotor) o.cadRotor.rotateY(.012)
       })
       controls.update()
       renderer.render(scene, camera)
