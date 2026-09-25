@@ -633,19 +633,21 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
         })
         const realBearings = makeRealGearboxBearingGroup(imported, id)
         imported.add(realBearings)
-        const cadRotor = new THREE.Group()
-        cadRotor.name = `${id}_CAD_ROTOR_ANIMATION`
-        const cadBlades: THREE.Object3D[] = []
+        let cadRotor: THREE.Group | null = null
         imported.traverse(child => {
           const source = String(child.userData.sourceCadName || '').toLowerCase()
-          if (source.includes('lopat') || source.includes('blade')) cadBlades.push(child)
+          if (!cadRotor && (source.includes('lopat') || source.includes('blade'))) {
+            let parent = child.parent
+            while (parent && parent !== imported) {
+              const parentSource = String(parent.userData.sourceCadName || '').toLowerCase()
+              if (parentSource.includes('sklop') || parentSource.includes('podsklop')) {
+                cadRotor = parent as THREE.Group
+                break
+              }
+              parent = parent.parent
+            }
+          }
         })
-        // Move the blade nodes under a shared pivot. Their world transforms are
-        // preserved, so the engineering model remains assembled while animating.
-        if (cadBlades.length) {
-          imported.add(cadRotor)
-          cadBlades.forEach(blade => cadRotor.attach(blade))
-        }
         const cadLabels = makeCadLabels(imported)
         imported.add(cadLabels)
         object.root.add(imported)
