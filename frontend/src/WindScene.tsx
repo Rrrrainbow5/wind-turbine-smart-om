@@ -636,7 +636,11 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
         const cadBlades: THREE.Object3D[] = []
         imported.traverse(child => {
           const source = String(child.userData.sourceCadName || '').toLowerCase()
-          if (child instanceof THREE.Mesh && /^lopatice\.step\d*$/.test(source)) cadBlades.push(child)
+          const chain: string[] = []
+          let parent = child.parent
+          while (parent && parent !== imported) { chain.push(String(parent.userData.sourceCadName || '').toLowerCase()); parent = parent.parent }
+          const mainBladeBranch = chain.some(name => name.includes('sklop le') && name.includes('lopat'))
+          if (child instanceof THREE.Mesh && mainBladeBranch && !source.includes('civij') && !source.includes('raf') && !source.includes('washer')) cadBlades.push(child)
         })
         imported.updateWorldMatrix(true, true)
         // Six meshes form three blades. Their paired CAD origins are the
