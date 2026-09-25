@@ -142,7 +142,7 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
     const localSize = object.geometry.boundingBox?.getSize(new THREE.Vector3()) || new THREE.Vector3()
     // The upper nacelle cover is removed for the engineering cutaway; side/lower
     // housings remain as a translucent reference so the real drivetrain stays readable.
-    const isUpperNacelleCover = source.includes('kuci歵e gornje') || source.includes('gornje kuci')
+    const isUpperNacelleCover = (source.includes('gornje') && source.includes('kuci')) || source.includes('upper nacelle') || source.includes('top nacelle')
     const isMainNacelleShell = isUpperNacelleCover || (source.startsWith('kuci') && Math.max(localSize.x, localSize.y, localSize.z) > 2.2)
     if (object.userData.engineeringOriginalVisible === undefined) object.userData.engineeringOriginalVisible = object.visible
     // Keep the large white top cover out of the normal and cutaway views.
@@ -745,6 +745,12 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       rootMap.forEach(o => {
         if (o.blades.userData.spinAxis === 'y') o.blades.rotation.y += .0035
         else o.blades.rotation.z += .0035
+        // The imported engineering CAD is the visible turbine in the scene.
+        // Rotate its real blade nodes too; otherwise only the hidden demo rotor moves.
+        if (o.cadModel) o.cadModel.traverse(part => {
+          const source = String(part.userData.sourceCadName || '').toLowerCase()
+          if (source.startsWith('wt02_blade_')) part.rotation.z += .0035
+        })
       })
       controls.update()
       renderer.render(scene, camera)
