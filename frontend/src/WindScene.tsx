@@ -28,7 +28,7 @@ type TurbineSceneObject = {
   gearboxBearing: THREE.Object3D
   cadModel: THREE.Object3D | null
   cadLabels: THREE.Group | null
-  cadRotor: THREE.Group | null
+  cadBlades: THREE.Object3D[]
 }
 
 const engineeringModelUrl = '/assets/wind-turbine-engineering.glb'
@@ -587,7 +587,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       // readable from overview while making turbine ownership unambiguous.
       beacon.position.set(.82, .3, 0); beacon.userData.turbineId = turbine.turbine_id; root.add(beacon)
       scene.add(root)
-      rootMap.set(turbine.turbine_id, { beacon, ring, blades, root, exterior, nacelle, engineering, gearboxBearing, cadModel: null, cadLabels: null, cadRotor: null })
+      rootMap.set(turbine.turbine_id, { beacon, ring, blades, root, exterior, nacelle, engineering, gearboxBearing, cadModel: null, cadLabels: null, cadBlades: [] })
     })
 
     let disposed = false
@@ -633,20 +633,10 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
         })
         const realBearings = makeRealGearboxBearingGroup(imported, id)
         imported.add(realBearings)
-        let cadRotor: THREE.Group | null = null
+        const cadBlades: THREE.Object3D[] = []
         imported.traverse(child => {
           const source = String(child.userData.sourceCadName || '').toLowerCase()
-          if (!cadRotor && (source.includes('lopat') || source.includes('blade'))) {
-            let parent = child.parent
-            while (parent && parent !== imported) {
-              const parentSource = String(parent.userData.sourceCadName || '').toLowerCase()
-              if (parentSource.includes('sklop') || parentSource.includes('podsklop')) {
-                cadRotor = parent as THREE.Group
-                break
-              }
-              parent = parent.parent
-            }
-          }
+          if (source.includes('lopat') || source.includes('blade')) cadBlades.push(child)
         })
         const cadLabels = makeCadLabels(imported)
         imported.add(cadLabels)
@@ -655,7 +645,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
         object.engineering.visible = false
         object.gearboxBearing = realBearings
         object.cadModel = imported
-        object.cadRotor = cadRotor
+        object.cadBlades = cadBlades
         object.cadLabels = cadLabels
         object.nacelle = imported.getObjectByName(`${id}_NACELLE_001`) || imported
         // The marker belongs to the same root and sits beside the real CAD base.
@@ -765,7 +755,9 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
         else o.blades.rotation.z += .0035
         // The imported engineering CAD is the visible turbine in the scene.
         // Rotate its real blade nodes too; otherwise only the hidden demo rotor moves.
-        if (o.cadRotor) o.cadRotor.rotation.y += .012
+        // Rotate only the blade meshes. Never rotate their assembly parent:
+        // SolidWorks parents can include the nacelle and would move the body.
+        o.cadBlades.forEach(blade => { blade.rotation.z += .018 })
       })
       controls.update()
       renderer.render(scene, camera)
