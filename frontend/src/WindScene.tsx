@@ -28,6 +28,7 @@ type TurbineSceneObject = {
   gearboxBearing: THREE.Object3D
   cadModel: THREE.Object3D | null
   cadLabels: THREE.Group | null
+  cadRotor: THREE.Group | null
 }
 
 const engineeringModelUrl = '/assets/wind-turbine-engineering.glb'
@@ -46,6 +47,7 @@ type CadPart = { id: string; label: string; category: string }
 
 function identifyCadPart(sourceName: string, turbineId: string): CadPart | null {
   const name = sourceName.toLowerCase()
+  if (name.includes('lopat') || name.includes('blade')) return { id: `${turbineId}_ROTOR_BLADE`, label: '风轮叶片', category: 'ROTOR' }
   if (/^wt02_blade_\d+/.test(name)) return { id: `${turbineId}_ROTOR_BLADE`, label: '风轮叶片', category: 'ROTOR' }
   if (name === 'generator-1' || name.includes('kuci歵e generatora') || name.includes('rotor generatora') || name.includes('stator')) return { id: `${turbineId}_GENERATOR`, label: '发电机总成', category: 'GENERATOR' }
   if (name.startsWith('radial ball bearing') || name.startsWith('taper roller bearing')) return { id: `${turbineId}_BEARING`, label: '滚动轴承', category: 'BEARING' }
@@ -585,7 +587,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       // readable from overview while making turbine ownership unambiguous.
       beacon.position.set(.82, .3, 0); beacon.userData.turbineId = turbine.turbine_id; root.add(beacon)
       scene.add(root)
-      rootMap.set(turbine.turbine_id, { beacon, ring, blades, root, exterior, nacelle, engineering, gearboxBearing, cadModel: null, cadLabels: null })
+      rootMap.set(turbine.turbine_id, { beacon, ring, blades, root, exterior, nacelle, engineering, gearboxBearing, cadModel: null, cadLabels: null, cadRotor: null })
     })
 
     let disposed = false
@@ -631,6 +633,19 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
         })
         const realBearings = makeRealGearboxBearingGroup(imported, id)
         imported.add(realBearings)
+        const cadRotor = new THREE.Group()
+        cadRotor.name = `${id}_CAD_ROTOR_ANIMATION`
+        const cadBlades: THREE.Object3D[] = []
+        imported.traverse(child => {
+          const source = String(child.userData.sourceCadName || '').toLowerCase()
+          if (source.includes('lopat') || source.includes('blade')) cadBlades.push(child)
+        })
+        // Move the blade nodes under a shared pivot. Their world transforms are
+        // preserved, so the engineering model remains assembled while animating.
+        if (cadBlades.length) {
+          imported.add(cadRotor)
+          cadBlades.forEach(blade => cadRotor.attach(blade))
+        }
         const cadLabels = makeCadLabels(imported)
         imported.add(cadLabels)
         object.root.add(imported)
@@ -638,6 +653,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
         object.engineering.visible = false
         object.gearboxBearing = realBearings
         object.cadModel = imported
+        object.cadRotor = cadRotor
         object.cadLabels = cadLabels
         object.nacelle = imported.getObjectByName(`${id}_NACELLE_001`) || imported
         // The marker belongs to the same root and sits beside the real CAD base.
@@ -747,10 +763,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
         else o.blades.rotation.z += .0035
         // The imported engineering CAD is the visible turbine in the scene.
         // Rotate its real blade nodes too; otherwise only the hidden demo rotor moves.
-        if (o.cadModel) o.cadModel.traverse(part => {
-          const source = String(part.userData.sourceCadName || '').toLowerCase()
-          if (source.startsWith('wt02_blade_')) part.rotation.z += .0035
-        })
+        if (o.cadRotor) o.cadRotor.rotation.y += .012
       })
       controls.update()
       renderer.render(scene, camera)
