@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+import json
 from pathlib import Path
 from uuid import uuid4
 
@@ -82,20 +83,31 @@ def create_app(db_path: Path | None = None) -> FastAPI:
 
     @app.get("/api/turbines/{turbine_id}/telemetry", response_model=list[TelemetrySummary])
     def turbine_telemetry(turbine_id: str) -> list[TelemetrySummary]:
-        """Return CARE telemetry mapping without fabricating values.
-
-        Wind Farm B raw files are not bundled with the repository, so values
-        remain null until a derived ingestion job writes an approved summary.
-        """
         components = database.fetch_all(
             "SELECT component_id FROM components WHERE turbine_id = ? ORDER BY component_id",
             (turbine_id,),
         )
-        return [TelemetrySummary(
-            turbine_id=turbine_id,
-            component_id=str(row["component_id"]),
-            source_fields=["power_62", "power_58", "sensor_54", "sensor_55", "sensor_56", "sensor_52", "sensor_53"],
-        ) for row in components]
+        summary = load_telemetry_summary(turbine_id)
+        results: list[TelemetrySummary] = []
+        for row in components:
+            component_id = str(row["component_id"])
+            payload = dict(summary or {})
+            payload.update(
+                turbine_id=turbine_id,
+                component_id=component_id,
+            )
+            if summary is None:
+                payload["source_fields"] = [
+                    "power_62",
+                    "power_58",
+                    "sensor_54",
+                    "sensor_55",
+                    "sensor_56",
+                    "sensor_52",
+                    "sensor_53",
+                ]
+            results.append(TelemetrySummary.model_validate(payload))
+        return results
 
     @app.get("/api/components/{component_id}/risk", response_model=AIResult)
     def component_risk(component_id: str) -> AIResult:
@@ -367,6 +379,32 @@ def ensure_ids_exist(database: Database, turbine_id: str, component_id: str) -> 
     )
     if not component or component["turbine_id"] != turbine_id:
         raise HTTPException(status_code=404, detail="Turbine/component mapping not found")
+
+
+def load_telemetry_summary(turbine_id: str) -> dict[str, object] | None:
+    """Load an approved derived snapshot without making the frontend read local files."""
+    summary_path = (
+        Path(__file__).resolve().parents[2]
+        / "data"
+        / "telemetry"
+        / f"{turbine_id}_telemetry_summary.json"
+    )
+    if not summary_path.is_file():
+        return None
+    try:
+        payload = json.loads(summary_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    source_fields = payload.get("source_fields")
+    if isinstance(source_fields, dict):
+        flattened: list[str] = []
+        for value in source_fields.values():
+            values = value if isinstance(value, list) else [value]
+            flattened.extend(str(item) for item in values)
+        payload["source_fields"] = list(dict.fromkeys(flattened))
+    return payload
 
 
 def latest_ai_result(database: Database, component_id: str) -> dict[str, object] | None:
