@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Activity, AlertTriangle, Anchor, ArrowRight, Check, ChevronDown, ClipboardList, Clock3, CloudSun, Database, Eye, Gauge, History, Layers3, MapPin, PackageCheck, Radio, RotateCcw, Search, Server, Settings2, ShieldCheck, UserRound, Wrench, X } from 'lucide-react'
 import WindScene from './WindScene'
 import { executeMaintenance, fetchRetests, fetchTurbines, optimizeMaintenance, replanMaintenance, type ApiMaintenancePlan, type ApiRetest } from './api'
-import { demoTurbines, getDemoPlans, warningText, type MaintenancePlan, type Turbine } from './data'
+import { demoTurbines, getDemoPlans, warningText, wt02FaultEvents, type MaintenancePlan, type Turbine } from './data'
 
 type Mode = 'demo' | 'api'
 type View = 'overview' | 'maintenance'
@@ -71,6 +71,7 @@ export default function App() {
   const [maintenanceRecordId, setMaintenanceRecordId] = useState('')
   const [retests, setRetests] = useState<ApiRetest[]>([])
   const [retestLoading, setRetestLoading] = useState(false)
+  const [faultEventId, setFaultEventId] = useState('B-53')
   const [personnelAvailable, setPersonnelAvailable] = useState(true)
   const [spareAvailable, setSpareAvailable] = useState(true)
   const [shutdownAllowed, setShutdownAllowed] = useState(true)
@@ -80,6 +81,8 @@ export default function App() {
   const [activityLog, setActivityLog] = useState<string[]>([])
 
   const selected = turbines.find(t => t.turbine_id === selectedId) || turbines[0]
+  const selectedFault = wt02FaultEvents.find(event => event.id === faultEventId) || wt02FaultEvents[0]
+  const displaySelected = selected?.turbine_id === 'WT02' ? { ...selected, event_id: Number(selectedFault.id.split('-')[1]), event_name: selectedFault.name, event_description: selectedFault.description, component_label: selectedFault.component, fault_category: selectedFault.category } : selected
   const plans = useMemo(() => mode === 'api' ? (apiPlan ? mapApiPlans(apiPlan) : [emptyApiPlan]) : getDemoPlans(weatherRestricted), [apiPlan, mode, weatherRestricted])
   const plan = plans.find(p => p.id === selectedPlan) || plans[0]
   const highCount = turbines.filter(t => t.has_analysis !== false && t.warning_level === 'HIGH').length
@@ -184,7 +187,7 @@ export default function App() {
       <section className="scene-panel" aria-label="风电场三维场景">
         <div className="scene-heading"><div><div className="eyebrow"><MapPin size={13} /> 风电场数字场景 <span className="source-tag">{mode === 'demo' ? '演示数据' : '接口数据'}</span></div><h1>风场运行总览</h1><p>选择风机，查看状态与维护决策</p></div><div className="scene-weather"><CloudSun size={19} /><span>环境状态<small>{weatherRestricted ? '维护窗口受限' : '维护窗口正常'}</small></span></div></div>
         <WindScene turbines={turbines} selectedId={selectedId} onSelect={selectTurbine} serviced={serviced} engineeringView={engineeringView} onOpenEngineering={() => setEngineeringView(true)} />
-        {engineeringView && selected?.event_id && <div className="engineering-caption"><span className="engineering-caption-dot" />CARE v6 · {selected.event_name || `Event ${selected.event_id}`} <strong>{selected.component_label}</strong><small>项目CAD整机 · 映射状态 {selected.mapping_status || 'UNVERIFIED'}</small></div>}
+        {engineeringView && displaySelected?.event_id && <div className="engineering-caption"><span className="engineering-caption-dot" />CARE v6 · {displaySelected.event_name} <strong>{displaySelected.component_label}</strong><small>项目CAD整机 · 映射状态 {displaySelected.mapping_status || 'UNVERIFIED'}</small></div>}
         <div className="scene-bottom"><div className="scene-legend"><span><i className="legend-normal" />正常</span><span><i className="legend-low" />关注</span><span><i className="legend-high" />高风险</span></div><span className="scene-hint">海上风场 · 点击风机定位 · 再点机舱查看内部部件</span></div>
       </section>
 
@@ -200,7 +203,8 @@ export default function App() {
             <div className="reading-primary"><div className="reading-label"><Gauge size={18} /> 健康指数 <span title="B 的模型输出；演示模式中的数值为模拟数据">ⓘ</span></div><div className="reading-number">{selected.has_analysis === false ? '--' : serviced ? '待复测' : selected.health_index.toFixed(1)}{selected.has_analysis !== false && !serviced && <small>/ 100</small>}</div><div className="meter"><span style={{ width: selected.has_analysis === false || serviced ? '0%' : `${selected.health_index}%` }} className={selected.warning_level === 'HIGH' ? 'meter-risk' : ''} /></div><p>{selected.has_analysis === false ? '后端尚无该部件的 AI 分析结果。' : serviced ? '维护执行已记录，设备健康状态应由复测数据确认。' : selected.warning_level === 'HIGH' ? '状态持续偏离正常区间，建议进入维护评估。' : '当前状态以数据分析结果为准。'}</p></div>
             <div className="metric-grid"><div><span>异常分数</span><strong>{selected.has_analysis === false ? '--' : selected.anomaly_score.toFixed(2)}</strong><small>模型输出</small></div><div><span>风险评分</span><strong>{selected.has_analysis === false ? '--' : selected.failure_risk.toFixed(2)}</strong><small>0-1 指标，非校准概率</small></div><div><span>当前功率</span><strong>{selected.power_kw !== 0 ? selected.power_kw.toLocaleString() : '--'}<em> kW</em></strong><small>{selected.source === 'DERIVED' ? 'CARE 派生' : selected.power_kw !== 0 ? '运行示例' : '未提供'}</small></div><div><span>风速</span><strong>{selected.wind_ms !== 0 ? selected.wind_ms : '--'}<em> m/s</em></strong><small>{selected.source === 'DERIVED' ? 'CARE 派生' : selected.wind_ms !== 0 ? '运行示例' : '未提供'}</small></div></div>
             <div className="info-section"><div className="section-title"><h3>{selected.trend_label || '传感器趋势'}</h3><span>{selected.trend_unit || 'CARE telemetry'}</span></div><Sparkline values={selected.trend} high={selected.warning_level === 'HIGH'} /></div>
-            <div className="component-line"><div className="component-symbol"><Settings2 size={18} /></div><div><strong>{selected.component_label}</strong><span>{selected.component_id}{selected.event_name ? ` · ${selected.event_name}` : selected.event_id ? ` · CARE Event ${selected.event_id}` : ''}{selected.mapping_status === 'UNVERIFIED' ? ' · 映射待核验' : ''}</span></div><ChevronDown size={17} /></div>
+          <div className="event-selector"><label htmlFor="wt02-event">WT02 故障事件</label><select id="wt02-event" value={faultEventId} onChange={event => setFaultEventId(event.target.value)}>{wt02FaultEvents.map(item => <option key={item.id} value={item.id}>{item.id} · {item.name}</option>)}</select><small>{selectedFault.description} · 数据/映射状态仍按事件登记核验</small></div>
+          <div className="component-line"><div className="component-symbol"><Settings2 size={18} /></div><div><strong>{displaySelected.component_label}</strong><span>{selected.component_id} · {selectedFault.name} · 映射待核验</span></div><ChevronDown size={17} /></div>
             <button className="primary-action" onClick={openMaintenance}><Wrench size={17} /> 查看维护方案 <ArrowRight size={17} /></button>
           </> : <>
             <div className="decision-intro"><div className="decision-icon"><Wrench size={20} /></div><div><h3>维护决策</h3><p>{selected.turbine_id} · {selected.component_label}</p><small>先读风险信号，再核对窗口与人员，最后记录执行和复测</small></div></div>

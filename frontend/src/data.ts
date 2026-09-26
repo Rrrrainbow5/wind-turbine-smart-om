@@ -39,6 +39,14 @@ export interface MaintenancePlan {
   available?: boolean
 }
 
+export const wt02FaultEvents = [
+  { id: 'B-53', name: '转子轴承 2损伤', description: 'Rotor Bearing 2 - Damage', component: '转子轴承 2（映射待核验）', category: 'BEARING' as const },
+  { id: 'A-51', name: '齿轮箱轴承损坏', description: 'Gearbox bearings damaged', component: '齿轮箱轴承（映射待核验）', category: 'GEARBOX_BEARING' as const },
+  { id: 'A-0', name: '发电机轴承故障', description: 'Generator bearing failure', component: '发电机轴承（映射待核验）', category: 'BEARING' as const },
+  { id: 'C-67', name: '主变压器过压', description: 'Main transformer overpressure', component: '主变压器（映射待核验）', category: 'GENERATOR' as const },
+  { id: 'C-81', name: '变流器故障', description: 'Converter failure', component: '变流器（映射待核验）', category: 'GENERATOR' as const },
+]
+
 export const demoTurbines: Turbine[] = [
   { turbine_id: 'WT01', name: '一号机组', position: [-11, -5], warning_level: 'NORMAL', health_index: 92.4, anomaly_score: .12, failure_risk: .08, power_kw: 1940, wind_ms: 9.3, component_id: 'WT01_COMPONENT_01', component_label: '关键状态对象 01', updated_at: '演示时刻 09:00', trend: [87, 88, 90, 89, 91, 90, 92, 92], source: 'SIMULATED', model_version: 'demo-0.1' },
   { turbine_id: 'WT02', name: '二号机组', position: [-3, 1], warning_level: 'HIGH', health_index: 63.2, anomaly_score: .87, failure_risk: .76, power_kw: 1580, wind_ms: 9.8, component_id: 'WT02_COMPONENT_01', component_label: '转子轴承 2（映射待核验）', updated_at: 'CARE v6 Wind Farm B', trend: [88, 86, 82, 79, 75, 70, 66, 63], source: 'DERIVED', model_version: 'care-v6-offshore-demo-0.1', event_id: 53, event_name: '转子轴承 2损伤', event_description: 'Rotor Bearing 2 - Damage', mapping_status: 'UNVERIFIED', fault_category: 'BEARING' },
