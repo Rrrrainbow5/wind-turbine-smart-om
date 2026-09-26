@@ -1,0 +1,137 @@
+{
+  "turbine_id": "WT02",
+  "care_asset_id": 2,
+  "component_id": "WT02_COMPONENT_01",
+  "timestamp": "2023-10-05T00:00:00",
+  "active_power_kw": -0.0027209677419354,
+  "available_power_kw": 0.4524403225806452,
+  "wind_speed_ms": 8.32,
+  "bearing_temperature_c": 46.09,
+  "trend": [
+    {
+      "timestamp": "2023-10-04T22:10:00",
+      "active_power_kw": 0.0681274193548387,
+      "available_power_kw": 0.7643290322580646,
+      "wind_speed_ms": 9.99,
+      "rotor_bearing_temperature_1_c": 38.77,
+      "rotor_bearing_temperature_2_c": 47.85
+    },
+    {
+      "timestamp": "2023-10-04T22:20:00",
+      "active_power_kw": -0.0027822580645161,
+      "available_power_kw": 0.7811725806451614,
+      "wind_speed_ms": 10.17,
+      "rotor_bearing_temperature_1_c": 38.73,
+      "rotor_bearing_temperature_2_c": 47.72
+    },
+    {
+      "timestamp": "2023-10-04T22:30:00",
+      "active_power_kw": -0.0027903225806451,
+      "available_power_kw": 0.8908064516129032,
+      "wind_speed_ms": 10.86,
+      "rotor_bearing_temperature_1_c": 38.66,
+      "rotor_bearing_temperature_2_c": 47.55
+    },
+    {
+      "timestamp": "2023-10-04T22:40:00",
+      "active_power_kw": -0.0035435483870967,
+      "available_power_kw": 0.7436806451612903,
+      "wind_speed_ms": 10.15,
+      "rotor_bearing_temperature_1_c": 38.57,
+      "rotor_bearing_temperature_2_c": 47.35
+    },
+    {
+      "timestamp": "2023-10-04T22:50:00",
+      "active_power_kw": 0.0172564516129032,
+      "available_power_kw": 0.7699838709677419,
+      "wind_speed_ms": 10.2,
+      "rotor_bearing_temperature_1_c": 38.49,
+      "rotor_bearing_temperature_2_c": 47.19
+    },
+    {
+      "timestamp": "2023-10-04T23:00:00",
+      "active_power_kw": -0.0027709677419354,
+      "available_power_kw": 0.7087983870967742,
+      "wind_speed_ms": 9.64,
+      "rotor_bearing_temperature_1_c": 38.43,
+      "rotor_bearing_temperature_2_c": 47.06
+    },
+    {
+      "timestamp": "2023-10-04T23:10:00",
+      "active_power_kw": -0.0027516129032258,
+      "available_power_kw": 0.8590483870967742,
+      "wind_speed_ms": 10.38,
+      "rotor_bearing_temperature_1_c": 38.37,
+      "rotor_bearing_temperature_2_c": 46.91
+    },
+    {
+      "timestamp": "2023-10-04T23:20:00",
+      "active_power_kw": -0.002916129032258,
+      "available_power_kw": 0.8236725806451614,
+      "wind_speed_ms": 10.48,
+      "rotor_bearing_temperature_1_c": 38.3,
+      "rotor_bearing_temperature_2_c": 46.75
+    },
+    {
+      "timestamp": "2023-10-04T23:30:00",
+      "active_power_kw": -0.0027370967741935,
+      "available_power_kw": 0.9664290322580644,
+      "wind_speed_ms": 11.28,
+      "rotor_bearing_temperature_1_c": 38.21,
+      "rotor_bearing_temperature_2_c": 46.59
+    },
+    {
+      "timestamp": "2023-10-04T23:40:00",
+      "active_power_kw": -0.0027467741935483,
+      "available_power_kw": 0.8430967741935483,
+      "wind_speed_ms": 10.67,
+      "rotor_bearing_temperature_1_c": 38.13,
+      "rotor_bearing_temperature_2_c": 46.42
+    },
+    {
+      "timestamp": "2023-10-04T23:50:00",
+      "active_power_kw": -0.0028903225806451,
+      "available_power_kw": 0.9016274193548388,
+      "wind_speed_ms": 10.9,
+      "rotor_bearing_temperature_1_c": 38.04,
+      "rotor_bearing_temperature_2_c": 46.26
+    },
+    {
+      "timestamp": "2023-10-05T00:00:00",
+      "active_power_kw": -0.0027209677419354,
+      "available_power_kw": 0.4524403225806452,
+      "wind_speed_ms": 8.32,
+      "rotor_bearing_temperature_1_c": 37.93,
+      "rotor_bearing_temperature_2_c": 46.09
+    }
+  ],
+  "data_origin": "DERIVED",
+  "source_dataset": "CARE to Compare Version 6",
+  "source_wind_farm": "Wind Farm B",
+  "source_file": "83.csv",
+  "source_fields": {
+    "active_power_kw": "power_62_avg",
+    "available_power_kw": "power_58_avg",
+    "wind_speed_ms": "wind_speed_61_avg",
+    "bearing_temperature_c": [
+      "sensor_51_avg",
+      "sensor_52_avg"
+    ]
+  },
+  "mapping_status": "TRIAL_CONFIRMED_ASSET_2",
+  "sample_rows": 66154,
+  "sample_start": "2022-06-29T00:00:00",
+  "sample_end": "2023-10-05T00:00:00",
+  "sampling_interval_minutes_median": 10.0,
+  "observed_active_power_range": [
+    -0.0087677419354838,
+    1.0303854838709678
+  ],
+  "notes": [
+    "WT02 -> CARE Wind Farm B asset_id=2 is a trial mapping and must be confirmed by the team.",
+    "sensor_51 and sensor_52 are rotor bearing temperatures 1 and 2; sensor_53 is slip ring temperature and is not used here.",
+    "Values are derived from the final 12 available records in dataset 83.csv; no values were fabricated.",
+    "CARE provides condition-monitoring data, not verified post-maintenance outcomes.",
+    "Feature dictionary declares kW, but observed active-power values are approximately 0 to 1; unit/scale must be confirmed before presenting as physical kW."
+  ]
+}
