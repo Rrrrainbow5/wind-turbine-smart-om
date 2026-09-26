@@ -21,6 +21,8 @@ export interface Turbine {
   mapping_status?: string
   has_analysis?: boolean
   fault_category?: 'GEARBOX_BEARING' | 'GEARBOX' | 'GENERATOR' | 'DRIVETRAIN' | 'BEARING'
+  event_name?: string
+  event_description?: string
 }
 
 export interface MaintenancePlan {
@@ -37,7 +39,7 @@ export interface MaintenancePlan {
 
 export const demoTurbines: Turbine[] = [
   { turbine_id: 'WT01', name: '一号机组', position: [-11, -5], warning_level: 'NORMAL', health_index: 92.4, anomaly_score: .12, failure_risk: .08, power_kw: 1940, wind_ms: 9.3, component_id: 'WT01_COMPONENT_01', component_label: '关键状态对象 01', updated_at: '演示时刻 09:00', trend: [87, 88, 90, 89, 91, 90, 92, 92], source: 'SIMULATED', model_version: 'demo-0.1' },
-  { turbine_id: 'WT02', name: '二号机组', position: [-3, 1], warning_level: 'HIGH', health_index: 63.2, anomaly_score: .87, failure_risk: .76, power_kw: 1580, wind_ms: 9.8, component_id: 'WT02_COMPONENT_01', component_label: '待核验关键部件 · 海上异常', updated_at: 'CARE v6 Wind Farm B', trend: [88, 86, 82, 79, 75, 70, 66, 63], source: 'DERIVED', model_version: 'care-v6-offshore-demo-0.1', event_id: 53, mapping_status: 'UNVERIFIED', fault_category: 'GEARBOX_BEARING' },
+  { turbine_id: 'WT02', name: '二号机组', position: [-3, 1], warning_level: 'HIGH', health_index: 63.2, anomaly_score: .87, failure_risk: .76, power_kw: 1580, wind_ms: 9.8, component_id: 'WT02_COMPONENT_01', component_label: '转子轴承 2（映射待核验）', updated_at: 'CARE v6 Wind Farm B', trend: [88, 86, 82, 79, 75, 70, 66, 63], source: 'DERIVED', model_version: 'care-v6-offshore-demo-0.1', event_id: 53, event_name: '转子轴承 2损伤', event_description: 'Rotor Bearing 2 - Damage', mapping_status: 'UNVERIFIED', fault_category: 'BEARING' },
   { turbine_id: 'WT03', name: '三号机组', position: [6, -5], warning_level: 'NORMAL', health_index: 89.6, anomaly_score: .18, failure_risk: .13, power_kw: 2010, wind_ms: 9.6, component_id: 'WT03_COMPONENT_01', component_label: '关键状态对象 01', updated_at: '演示时刻 09:00', trend: [87, 88, 87, 89, 90, 88, 90, 90], source: 'SIMULATED', model_version: 'demo-0.1' },
   { turbine_id: 'WT04', name: '四号机组', position: [13, 2], warning_level: 'LOW', health_index: 78.1, anomaly_score: .39, failure_risk: .31, power_kw: 1770, wind_ms: 9.1, component_id: 'WT04_COMPONENT_01', component_label: '齿轮传动关注对象', updated_at: '演示时刻 09:00', trend: [84, 82, 83, 81, 80, 79, 79, 78], source: 'SIMULATED', model_version: 'demo-0.1', fault_category: 'GEARBOX' },
   { turbine_id: 'WT05', name: '五号机组', position: [-15, 8], warning_level: 'NORMAL', health_index: 91.2, anomaly_score: .14, failure_risk: .1, power_kw: 1980, wind_ms: 9.5, component_id: 'WT05_COMPONENT_01', component_label: '关键状态对象 01', updated_at: '演示时刻 09:00', trend: [89, 90, 90, 91, 90, 91, 91, 91], source: 'SIMULATED', model_version: 'demo-0.1' },

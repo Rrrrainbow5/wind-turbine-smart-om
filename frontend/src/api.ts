@@ -96,6 +96,13 @@ export async function fetchTurbines(): Promise<Turbine[]> {
       trend: latest ? [latest.health_index] : [],
       source: latest?.data_origin || item.data_origin || 'REFERENCE',
       model_version: latest?.model_version || '未提供',
+      ...(item.wind_farm === 'Wind Farm B' && item.turbine_id === 'WT02' ? {
+        event_id: 53,
+        event_name: '转子轴承 2损伤',
+        event_description: 'Rotor Bearing 2 - Damage',
+        component_label: verified ? state.component_name : '转子轴承 2（映射待核验）',
+        fault_category: 'BEARING' as const,
+      } : {}),
     }
   }))
 }

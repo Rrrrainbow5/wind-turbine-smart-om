@@ -677,7 +677,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
         const turbine = turbines.find(item => item.turbine_id === id)
         if (engineeringActive && turbine) setFaultPartState(imported, turbine.fault_category, turbine.warning_level)
         cadLabels.visible = engineeringActive
-        setBearingState(realBearings, engineeringActive && id === 'WT02')
+        setBearingState(realBearings, engineeringActive && id === 'WT02' && turbine?.fault_category === 'BEARING')
         if (engineeringActive) {
           object.root.updateWorldMatrix(true, true)
           const focusBounds = getEngineeringBounds(imported)
@@ -859,7 +859,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       setEngineeringCadView(object.cadModel, engineeringActive)
       if (engineeringActive) setFaultPartState(object.cadModel, turbine.fault_category, turbine.warning_level)
       if (object.cadLabels) object.cadLabels.visible = engineeringActive
-      setBearingState(object.gearboxBearing, turbine.event_id === 51 && id === selectedId)
+      setBearingState(object.gearboxBearing, id === selectedId && turbine.fault_category === 'BEARING')
     })
   }, [selectedId, serviced, turbines, engineeringView])
 
