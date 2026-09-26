@@ -62,6 +62,19 @@ class TurbineState(BaseModel):
     latest_ai_result: AIResult | None
 
 
+class TelemetrySummary(BaseModel):
+    turbine_id: str
+    component_id: str
+    active_power_kw: float | None = None
+    available_power_kw: float | None = None
+    wind_speed_ms: float | None = None
+    trend: list[float] = Field(default_factory=list)
+    bearing_temperature_c: float | None = None
+    timestamp: datetime | None = None
+    data_origin: DataOrigin = DataOrigin.REFERENCE
+    source_fields: list[str] = Field(default_factory=list)
+
+
 class MaintenanceOptimizeRequest(BaseModel):
     turbine_id: str = Field(min_length=1)
     component_id: str = Field(min_length=1)

@@ -21,7 +21,7 @@ from backend.app.schemas import (
     MaintenanceRecord,
     RetestCreate,
     RetestRecord,
-    TurbineState,
+    TurbineState, TelemetrySummary,
     WarningLevel,
 )
 
@@ -79,6 +79,23 @@ def create_app(db_path: Path | None = None) -> FastAPI:
             "SELECT * FROM components WHERE turbine_id = ? ORDER BY component_id", (turbine_id,)
         )
         return [component_state(database, component) for component in components]
+
+    @app.get("/api/turbines/{turbine_id}/telemetry", response_model=list[TelemetrySummary])
+    def turbine_telemetry(turbine_id: str) -> list[TelemetrySummary]:
+        """Return CARE telemetry mapping without fabricating values.
+
+        Wind Farm B raw files are not bundled with the repository, so values
+        remain null until a derived ingestion job writes an approved summary.
+        """
+        components = database.fetch_all(
+            "SELECT component_id FROM components WHERE turbine_id = ? ORDER BY component_id",
+            (turbine_id,),
+        )
+        return [TelemetrySummary(
+            turbine_id=turbine_id,
+            component_id=str(row["component_id"]),
+            source_fields=["power_62", "power_58", "sensor_54", "sensor_55", "sensor_56", "sensor_52", "sensor_53"],
+        ) for row in components]
 
     @app.get("/api/components/{component_id}/risk", response_model=AIResult)
     def component_risk(component_id: str) -> AIResult:

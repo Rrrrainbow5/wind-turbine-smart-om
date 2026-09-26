@@ -57,6 +57,7 @@
 | GET | `/api/maintenance/history` | 查询维护方案和执行记录 |
 | POST | `/api/retests` | 保存维护后复测结果 |
 | GET | `/api/maintenance/records/{record_id}/retests` | 查询一次维护执行的复测结果 |
+| GET | `/api/turbines/{turbine_id}/telemetry` | 查询 CARE 传感器摘要；无原始文件时返回 null，不补造数值 |
 
 接口实现和实时请求示例以 FastAPI 自动生成的 `/docs` 页面为准。
 
