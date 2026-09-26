@@ -119,7 +119,15 @@ const engineeringColors: Record<string, number> = {
 
 function effectiveCadCategory(object: THREE.Object3D, root: THREE.Object3D) {
   if (object === root) return ''
-  return object.userData.componentCategory ? String(object.userData.componentCategory) : ''
+  // Imported CAD files often put the category on a named parent and leave
+  // the actual mesh untagged. Walk up the hierarchy so the visible mesh
+  // inherits the engineering part classification.
+  let current: THREE.Object3D | null = object
+  while (current && current !== root) {
+    if (current.userData.componentCategory) return String(current.userData.componentCategory)
+    current = current.parent
+  }
+  return ''
 }
 
 function isCadExterior(object: THREE.Object3D, category: string) {
@@ -295,20 +303,46 @@ function setBearingState(bearing: THREE.Object3D, active: boolean) {
 
 function setFaultPartState(model: THREE.Object3D | null, category: Turbine['fault_category'], level: Turbine['warning_level']) {
   if (!model || !category) return
-  const color = level === 'HIGH' ? 0xff3028 : 0xffbd35
+  const color = level === 'HIGH' ? 0xff1712 : 0xffa313
+  const glow = level === 'HIGH' ? 0xff0500 : 0x6b2600
+  let matched = 0
   model.traverse(object => {
-    if (!(object instanceof THREE.Mesh) || effectiveCadCategory(object, model) !== category) return
+    if (!(object instanceof THREE.Mesh)) return
+    const actualCategory = effectiveCadCategory(object, model)
+    // CARE's rotor-bearing event has no formal CAD mapping yet; use the
+    // verified gearbox-bearing geometry as the visible engineering proxy.
+    const categoryMatches = actualCategory === category || (category === 'BEARING' && actualCategory === 'GEARBOX_BEARING')
+    if (!categoryMatches) return
+    matched += 1
     const materials = Array.isArray(object.material) ? object.material : [object.material]
     materials.forEach(material => {
       const standard = material as THREE.MeshStandardMaterial
       if (standard.color) standard.color.setHex(color)
-      if (standard.emissive) standard.emissive.setHex(level === 'HIGH' ? 0x7a0905 : 0x5a3400)
-      standard.emissiveIntensity = level === 'HIGH' ? .75 : .45
+      if (standard.emissive) standard.emissive.setHex(glow)
+      standard.emissiveIntensity = level === 'HIGH' ? 3.5 : 2.2
       material.opacity = 1
       material.transparent = false
       material.depthWrite = true
     })
   })
+  // A few CAD exports have no usable names at all. Keep the selected fault
+  // visible in the cutaway by highlighting the first real internal mesh.
+  if (!matched) {
+    model.traverse(object => {
+      if (matched || !(object instanceof THREE.Mesh)) return
+      const inferred = effectiveCadCategory(object, model)
+      if (!['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'BEARING', 'DRIVETRAIN'].includes(inferred)) return
+      matched += 1
+      const materials = Array.isArray(object.material) ? object.material : [object.material]
+      materials.forEach(material => {
+        const standard = material as THREE.MeshStandardMaterial
+        if (standard.color) standard.color.setHex(color)
+        if (standard.emissive) standard.emissive.setHex(glow)
+        standard.emissiveIntensity = 3.5
+        material.opacity = 1; material.transparent = false; material.depthWrite = true
+      })
+    })
+  }
 }
 
 function makeLabel(text: string, color: string) {
