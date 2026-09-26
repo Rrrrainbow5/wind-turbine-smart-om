@@ -100,30 +100,30 @@ export async function fetchTurbines(): Promise<Turbine[]> {
   }))
 }
 
-function maintenanceBody(turbineId: string, componentId: string, maintenanceWindowAvailable: boolean) {
+function maintenanceBody(turbineId: string, componentId: string, maintenanceWindowAvailable: boolean, personnelAvailable = true) {
   return {
     turbine_id: turbineId,
     component_id: componentId,
     maintenance_window_available: maintenanceWindowAvailable,
-    personnel_available: true,
+    personnel_available: personnelAvailable,
     decision_origin: 'SIMULATED',
     conditions_origin: 'SIMULATED',
     rule_version: 'trial-v0.1',
   }
 }
 
-export function optimizeMaintenance(turbineId: string, componentId: string, maintenanceWindowAvailable: boolean) {
+export function optimizeMaintenance(turbineId: string, componentId: string, maintenanceWindowAvailable: boolean, personnelAvailable = true) {
   return request<ApiMaintenancePlan>('/api/maintenance/optimize', {
     method: 'POST',
-    body: JSON.stringify(maintenanceBody(turbineId, componentId, maintenanceWindowAvailable)),
+    body: JSON.stringify(maintenanceBody(turbineId, componentId, maintenanceWindowAvailable, personnelAvailable)),
   })
 }
 
-export function replanMaintenance(turbineId: string, componentId: string, maintenanceWindowAvailable: boolean, sourcePlanId: string) {
+export function replanMaintenance(turbineId: string, componentId: string, maintenanceWindowAvailable: boolean, sourcePlanId: string, personnelAvailable = true) {
   return request<ApiMaintenancePlan>('/api/maintenance/replan', {
     method: 'POST',
     body: JSON.stringify({
-      ...maintenanceBody(turbineId, componentId, maintenanceWindowAvailable),
+      ...maintenanceBody(turbineId, componentId, maintenanceWindowAvailable, personnelAvailable),
       source_plan_id: sourcePlanId,
       replan_trigger: maintenanceWindowAvailable ? 'maintenance_window_reopened' : 'weather_window_closed',
     }),
