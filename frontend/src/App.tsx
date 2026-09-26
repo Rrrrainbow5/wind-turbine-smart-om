@@ -9,13 +9,16 @@ type View = 'overview' | 'maintenance'
 
 function Sparkline({ values, high }: { values: number[], high: boolean }) {
   if (values.length < 2) return <div className="no-trend">暂无趋势数据</div>
-  const points = values.map((value, i) => `${(i / (values.length - 1)) * 300},${84 - (value - 45) * 1.55}`).join(' ')
+  const minimum = Math.min(...values)
+  const maximum = Math.max(...values)
+  const span = Math.max(maximum - minimum, 1)
+  const points = values.map((value, i) => `${(i / (values.length - 1)) * 300},${78 - ((value - minimum) / span) * 62}`).join(' ')
   return <div className="chart-wrap">
-    <div className="chart-grid"><span>100</span><span>75</span><span>50</span></div>
+    <div className="chart-grid"><span>{maximum.toFixed(1)}</span><span>{((maximum + minimum) / 2).toFixed(1)}</span><span>{minimum.toFixed(1)}</span></div>
     <svg className="sparkline" viewBox="0 0 300 92" preserveAspectRatio="none" aria-label="健康指数历史趋势">
       <line x1="0" y1="10" x2="300" y2="10" /><line x1="0" y1="48" x2="300" y2="48" /><line x1="0" y1="84" x2="300" y2="84" />
       <polyline points={points} className={high ? 'risk-line' : 'normal-line'} />
-      <circle cx="300" cy={84 - (values.at(-1)! - 45) * 1.55} r="4" className={high ? 'risk-dot' : 'normal-dot'} />
+      <circle cx="300" cy={78 - ((values.at(-1)! - minimum) / span) * 62} r="4" className={high ? 'risk-dot' : 'normal-dot'} />
     </svg>
     <div className="chart-axis"><span>早期</span><span>近期</span></div>
   </div>
@@ -195,8 +198,8 @@ export default function App() {
           <div className="turbine-tabs" role="tablist" aria-label="选择风机">{turbines.map(t => <button role="tab" aria-selected={selectedId === t.turbine_id} className={selectedId === t.turbine_id ? 'selected' : ''} key={t.turbine_id} onClick={() => selectTurbine(t.turbine_id)}>{t.turbine_id}<i className={`level-${t.warning_level.toLowerCase()}`} /></button>)}</div>
           {view === 'overview' ? <>
             <div className="reading-primary"><div className="reading-label"><Gauge size={18} /> 健康指数 <span title="B 的模型输出；演示模式中的数值为模拟数据">ⓘ</span></div><div className="reading-number">{selected.has_analysis === false ? '--' : serviced ? '待复测' : selected.health_index.toFixed(1)}{selected.has_analysis !== false && !serviced && <small>/ 100</small>}</div><div className="meter"><span style={{ width: selected.has_analysis === false || serviced ? '0%' : `${selected.health_index}%` }} className={selected.warning_level === 'HIGH' ? 'meter-risk' : ''} /></div><p>{selected.has_analysis === false ? '后端尚无该部件的 AI 分析结果。' : serviced ? '维护执行已记录，设备健康状态应由复测数据确认。' : selected.warning_level === 'HIGH' ? '状态持续偏离正常区间，建议进入维护评估。' : '当前状态以数据分析结果为准。'}</p></div>
-            <div className="metric-grid"><div><span>异常分数</span><strong>{selected.has_analysis === false ? '--' : selected.anomaly_score.toFixed(2)}</strong><small>模型输出</small></div><div><span>风险评分</span><strong>{selected.has_analysis === false ? '--' : selected.failure_risk.toFixed(2)}</strong><small>0-1 指标，非校准概率</small></div><div><span>当前功率</span><strong>{selected.power_kw ? selected.power_kw.toLocaleString() : '--'}<em> kW</em></strong><small>{selected.power_kw ? '运行示例' : '未提供'}</small></div><div><span>风速</span><strong>{selected.wind_ms || '--'}<em> m/s</em></strong><small>{selected.wind_ms ? '运行示例' : '未提供'}</small></div></div>
-            <div className="info-section"><div className="section-title"><h3>状态趋势</h3><span>健康指数</span></div><Sparkline values={selected.trend} high={selected.warning_level === 'HIGH'} /></div>
+            <div className="metric-grid"><div><span>异常分数</span><strong>{selected.has_analysis === false ? '--' : selected.anomaly_score.toFixed(2)}</strong><small>模型输出</small></div><div><span>风险评分</span><strong>{selected.has_analysis === false ? '--' : selected.failure_risk.toFixed(2)}</strong><small>0-1 指标，非校准概率</small></div><div><span>当前功率</span><strong>{selected.power_kw !== 0 ? selected.power_kw.toLocaleString() : '--'}<em> kW</em></strong><small>{selected.source === 'DERIVED' ? 'CARE 派生' : selected.power_kw !== 0 ? '运行示例' : '未提供'}</small></div><div><span>风速</span><strong>{selected.wind_ms !== 0 ? selected.wind_ms : '--'}<em> m/s</em></strong><small>{selected.source === 'DERIVED' ? 'CARE 派生' : selected.wind_ms !== 0 ? '运行示例' : '未提供'}</small></div></div>
+            <div className="info-section"><div className="section-title"><h3>{selected.trend_label || '传感器趋势'}</h3><span>{selected.trend_unit || 'CARE telemetry'}</span></div><Sparkline values={selected.trend} high={selected.warning_level === 'HIGH'} /></div>
             <div className="component-line"><div className="component-symbol"><Settings2 size={18} /></div><div><strong>{selected.component_label}</strong><span>{selected.component_id}{selected.event_name ? ` · ${selected.event_name}` : selected.event_id ? ` · CARE Event ${selected.event_id}` : ''}{selected.mapping_status === 'UNVERIFIED' ? ' · 映射待核验' : ''}</span></div><ChevronDown size={17} /></div>
             <button className="primary-action" onClick={openMaintenance}><Wrench size={17} /> 查看维护方案 <ArrowRight size={17} /></button>
           </> : <>
@@ -208,7 +211,7 @@ export default function App() {
               <button onClick={() => openEvidence('context', 'Event 51 说明')}><ClipboardList size={15} />Event 51 说明</button>
               <button onClick={() => openEvidence('review', '人工复核')}><ShieldCheck size={15} />请求人工复核</button>
             </div></div>
-            <div className="evidence-panel">{evidencePanel === 'evidence' && <><strong>异常证据 · SIMULATED/DERIVED</strong><p>当前部件风险评分 {selected.failure_risk.toFixed(3)}，健康指数 {selected.health_index.toFixed(1)}。该评分用于相对排序，不是校准故障概率。</p></>}{evidencePanel === 'trend' && <><strong>传感器趋势</strong><Sparkline values={selected.trend} high={selected.warning_level === 'HIGH'} /><p>趋势来自当前演示数据；接口模式以 D 返回结果为准。</p></>}{evidencePanel === 'history' && <><strong>维护历史</strong><p>暂无可核验的历史维护记录。执行后将保留 plan_id、record_id 和复测状态。</p></>}{evidencePanel === 'context' && <><strong>CARE Version 6 · Event {selected.event_id || 51}</strong><p>当前场景为海上风场演示。部件映射状态为 {selected.mapping_status || 'UNVERIFIED'}，保持中性名称。</p></>}{evidencePanel === 'review' && <><strong>人工复核请求已记录 · SIMULATED</strong><p>请工程人员确认数据来源、部件映射和维护窗口；系统不会自动把复核视为故障确认。</p></>}</div>
+            <div className="evidence-panel">{evidencePanel === 'evidence' && <><strong>异常证据 · SIMULATED/DERIVED</strong><p>当前部件风险评分 {selected.failure_risk.toFixed(3)}，健康指数 {selected.health_index.toFixed(1)}。该评分用于相对排序，不是校准故障概率。</p></>}{evidencePanel === 'trend' && <><strong>{selected.trend_label || '传感器趋势'}</strong><Sparkline values={selected.trend} high={selected.warning_level === 'HIGH'} /><p>趋势来自 CARE telemetry；接口模式以 D 返回结果为准。</p></>}{evidencePanel === 'history' && <><strong>维护历史</strong><p>暂无可核验的历史维护记录。执行后将保留 plan_id、record_id 和复测状态。</p></>}{evidencePanel === 'context' && <><strong>CARE Version 6 · Event {selected.event_id || 51}</strong><p>当前场景为海上风场演示。部件映射状态为 {selected.mapping_status || 'UNVERIFIED'}，保持中性名称。</p></>}{evidencePanel === 'review' && <><strong>人工复核请求已记录 · SIMULATED</strong><p>请工程人员确认数据来源、部件映射和维护窗口；系统不会自动把复核视为故障确认。</p></>}</div>
             <div className="workbench-block"><div className="workbench-title"><h3>工程资源与约束</h3><span>改变条件后重新生成方案</span></div><div className="resource-grid">
               <button className={personnelAvailable ? 'resource-on' : ''} onClick={() => { setPersonnelAvailable(v => !v); logAction(`维护人员${personnelAvailable ? '不可用' : '可用'}`) }}><UserRound size={15} />人员 {personnelAvailable ? '可用' : '不可用'}</button>
               <button className={spareAvailable ? 'resource-on' : ''} onClick={() => { setSpareAvailable(v => !v); logAction(`备件${spareAvailable ? '不可用' : '可用'}`) }}><PackageCheck size={15} />备件 {spareAvailable ? '可用' : '不可用'}</button>

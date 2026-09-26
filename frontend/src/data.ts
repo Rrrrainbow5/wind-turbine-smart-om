@@ -15,6 +15,8 @@ export interface Turbine {
   component_label: string
   updated_at: string
   trend: number[]
+  trend_label?: string
+  trend_unit?: string
   source: SourceKind
   model_version: string
   event_id?: number

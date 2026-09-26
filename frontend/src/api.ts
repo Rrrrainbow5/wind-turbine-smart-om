@@ -26,6 +26,21 @@ interface ApiTurbineState {
   latest_ai_result: ApiAiResult | null
 }
 
+interface ApiTelemetry {
+  turbine_id: string
+  component_id: string
+  active_power_kw: number | null
+  available_power_kw: number | null
+  wind_speed_ms: number | null
+  trend: Array<Record<string, unknown>>
+  bearing_temperature_c: number | null
+  timestamp: string | null
+  data_origin: SourceKind
+  source_fields: string[]
+  mapping_status?: string
+  source_file?: string
+}
+
 export interface ApiCandidateAction {
   action: 'CONTINUE_MONITORING' | 'SCHEDULE_INSPECTION' | 'SCHEDULE_MAINTENANCE'
   available: boolean
@@ -74,9 +89,16 @@ export async function fetchTurbines(): Promise<Turbine[]> {
   if (!Array.isArray(list) || list.length === 0) throw new Error('风机列表为空或格式不正确')
 
   return Promise.all(list.slice(0, 8).map(async (item, index) => {
-    const states = await request<ApiTurbineState[]>(`/api/turbines/${encodeURIComponent(item.turbine_id)}/state`)
+    const [states, telemetryRows] = await Promise.all([
+      request<ApiTurbineState[]>(`/api/turbines/${encodeURIComponent(item.turbine_id)}/state`),
+      request<ApiTelemetry[]>(`/api/turbines/${encodeURIComponent(item.turbine_id)}/telemetry`),
+    ])
     const state = states.find(record => record.latest_ai_result) || states[0]
     const latest = state?.latest_ai_result
+    const telemetry = telemetryRows.find(record => record.component_id === state?.component_id) || telemetryRows[0]
+    const sensorTrend = telemetry?.trend
+      ?.map(point => Number(point.rotor_bearing_temperature_2_c))
+      .filter(value => Number.isFinite(value)) || []
     const verified = state?.mapping_status === 'VERIFIED'
     return {
       turbine_id: item.turbine_id,
@@ -86,15 +108,17 @@ export async function fetchTurbines(): Promise<Turbine[]> {
       health_index: latest?.health_index ?? 0,
       anomaly_score: latest?.anomaly_score ?? 0,
       failure_risk: latest?.failure_risk ?? 0,
-      power_kw: 0,
-      wind_ms: 0,
+      power_kw: telemetry?.active_power_kw ?? 0,
+      wind_ms: telemetry?.wind_speed_ms ?? 0,
       component_id: state?.component_id || `${item.turbine_id}_COMPONENT_01`,
       component_label: verified ? state.component_name : '待核验关键部件',
       mapping_status: state?.mapping_status || 'UNVERIFIED',
       has_analysis: Boolean(latest),
       updated_at: latest?.timestamp || '暂无分析结果',
-      trend: latest ? [latest.health_index] : [],
-      source: latest?.data_origin || item.data_origin || 'REFERENCE',
+      trend: sensorTrend,
+      trend_label: sensorTrend.length ? '转子轴承温度 2' : '传感器趋势',
+      trend_unit: sensorTrend.length ? '°C' : undefined,
+      source: latest?.data_origin || telemetry?.data_origin || item.data_origin || 'REFERENCE',
       model_version: latest?.model_version || '未提供',
       ...(item.wind_farm === 'Wind Farm B' && item.turbine_id === 'WT02' ? {
         event_id: 53,
