@@ -28,6 +28,37 @@ function StatusBadge({ level }: { level: Turbine['warning_level'] }) {
   return <span className={`status-badge status-${level.toLowerCase()}`}><span className="status-dot" />{warningText[level]}</span>
 }
 
+type DiagnosticParams = { rpm: number; oil: number; wind: number; noise: number; power: number }
+const defaultDiagnosticParams: DiagnosticParams = { rpm: 12, oil: 54, wind: 8.3, noise: 68, power: 1580 }
+const diagnosticFields: Array<{ key: keyof DiagnosticParams; label: string; min: number; max: number; step: number; unit: string; normal: [number, number] }> = [
+  { key: 'rpm', label: '叶片转速', min: 0, max: 20, step: .1, unit: 'rpm', normal: [8, 15] },
+  { key: 'oil', label: '齿轮箱油温', min: 20, max: 100, step: 1, unit: '°C', normal: [35, 65] },
+  { key: 'wind', label: '风速', min: 0, max: 25, step: .1, unit: 'm/s', normal: [5, 13] },
+  { key: 'noise', label: '噪声分贝', min: 40, max: 110, step: 1, unit: 'dB', normal: [55, 78] },
+  { key: 'power', label: '输出功率', min: 0, max: 2500, step: 10, unit: 'kW', normal: [1100, 2100] },
+]
+
+function diagnosticInference(params: DiagnosticParams) {
+  const scores = {
+    '齿轮箱': Math.max(0, (params.oil - 65) / 35) * .72 + Math.max(0, (params.noise - 78) / 32) * .28,
+    '主轴/轴承': Math.max(0, (12 - params.rpm) / 12) * .35 + Math.max(0, (params.noise - 78) / 32) * .35 + Math.max(0, (45 - params.wind) / 45) * .3,
+    '发电机': Math.max(0, (params.power - 2100) / 400) * .55 + Math.max(0, (params.oil - 65) / 35) * .45,
+  }
+  const ranked = Object.entries(scores).sort((a, b) => b[1] - a[1])
+  const risk = Math.min(.99, .08 + ranked[0][1] * .9)
+  const level: Turbine['warning_level'] = risk >= .72 ? 'HIGH' : risk >= .42 ? 'MEDIUM' : risk >= .2 ? 'LOW' : 'NORMAL'
+  return { location: ranked[0][0], risk, level, scores }
+}
+
+function DiagnosticDiagram({ location, risk }: { location: string; risk: number }) {
+  const spots = [{ name: '叶轮', x: 70, y: 92 }, { name: '主轴/轴承', x: 185, y: 92 }, { name: '齿轮箱', x: 285, y: 92 }, { name: '发电机', x: 400, y: 92 }]
+  return <div className="diagnostic-diagram" title={`${location} · 置信度 ${(risk * 100).toFixed(0)}%`}><svg viewBox="0 0 470 150" role="img" aria-label={`二维风机示意图，当前故障位置 ${location}`}><path className="diagram-tower" d="M225 105 L245 105 L255 145 L215 145 Z" /><path className="diagram-nacelle" d="M145 72 H390 Q410 72 410 91 H145 Z" /><path className="diagram-blade" d="M155 82 L72 43 L78 37 L170 72 Z" /><path className="diagram-blade" d="M155 82 L68 119 L72 126 L170 91 Z" /><line className="diagram-shaft" x1="155" y1="82" x2="400" y2="82" />{spots.map(spot => <g key={spot.name} className={spot.name === location || (location === '主轴/轴承' && spot.name === '主轴/轴承') ? 'fault-spot active' : 'fault-spot'}><circle cx={spot.x} cy={spot.y} r="7" /><text x={spot.x} y={spot.y - 13}>{spot.name}</text></g>)}</svg><div className="diagram-tooltip">{location} · 置信度 {(risk * 100).toFixed(0)}%</div></div>
+}
+
+function ConfidenceBars({ scores }: { scores: Record<string, number> }) {
+  return <div className="confidence-bars">{Object.entries(scores).map(([label, value]) => <div key={label} className="confidence-row"><span>{label}</span><div><i style={{ width: `${Math.max(4, value * 100)}%` }} /></div><strong>{(value * 100).toFixed(0)}%</strong></div>)}</div>
+}
+
 const actionText = {
   CONTINUE_MONITORING: '继续监测',
   SCHEDULE_INSPECTION: '安排现场检查',
@@ -79,6 +110,9 @@ export default function App() {
   const [evidencePanel, setEvidencePanel] = useState<'evidence' | 'trend' | 'history' | 'context' | 'review' | null>(null)
   const [decisionAction, setDecisionAction] = useState('SCHEDULE_INSPECTION')
   const [activityLog, setActivityLog] = useState<string[]>([])
+  const [diagnosticParams, setDiagnosticParams] = useState<DiagnosticParams>(defaultDiagnosticParams)
+  const [diagnosticHistory, setDiagnosticHistory] = useState<Array<{ at: string; location: string; risk: number }>>([])
+  const diagnostic = useMemo(() => diagnosticInference(diagnosticParams), [diagnosticParams])
 
   const selectedBase = turbines.find(t => t.turbine_id === selectedId) || turbines[0]
   const selectedFault = wt02FaultEvents.find(event => event.id === faultEventId) || wt02FaultEvents[0]
@@ -89,6 +123,11 @@ export default function App() {
   const plan = plans.find(p => p.id === selectedPlan) || plans[0]
   const highCount = turbines.filter(t => t.has_analysis !== false && t.warning_level === 'HIGH').length
   const retest = retests[0]
+
+  const updateDiagnosticParam = (key: keyof DiagnosticParams, value: number) => {
+    setDiagnosticParams(current => ({ ...current, [key]: value }))
+    setDiagnosticHistory(history => [{ at: new Date().toLocaleTimeString(), location: diagnostic.location, risk: diagnostic.risk }, ...history].slice(0, 6))
+  }
 
   useEffect(() => {
     if (mode === 'demo') {
@@ -205,6 +244,7 @@ export default function App() {
             <div className="reading-primary"><div className="reading-label"><Gauge size={18} /> 健康指数 <span title="B 的模型输出；演示模式中的数值为模拟数据">ⓘ</span></div><div className="reading-number">{selected.has_analysis === false ? '--' : serviced ? '待复测' : selected.health_index.toFixed(1)}{selected.has_analysis !== false && !serviced && <small>/ 100</small>}</div><div className="meter"><span style={{ width: selected.has_analysis === false || serviced ? '0%' : `${selected.health_index}%` }} className={selected.warning_level === 'HIGH' ? 'meter-risk' : ''} /></div><p>{selected.has_analysis === false ? '后端尚无该部件的 AI 分析结果。' : serviced ? '维护执行已记录，设备健康状态应由复测数据确认。' : selected.warning_level === 'HIGH' ? '状态持续偏离正常区间，建议进入维护评估。' : '当前状态以数据分析结果为准。'}</p></div>
             <div className="metric-grid"><div><span>异常分数</span><strong>{selected.has_analysis === false ? '--' : selected.anomaly_score.toFixed(2)}</strong><small>模型输出</small></div><div><span>风险评分</span><strong>{selected.has_analysis === false ? '--' : selected.failure_risk.toFixed(2)}</strong><small>0-1 指标，非校准概率</small></div><div><span>当前功率</span><strong>{selected.power_kw !== 0 ? selected.power_kw.toLocaleString() : '--'}<em> kW</em></strong><small>{selected.source === 'DERIVED' ? 'CARE 派生' : selected.power_kw !== 0 ? '运行示例' : '未提供'}</small></div><div><span>风速</span><strong>{selected.wind_ms !== 0 ? selected.wind_ms : '--'}<em> m/s</em></strong><small>{selected.source === 'DERIVED' ? 'CARE 派生' : selected.wind_ms !== 0 ? '运行示例' : '未提供'}</small></div></div>
             <div className="info-section"><div className="section-title"><h3>{selected.trend_label || '传感器趋势'}</h3><span>{selected.trend_unit || 'CARE telemetry'}</span></div><Sparkline values={selected.trend} high={selected.warning_level === 'HIGH'} /></div>
+          <section className="ai-workbench" aria-label="实时AI故障检测"><div className="workbench-title"><h3><Activity size={15} /> 实时 AI 故障检测</h3><span className="simulated-tag">SIMULATED · 拖动即推理</span></div><div className="diagnostic-layout"><div className="diagnostic-controls">{diagnosticFields.map(field => <label className="diagnostic-slider" key={field.key}><span><b>{field.label}</b><em>{diagnosticParams[field.key].toFixed(field.step < 1 ? 1 : 0)} {field.unit}</em></span><input type="range" min={field.min} max={field.max} step={field.step} value={diagnosticParams[field.key]} onChange={event => updateDiagnosticParam(field.key, Number(event.target.value))} /><small>正常 {field.normal[0]}–{field.normal[1]} {field.unit}</small></label>)}<button className="reset-diagnostic" onClick={() => setDiagnosticParams(defaultDiagnosticParams)}><RotateCcw size={14} /> 一键重置参数</button></div><div className="diagnostic-result"><div className="ai-status-line"><span className={`ai-pulse ${diagnostic.level.toLowerCase()}`} />AI 推理完成 <StatusBadge level={diagnostic.level} /></div><DiagnosticDiagram location={diagnostic.location} risk={diagnostic.risk} /><div className="diagnostic-summary"><strong>{diagnostic.location}</strong><span>置信度 {(diagnostic.risk * 100).toFixed(0)}% · 风险评分 {diagnostic.risk.toFixed(2)}</span></div><ConfidenceBars scores={diagnostic.scores} /></div></div><div className="diagnostic-history"><div><strong><History size={14} /> 最近检测</strong><span>{diagnosticHistory.length ? `${diagnosticHistory.length} 条` : '暂无记录'}</span></div>{diagnosticHistory.slice(0, 3).map(item => <span key={`${item.at}-${item.risk}`}>{item.at} · {item.location} · {(item.risk * 100).toFixed(0)}%</span>)}</div></section>
           <div className="event-selector"><label htmlFor="wt02-event">WT02 故障事件</label><select id="wt02-event" value={faultEventId} onChange={event => setFaultEventId(event.target.value)}>{wt02FaultEvents.map(item => <option key={item.id} value={item.id}>{item.id} · {item.name}</option>)}</select><small>{selectedFault.description} · 数据/映射状态仍按事件登记核验</small></div>
           <div className="component-line"><div className="component-symbol"><Settings2 size={18} /></div><div><strong>{selected.component_label}</strong><span>{selected.component_id} · {selectedFault.name} · 映射待核验</span></div><ChevronDown size={17} /></div>
             <button className="primary-action" onClick={openMaintenance}><Wrench size={17} /> 查看维护方案 <ArrowRight size={17} /></button>
@@ -232,7 +272,7 @@ export default function App() {
             </div></div>
             <div className="constraint-row"><div><CloudSun size={17} /><span>天气窗口状态<small>{weatherRestricted ? '下一可用窗口再安排维护' : '当前窗口可用于评估'}</small></span></div><button className={`toggle ${weatherRestricted ? 'on' : ''}`} role="switch" aria-checked={weatherRestricted} aria-label="天气窗口限制" onClick={toggleWeather}><span /></button></div>
             <div className="section-title plan-title"><h3>可选方案</h3><span>{mode === 'demo' ? '规则演示 / 假设参数' : apiPlan ? `后端决策 · ${apiPlan.priority}` : '等待后端决策'}</span></div>
-            <div className="plans">{plans.map((p: MaintenancePlan) => <button key={p.id} disabled={p.available === false || (mode === 'api' && !p.recommended)} className={`plan-option ${plan.id === p.id ? 'selected' : ''}`} onClick={() => { setSelectedPlan(p.id); setServiced(false) }}><span className="plan-radio">{plan.id === p.id && <span />}</span><span className="plan-copy"><strong>{p.title}{p.recommended && <em>建议</em>}</strong><small><Clock3 size={13} /> {p.timing} · 风险 {p.risk}</small><span>{p.action}</span></span></button>)}</div>
+            <div className="plans">{plans.map((p: MaintenancePlan, index) => <details key={p.id} className={`plan-option ${plan.id === p.id ? 'selected' : ''}`} open={plan.id === p.id}><summary onClick={() => { setSelectedPlan(p.id); setServiced(false) }}><span className="plan-radio">{plan.id === p.id && <span />}</span><span className="plan-copy"><strong>步骤 {index + 1} · {p.title}{p.recommended && <em>建议</em>}</strong><small><Clock3 size={13} /> {p.timing} · 风险 {p.risk}</small></span><ChevronDown size={15} /></summary><div className="plan-details"><p>{p.action}</p><small><ShieldCheck size={13} /> 安全提示：执行前确认人员、备件、天气窗口与停机许可。</small></div></details>)}</div>
             <div className="plan-facts"><div><span>预计停机</span><strong>{plan.downtime}</strong></div><div><span>资源成本</span><strong>{plan.cost}</strong></div><div><span>风险水平</span><strong>{plan.risk}</strong></div></div>
             {serviced ? <div className="success-message"><Check size={17} /><div><strong>{mode === 'api' ? '维护执行记录已保存' : '演示维护已记录'}</strong><span>状态改善不自动推断，需以后端复测结果确认。</span></div></div> : <button className="primary-action" disabled={loading || !personnelAvailable || (decisionAction === 'SCHEDULE_MAINTENANCE' && (!spareAvailable || !shutdownAllowed || weatherRestricted)) || (mode === 'api' && !apiPlan)} onClick={executePlan}><Check size={17} /> {mode === 'api' ? '记录维护执行' : '模拟执行方案'} <ArrowRight size={17} /></button>}
             <div className="log-panel"><div className="workbench-title"><h3>操作日志</h3><span>{activityLog.length} 条</span></div>{activityLog.length ? activityLog.map((item, i) => <div key={`${item}-${i}`}><Clock3 size={12} />{item}</div>) : <p>尚未进行工程操作</p>}</div>
