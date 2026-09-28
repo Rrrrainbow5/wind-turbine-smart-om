@@ -303,9 +303,12 @@ function setBearingState(bearing: THREE.Object3D, active: boolean) {
 
 function setFaultPartState(model: THREE.Object3D | null, category: Turbine['fault_category'], level: Turbine['warning_level']) {
   if (!model || !category) return
+  const oldOverlay = model.getObjectByName('FAULT_HIGHLIGHT_OVERLAY')
+  if (oldOverlay) oldOverlay.removeFromParent()
   const color = level === 'HIGH' ? 0xff1712 : 0xffa313
   const glow = level === 'HIGH' ? 0xff0500 : 0x6b2600
   let matched = 0
+  const targets: THREE.Mesh[] = []
   model.traverse(object => {
     if (!(object instanceof THREE.Mesh)) return
     const actualCategory = effectiveCadCategory(object, model)
@@ -314,6 +317,7 @@ function setFaultPartState(model: THREE.Object3D | null, category: Turbine['faul
     const categoryMatches = actualCategory === category || (category === 'BEARING' && actualCategory === 'GEARBOX_BEARING')
     if (!categoryMatches) return
     matched += 1
+    targets.push(object)
     const materials = Array.isArray(object.material) ? object.material : [object.material]
     materials.forEach(material => {
       const standard = material as THREE.MeshStandardMaterial
@@ -325,6 +329,25 @@ function setFaultPartState(model: THREE.Object3D | null, category: Turbine['faul
       material.depthWrite = true
     })
   })
+  // A separate unlit overlay keeps the fault unmistakable even when the
+  // imported CAD material is white, metallic, or uses vertex colors.
+  if (targets.length) {
+    const overlay = new THREE.Group()
+    overlay.name = 'FAULT_HIGHLIGHT_OVERLAY'
+    const overlayMaterial = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .88, depthTest: false, depthWrite: false, side: THREE.DoubleSide })
+    model.updateWorldMatrix(true, true)
+    const inverseModelMatrix = model.matrixWorld.clone().invert()
+    targets.forEach(target => {
+      const copy = target.clone(false)
+      copy.name = `${target.name}_FAULT_HIGHLIGHT`
+      copy.material = overlayMaterial
+      copy.renderOrder = 20
+      const relativeMatrix = inverseModelMatrix.clone().multiply(target.matrixWorld)
+      relativeMatrix.decompose(copy.position, copy.quaternion, copy.scale)
+      overlay.add(copy)
+    })
+    model.add(overlay)
+  }
   model.userData.faultHighlightMatched = matched > 0
 }
 
