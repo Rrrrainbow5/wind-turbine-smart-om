@@ -109,11 +109,13 @@ function makeRealGearboxBearingGroup(root: THREE.Object3D, turbineId: string) {
 }
 
 const engineeringColors: Record<string, number> = {
-  GENERATOR: 0x16b8c8,
-  GEARBOX: 0xe5a83d,
-  GEARBOX_BEARING: 0xff493d,
-  BEARING: 0xff785f,
-  DRIVETRAIN: 0xb9d0d5,
+  // Neutral cutaway materials. The selected fault is overlaid in red by
+  // setFaultPartState; unselected parts must not look like faults.
+  GENERATOR: 0x9aaeb5,
+  GEARBOX: 0xaab9bd,
+  GEARBOX_BEARING: 0x9eafb4,
+  BEARING: 0x9eafb4,
+  DRIVETRAIN: 0xb7c5c8,
   ROTOR: 0x80939a,
 }
 
@@ -874,7 +876,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       if (!focusBounds.isEmpty()) {
         const focus = focusBounds.getCenter(new THREE.Vector3())
         const focusSize = focusBounds.getSize(new THREE.Vector3())
-        const distance = Math.max(1.4, focusSize.length() * 1.8)
+        const distance = Math.min(14, Math.max(2.8, focusSize.length() * 1.05))
         viewRef.current.target.copy(focus)
         viewRef.current.position.copy(focus).add(new THREE.Vector3(distance * .55, distance * .24, distance))
       }
