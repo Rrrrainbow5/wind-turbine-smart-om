@@ -189,7 +189,7 @@ export default function App() {
       <section className="scene-panel" aria-label="风电场三维场景">
         <div className="scene-heading"><div><div className="eyebrow"><MapPin size={13} /> 风电场数字场景 <span className="source-tag">{mode === 'demo' ? '演示数据' : '接口数据'}</span></div><h1>风场运行总览</h1><p>选择风机，查看状态与维护决策</p></div><div className="scene-weather"><CloudSun size={19} /><span>环境状态<small>{weatherRestricted ? '维护窗口受限' : '维护窗口正常'}</small></span></div></div>
         <WindScene turbines={turbines.map(t => t.turbine_id === selected?.turbine_id ? selected : t)} selectedId={selectedId} onSelect={selectTurbine} serviced={serviced} engineeringView={engineeringView} onOpenEngineering={() => setEngineeringView(true)} />
-        {engineeringView && selected?.event_id && <div className="engineering-caption"><span className="engineering-caption-dot" />CARE v6 · {selected.event_name} <strong>{selected.component_label}</strong><small>{selected.fault_category === 'CONVERTER' || selected.fault_category === 'TRANSFORMER' ? '当前工程CAD不含该电气部件，因此不做错误高亮' : `项目CAD整机 · 映射状态 ${selected.mapping_status || 'UNVERIFIED'}`}</small></div>}
+        {engineeringView && selected?.event_id && <div className="engineering-caption"><span className="engineering-caption-dot" />CARE v6 · {selected.event_name} <strong>{selected.component_label}</strong><small>项目CAD整机 · 映射状态 {selected.mapping_status || 'UNVERIFIED'}</small></div>}
         <div className="scene-bottom"><div className="scene-legend"><span><i className="legend-normal" />正常</span><span><i className="legend-low" />关注</span><span><i className="legend-high" />高风险</span></div><span className="scene-hint">海上风场 · 点击风机定位 · 再点机舱查看内部部件</span></div>
       </section>
 
