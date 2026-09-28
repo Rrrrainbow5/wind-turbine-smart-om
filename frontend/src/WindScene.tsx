@@ -908,7 +908,10 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       const engineeringActive = engineeringView && id === selectedId
       setEngineeringCadView(object.cadModel, engineeringActive)
       if (engineeringActive) setFaultPartState(object.cadModel, turbine.fault_category, turbine.warning_level)
-      if (object.cadLabels) object.cadLabels.visible = engineeringActive
+      // Component labels are intentionally hidden: a fixed "主轴/齿轮传动"
+      // label suggests every event belongs to those parts and obscures the
+      // actual highlighted fault geometry.
+      if (object.cadLabels) object.cadLabels.visible = false
       setBearingState(object.gearboxBearing, id === selectedId && turbine.fault_category === 'BEARING')
     })
   }, [selectedId, serviced, turbines, engineeringView])
