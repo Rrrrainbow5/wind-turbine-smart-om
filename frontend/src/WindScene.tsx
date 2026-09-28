@@ -862,7 +862,15 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
     if (!controls || !camera) return
     if (selected && engineeringView) {
       const selectedObject = objectsRef.current.get(selectedId)
-      const focusBounds = getEngineeringBounds(selectedObject?.cadModel || null)
+      const cadModel = selectedObject?.cadModel || null
+      const focusBounds = getEngineeringBounds(cadModel)
+      // Imported CAD names vary between STEP exports. If no internal parts
+      // were classified, still focus the complete CAD model instead of
+      // leaving the camera at the farm overview distance.
+      if (focusBounds.isEmpty() && cadModel) {
+        cadModel.updateWorldMatrix(true, true)
+        focusBounds.setFromObject(cadModel)
+      }
       if (!focusBounds.isEmpty()) {
         const focus = focusBounds.getCenter(new THREE.Vector3())
         const focusSize = focusBounds.getSize(new THREE.Vector3())
