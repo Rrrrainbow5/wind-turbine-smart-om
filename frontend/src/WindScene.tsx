@@ -13,6 +13,7 @@ interface Props {
   serviced: boolean
   engineeringView: boolean
   onOpenEngineering: () => void
+  diagnosticFaultCategory?: Turbine['fault_category']
 }
 
 const colors = { NORMAL: 0x75a79b, LOW: 0xe4af55, MEDIUM: 0xd47d43, HIGH: 0xd9584e }
@@ -371,7 +372,7 @@ function makeLabel(text: string, color: string) {
   return sprite
 }
 
-export default function WindScene({ turbines, selectedId, onSelect, serviced, engineeringView, onOpenEngineering }: Props) {
+export default function WindScene({ turbines, selectedId, onSelect, serviced, engineeringView, onOpenEngineering, diagnosticFaultCategory }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const onSelectRef = useRef(onSelect)
   const onOpenEngineeringRef = useRef(onOpenEngineering)
@@ -717,7 +718,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
         const engineeringActive = engineeringViewRef.current && selectedIdRef.current === id
         setEngineeringCadView(imported, engineeringActive)
         const turbine = turbines.find(item => item.turbine_id === id)
-        if (engineeringActive && turbine) setFaultPartState(imported, turbine.fault_category, turbine.warning_level)
+        if (engineeringActive && turbine) setFaultPartState(imported, diagnosticFaultCategory || turbine.fault_category, turbine.warning_level)
         // Do not show fixed component callouts; the selected event and its
         // red geometry are the only fault annotation.
         cadLabels.visible = false
@@ -909,14 +910,14 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       object.engineering.visible = false
       const engineeringActive = engineeringView && id === selectedId
       setEngineeringCadView(object.cadModel, engineeringActive)
-      if (engineeringActive) setFaultPartState(object.cadModel, turbine.fault_category, turbine.warning_level)
+      if (engineeringActive) setFaultPartState(object.cadModel, diagnosticFaultCategory || turbine.fault_category, turbine.warning_level)
       // Component labels are intentionally hidden: a fixed "主轴/齿轮传动"
       // label suggests every event belongs to those parts and obscures the
       // actual highlighted fault geometry.
       if (object.cadLabels) object.cadLabels.visible = false
       setBearingState(object.gearboxBearing, id === selectedId && turbine.fault_category === 'BEARING')
     })
-  }, [selectedId, serviced, turbines, engineeringView])
+  }, [selectedId, serviced, turbines, engineeringView, diagnosticFaultCategory])
 
   return <div className="scene-canvas" ref={containerRef} aria-label="可点击的三维风电场">
     <div className="drone-hud" aria-hidden="true">
