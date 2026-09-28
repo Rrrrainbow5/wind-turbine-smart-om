@@ -325,24 +325,7 @@ function setFaultPartState(model: THREE.Object3D | null, category: Turbine['faul
       material.depthWrite = true
     })
   })
-  // A few CAD exports have no usable names at all. Keep the selected fault
-  // visible in the cutaway by highlighting the first real internal mesh.
-  if (!matched) {
-    model.traverse(object => {
-      if (matched || !(object instanceof THREE.Mesh)) return
-      const inferred = effectiveCadCategory(object, model)
-      if (!['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'BEARING', 'DRIVETRAIN'].includes(inferred)) return
-      matched += 1
-      const materials = Array.isArray(object.material) ? object.material : [object.material]
-      materials.forEach(material => {
-        const standard = material as THREE.MeshStandardMaterial
-        if (standard.color) standard.color.setHex(color)
-        if (standard.emissive) standard.emissive.setHex(glow)
-        standard.emissiveIntensity = 3.5
-        material.opacity = 1; material.transparent = false; material.depthWrite = true
-      })
-    })
-  }
+  model.userData.faultHighlightMatched = matched > 0
 }
 
 function makeLabel(text: string, color: string) {

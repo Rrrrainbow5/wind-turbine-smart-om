@@ -42,9 +42,9 @@ export interface MaintenancePlan {
 export const wt02FaultEvents = [
   { id: 'B-53', name: '转子轴承 2损伤', description: 'Rotor Bearing 2 - Damage', component: '转子轴承 2（映射待核验）', category: 'BEARING' as const },
   { id: 'A-51', name: '齿轮箱轴承损坏', description: 'Gearbox bearings damaged', component: '齿轮箱轴承（映射待核验）', category: 'GEARBOX_BEARING' as const },
-  { id: 'A-0', name: '发电机轴承故障', description: 'Generator bearing failure', component: '发电机轴承（映射待核验）', category: 'BEARING' as const },
-  { id: 'C-67', name: '主变压器过压', description: 'Main transformer overpressure', component: '主变压器（映射待核验）', category: 'GENERATOR' as const },
-  { id: 'C-81', name: '变流器故障', description: 'Converter failure', component: '变流器（映射待核验）', category: 'GENERATOR' as const },
+  { id: 'A-0', name: '发电机轴承故障', description: 'Generator bearing failure', component: '发电机总成（映射待核验）', category: 'GENERATOR' as const },
+  { id: 'C-67', name: '齿轮传动异常', description: 'Gear transmission anomaly', component: '齿轮传动件（映射待核验）', category: 'GEARBOX' as const },
+  { id: 'C-81', name: '主轴/联轴器异常', description: 'Main shaft or coupling anomaly', component: '主轴/联轴器（映射待核验）', category: 'DRIVETRAIN' as const },
 ]
 
 export const demoTurbines: Turbine[] = [
