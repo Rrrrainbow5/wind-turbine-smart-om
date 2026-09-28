@@ -718,7 +718,9 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
         setEngineeringCadView(imported, engineeringActive)
         const turbine = turbines.find(item => item.turbine_id === id)
         if (engineeringActive && turbine) setFaultPartState(imported, turbine.fault_category, turbine.warning_level)
-        cadLabels.visible = engineeringActive
+        // Do not show fixed component callouts; the selected event and its
+        // red geometry are the only fault annotation.
+        cadLabels.visible = false
         setBearingState(realBearings, engineeringActive && id === 'WT02' && turbine?.fault_category === 'BEARING')
         if (engineeringActive) {
           object.root.updateWorldMatrix(true, true)
