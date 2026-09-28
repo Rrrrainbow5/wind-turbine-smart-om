@@ -49,11 +49,11 @@ function identifyCadPart(sourceName: string, turbineId: string): CadPart | null 
   const name = sourceName.toLowerCase()
   if (name.includes('lopat') || name.includes('blade')) return { id: `${turbineId}_ROTOR_BLADE`, label: '风轮叶片', category: 'ROTOR' }
   if (/^wt02_blade_\d+/.test(name)) return { id: `${turbineId}_ROTOR_BLADE`, label: '风轮叶片', category: 'ROTOR' }
-  if (name === 'generator-1' || name.includes('kuci歵e generatora') || name.includes('rotor generatora') || name.includes('stator')) return { id: `${turbineId}_GENERATOR`, label: '发电机总成', category: 'GENERATOR' }
+  if (name === 'generator-1' || name.includes('generator') || name.includes('generatora') || name.includes('rotor generatora') || name.includes('stator')) return { id: `${turbineId}_GENERATOR`, label: '发电机总成', category: 'GENERATOR' }
   if (name.startsWith('radial ball bearing') || name.startsWith('taper roller bearing')) return { id: `${turbineId}_BEARING`, label: '滚动轴承', category: 'BEARING' }
   if ((name.includes('kuci') && name.includes('le瀉j')) || name.includes('bearing housing')) return { id: `${turbineId}_GEARBOX_BEARING`, label: '传动链轴承座', category: 'GEARBOX_BEARING' }
-  if (name.startsWith('spur gear') || name.startsWith('internal spur gear') || name.startsWith('svi planetarni zupcanici')) return { id: `${turbineId}_GEAR`, label: '齿轮传动件', category: 'GEARBOX' }
-  if (name.includes('glavno vratilo') && !name.includes('civija') && !name.includes('navrtka') && !name.includes('歳af')) return { id: `${turbineId}_MAIN_SHAFT`, label: '主轴', category: 'DRIVETRAIN' }
+  if (name.includes('spur ge') || name.includes('internal spur') || name.includes('zupcan') || name.includes('planetarni') || name.includes('planetarci')) return { id: `${turbineId}_GEAR`, label: '齿轮传动件', category: 'GEARBOX' }
+  if ((name.includes('glavno vratilo') || name.includes('glavna osovina') || name.includes('main shaft') || name.includes('spojnica')) && !name.includes('civija') && !name.includes('navrtka') && !name.includes('sraf')) return { id: `${turbineId}_MAIN_SHAFT`, label: '主轴/联轴器', category: 'DRIVETRAIN' }
   if (name.includes('sve u gondoli') || name.includes('gondol')) return { id: `${turbineId}_NACELLE`, label: '机舱及机舱附件', category: 'NACELLE' }
   if (name.includes('koren stuba') || name.includes('stub')) return { id: `${turbineId}_TOWER`, label: '塔筒及连接件', category: 'TOWER' }
   if (name.includes('haub')) return { id: `${turbineId}_ROTOR_HUB`, label: '轮毂及整流罩连接件', category: 'ROTOR' }
