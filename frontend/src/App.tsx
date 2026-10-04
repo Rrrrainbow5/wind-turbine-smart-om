@@ -77,6 +77,28 @@ function sliderTint(field: typeof diagnosticFields[number], value: number) {
   return distance > .55 ? '#d4473d' : '#e2ad3e'
 }
 
+function playTone(frequency: number, duration: number, delay = 0, type: OscillatorType = 'sine') {
+  window.setTimeout(() => {
+    try {
+      const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+      if (!AudioContextClass) return
+      const context = new AudioContextClass()
+      const oscillator = context.createOscillator()
+      const gain = context.createGain()
+      oscillator.type = type; oscillator.frequency.value = frequency
+      gain.gain.setValueAtTime(.0001, context.currentTime)
+      gain.gain.exponentialRampToValueAtTime(.12, context.currentTime + .02)
+      gain.gain.exponentialRampToValueAtTime(.0001, context.currentTime + duration)
+      oscillator.connect(gain); gain.connect(context.destination)
+      oscillator.start(); oscillator.stop(context.currentTime + duration + .03)
+      window.setTimeout(() => void context.close(), (duration + .1) * 1000)
+    } catch { /* Audio is optional in browsers and may be blocked. */ }
+  }, delay)
+}
+
+function playAlertSound() { playTone(660, .16, 0, 'square'); playTone(520, .18, 220, 'square') }
+function playConfirmSound() { playTone(523, .14); playTone(659, .2, 150); playTone(784, .25, 300) }
+
 const actionText = {
   CONTINUE_MONITORING: '继续监测',
   SCHEDULE_INSPECTION: '安排现场检查',
@@ -115,6 +137,8 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showSources, setShowSources] = useState(false)
+  const [guideModal, setGuideModal] = useState<number | null>(null)
+  const [guideSliderChanged, setGuideSliderChanged] = useState(false)
   const [engineeringView, setEngineeringView] = useState(false)
   const [apiPlan, setApiPlan] = useState<ApiMaintenancePlan | null>(null)
   const [maintenanceRecordId, setMaintenanceRecordId] = useState('')
@@ -143,7 +167,10 @@ export default function App() {
   const retest = retests[0]
 
   const updateDiagnosticParam = (key: keyof DiagnosticParams, value: number) => {
-    setDiagnosticParams(current => ({ ...current, [key]: value }))
+    const next = { ...diagnosticParams, [key]: value }
+    setDiagnosticParams(next)
+    if (guideModal === null && guideSliderChanged === false) setGuideSliderChanged(true)
+    if (diagnosticInference(next).risk >= .72 && diagnostic.risk < .72) playAlertSound()
     setDiagnosticHistory(history => [{ at: new Date().toLocaleTimeString(), location: diagnostic.location, risk: diagnostic.risk }, ...history].slice(0, 6))
   }
 
@@ -166,6 +193,7 @@ export default function App() {
 
   const selectTurbine = (id: string) => {
     setSelectedId(id); setView('overview'); setServiced(false); setSelectedPlan('inspect'); setApiPlan(null); setMaintenanceRecordId(''); setRetests([])
+    if (guideModal === 1) setGuideModal(2)
   }
 
   const logAction = (message: string) => setActivityLog(log => [`${new Date().toLocaleTimeString()} · ${message}`, ...log].slice(0, 8))
@@ -225,6 +253,7 @@ export default function App() {
         setMaintenanceRecordId(record.record_id)
         setRetests([])
         setServiced(true)
+        playConfirmSound()
         setRetestLoading(true)
         try { setRetests(await fetchRetests(record.record_id)) } catch (reason) {
           const message = reason instanceof Error ? reason.message : '复测结果尚未生成'
@@ -243,6 +272,11 @@ export default function App() {
     </header>
 
     <main className="workspace">
+      <button className="guide-launcher" onClick={() => { setGuideSliderChanged(false); setGuideModal(1) }}><Activity size={15} />开始引导</button>
+      {guideModal === 2 && <div className="guide-spotlight-ai" aria-hidden="true" />}
+      {guideModal === 2 && <div className="guide-step2-card" role="dialog"><strong>第 2 步：调节风险参数</strong><p>请拖动左侧任意一条数据滑块，观察右侧风险评分和故障位置变化。</p><button onClick={() => setGuideModal(null)}>知道了，开始操作</button></div>}
+      {guideModal !== null && <div className="guide-coach" role="dialog" aria-live="polite"><strong>{guideModal === 1 ? '第 1 步：选择风机' : guideModal === 2 ? '第 2 步：调节风险参数' : '第 3 步：生成维护方案'}</strong><p>{guideModal === 1 ? '请点击下方任意一个风机编号，查看它的状态。' : guideModal === 2 ? '请先关闭提示，再拖动传感器滑块，让风险评分发生变化。' : '请点击“查看维护方案”，进入维护决策页面。'}</p><button onClick={() => setGuideModal(null)}>知道了，开始操作</button></div>}
+      {guideSliderChanged && guideModal === null && <button className="guide-complete" onClick={() => { setGuideSliderChanged(false); setGuideModal(3) }}>设置完成，下一步</button>}
       <section className="scene-panel" aria-label="风电场三维场景">
         <div className="scene-heading"><div><div className="eyebrow"><MapPin size={13} /> 风电场数字场景 <span className="source-tag">{mode === 'demo' ? '演示数据' : '接口数据'}</span></div><h1>风场运行总览</h1><p>选择风机，查看状态与维护决策</p></div><div className="scene-weather"><CloudSun size={19} /><span>环境状态<small>{weatherRestricted ? '维护窗口受限' : '维护窗口正常'}</small></span></div></div>
         <WindScene turbines={turbines.map(t => t.turbine_id === selected?.turbine_id ? selected : t)} selectedId={selectedId} onSelect={selectTurbine} serviced={serviced} engineeringView={engineeringView} diagnosticFaultCategory={diagnosticCategory(diagnostic.location)} onOpenEngineering={() => setEngineeringView(true)} />
