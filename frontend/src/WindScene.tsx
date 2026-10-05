@@ -930,7 +930,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       <div className="drone-rec"><i /> REC</div>
     </div>
     <div className="camera-presets" aria-label="预设视角">
-      {[['1', '巡检'], ['2', '叶轮'], ['3', '机舱'], ['4', '全场']].map(([key, label]) =>
+      {[['1', '巡检视角'], ['2', '叶轮视角'], ['3', '机舱视角'], ['4', '全场视角']].map(([key, label]) =>
         <button key={key} onClick={() => presetRef.current(Number(key))}><b>{key}</b>{label}</button>)}
     </div>
   </div>
