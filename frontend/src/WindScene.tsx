@@ -858,7 +858,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       rootMap.clear()
       sceneRef.current = null; cameraRef.current = null
     }
-  }, [turbines])
+  }, [])
 
   useEffect(() => {
     const selected = turbines.find(turbine => turbine.turbine_id === selectedId)
