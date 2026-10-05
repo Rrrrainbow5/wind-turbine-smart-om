@@ -381,7 +381,6 @@ export default function App() {
     if (!activeFault) return
     setView('maintenance')
     if (guide.active && guide.step === 3) {
-      setGuideInitialDecision(decisionAction)
       setGuidePlanClicked(false)
       setGuide(state => ({ ...state, step: 4 }))
     }
