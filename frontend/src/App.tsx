@@ -154,7 +154,6 @@ export default function App() {
   const [guide, setGuide] = useState<GuideState>({ active: false, step: 0 })
   const [guideInitialTurbine, setGuideInitialTurbine] = useState('')
   const [guideInitialParams, setGuideInitialParams] = useState<DiagnosticParams>(defaultDiagnosticParams)
-  const [guideInitialDecision, setGuideInitialDecision] = useState('')
   const [guidePlanClicked, setGuidePlanClicked] = useState(false)
   const [guideBubbleStyle, setGuideBubbleStyle] = useState<CSSProperties>({})
   const [guideMinimized, setGuideMinimized] = useState(false)
