@@ -1,88 +1,113 @@
-# WindCare 前端接力交接说明
+# WindCare 前端接力说明（先读这里）
 
-## 1. 项目目标
+## 0. 当前最重要结论
 
-系统面向海上风电机组智能运维演示，核心闭环为：
+请先确认运行的是这个仓库的 `main`，不是旧目录、旧分支或另一个项目。当前远端 `main` 使用 React 19 和 `lucide-react`，**不包含 `@iconify/react` 和 `Icon.js`**。如果控制台出现 Iconify 或 `react/index.js does not provide an export named createElement`，说明启动的目录、分支或依赖不是当前版本，不要先改业务代码。
 
-`状态感知 -> AI 故障检测 -> 风险评估 -> 维护决策 -> 维护执行 -> 复测验证 -> 状态回授`
+正确基线 commit：
 
-当前版本以演示自洽、可追溯和可继续开发为优先。天气、AI 推理和维护结果使用合理模拟值；真实后端接口模式仍通过 `frontend/src/api.ts` 对接，不应在前端偷偷伪造接口协议。
+```
+b6e46e0 fix: make guide plan confirmation respond to card clicks
+```
 
-## 2. 已完成内容
+## 1. 首次启动（Windows）
 
-- 8 台风机选择、诊断参数滑块和规则式 AI 故障推理。
-- 维护决策卡片：现场检查、预防性维护、继续监测。
-- 人员、备件、天气、允许停机、吊装等工程约束的方案锁定与条件摘要。
-- 维护执行进度、复测前后对比、故障恶化和部分改善分支。
-- 复测失败时禁止确认修复，并支持返回维护决策进行二次维护。
-- 继续监测会进入“故障未处理 · 继续监测中”状态，不会误报修复完成。
-- 引导系统使用单一 `{ active, step }` 状态，遮罩不拦截真实页面点击，目标元素使用 `data-guide-target` 高亮。
-- Three.js 场景生命周期稳定，天气变化不会销毁并重建场景。
-- 每台风机的参数、故障、状态和维护日志保存在 `turbineStates`，并写入 `localStorage`。
-- 已加入 CARE 数据来源提示：滑块是基于案例的仿真模式，不等同于实时传感器。
+```powershell
+cd C:\Users\你的用户名\Documents\Codex\wind-turbine-smart-om
+git fetch origin
+git checkout main
+git pull origin main
+git log -1 --oneline
+```
 
-## 3. 主要文件
+最后一行应显示 `b6e46e0` 或更晚的 main 提交。再确认：
 
-- `frontend/src/App.tsx`: 页面状态、诊断规则、约束条件、维护决策、复测和引导。
-- `frontend/src/WindScene.tsx`: Three.js 场景、风机模型、选择和动画循环。
-- `frontend/src/style.css`: 布局、引导高亮、方案卡、复测和状态样式。
-- `frontend/src/data.ts`: 演示风机、故障案例、方案数据。
-- `frontend/src/api.ts`: 后端维护、复测和风机接口。
+```powershell
+Get-Location
+Get-Content frontend\package.json
+rg -n "@iconify|Icon.js" frontend\src frontend\package.json
+```
 
-## 4. 设计意图与不能误改的规则
-
-1. 继续监测永远可选择、可执行，不要求人员、备件或天气可用；它代表暂缓维护，不代表故障消失。
-2. 现场检查需要人员、天气窗口和允许停机；预防性维护还需要备件和吊装资源。
-3. 复测通过必须同时满足：置信度 `0%`、风险 `< 0.1`、健康指数 `> 85`。
-4. 复测未通过不能清除故障，必须记录未通过原因并允许二次维护。
-5. 引导只能由真实操作推进，禁止用任意点击、定时器或点击气泡代替用户操作。
-6. 3D 场景只初始化一次；天气和 UI 状态更新不能导致 renderer、scene、camera 被重新创建。
-7. 维护日志是被动记录，不应阻止用户切换风机、切换约束或重新选择方案。
-
-## 5. 建议继续完成的事项
-
-### 高优先级
-
-- 将维护历史 UI 从简单文本升级为按操作类型着色的时间线，并补足执行中、复测前后数值和修复确认详情。
-- 为 WT01-WT08 配置更明确的差异化 CARE 初始案例，避免所有风机看起来只是同一案例的复制。
-- 对继续监测、维修未达标、二次维护成功、连续两次失败四条路径做完整回归测试。
-- 校验 API 模式与演示模式在约束锁定、复测结果和状态回授上的一致性。
-
-### 中优先级
-
-- 补齐所有约束组合下的推荐解释、锁定原因和降负荷运行文案。
-- 方案卡在窄屏下自动堆叠，并保持停机时长、成本、风险、发电损失字段完整。
-- 将天气面板进一步整理为多层 SVG 海浪和小船动画，注意不遮挡风机或操作面板。
-
-### 验收与工程
-
-- 在天气刷新 10 次、连续切换多个页面后确认 3D 场景不闪烁、不重建。
-- 解决 Windows 环境的 Vite `spawn EPERM`，再执行完整 `npm run build`。
-- 每个后续任务单独提交，commit message 使用 `feat:` 或 `fix:`，不要提交 `node_modules`、`.pnpm-store`、`.env` 或构建产物。
-
-## 6. 接力验收清单
-
-- [ ] WT02 调参后 AI 风险变化，滑块停止后日志只记录一次调参。
-- [ ] 关闭人员或天气后，现场检查/预防性维护正确锁定，继续监测仍可执行。
-- [ ] 继续监测执行后复测数据恶化，确认修复按钮不可用。
-- [ ] 实际维护复测通过后故障清除，状态恢复正常，日志记录修复确认。
-- [ ] 切换 WT03 再切回 WT02，参数、状态和日志互不串台。
-- [ ] 引导第 2 步可调整多个滑块，必须点击“设置完成”才推进；第 4 步必须选方案并点击确认。
-- [ ] 天气变化不重建 3D 场景，3D 点击和风机按钮均能选中风机。
-
-## 7. 运行与 Git
+`rg` 应无输出。若没有要保留的本地改动，清理旧依赖后重新安装：
 
 ```powershell
 cd frontend
+Remove-Item -Recurse -Force node_modules -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force node_modules\.vite -ErrorAction SilentlyContinue
 npm install
 npm run dev -- --host 127.0.0.1
 ```
 
-先做 TypeScript 检查：
+浏览器打开终端打印的新地址，不要继续使用旧标签页中的旧端口。不要混用 npm 和 pnpm。
+
+## 2. 白屏问题排查
+
+若仍白屏，请先发以下输出，不要降级 React 或修改 Vite：
 
 ```powershell
-npx tsc -b --pretty false
+Get-Location
+git branch --show-current
+git log -1 --oneline
+Get-Content frontend\package.json
+rg -n "@iconify|Icon.js" frontend\src frontend\package.json
 ```
 
-当前已推送基线 commit：`0d660b9 feat: stabilize windcare handoff demo`。
-接力开发前执行 `git pull origin main`，每完成一个可验证的小任务再提交和推送。
+- 报 `@iconify/react` 或 `Icon.js)：运行的不是当前 main，或旧依赖/旧 Vite 缓存未清理。
+- 报 `createElement`：React 与旧图标包版本不匹配，应恢复仓库依赖。
+- 报 `spawn EPERM`：Windows Node/Vite 权限问题，不是业务代码错误。
+
+## 3. 已完成的业务功能
+
+- 8 台风机选择、滑块故障模拟、规则式 AI 检测和风险评估。
+- 现场检查、预防性维护、继续监测三种维护方案。
+- 人员、备件、天气窗口、允许停机、吊装约束联动。
+- 维护执行进度、复测前后对比、恶化、部分改善和二次维护。
+- 复测未通过禁止确认修复；通过条件为置信度 `0%)、风险 `< 0.1)、健康指数 `> 85`。
+- 引导遮罩不拦截真实操作；第 4 步点击方案卡后确认按钮才启用。
+- 风机状态与维护日志按风机编号保存并持久化到 localStorage。
+- Three.js 场景只初始化一次，天气刷新不会销毁重建。
+
+## 4. 设计规则
+
+1. 继续监测永远可执行，不要求人员、备件或天气；它表示故障未处理。
+2. 现场检查需要人员、天气和停机许可；预防性维护还需要备件和吊装。
+3. 复测失败不能清除故障，必须记录失败并允许二次维护。
+4. 引导只由真实操作推进，禁止任意点击或自动定时器推进。
+5. 3D renderer、scene、camera 和模型不能随天气或 UI 状态重建。
+
+## 5. 主要文件
+
+- `frontend/src/App.tsx`: 页面状态、引导、诊断、维护、复测和日志。
+- `frontend/src/WindScene.tsx`: Three.js 场景、风机选择和动画循环。
+- `frontend/src/style.css`: 页面布局、引导、方案卡和复测样式。
+- `frontend/src/data.ts`: 演示数据和维护方案。
+- `frontend/src/api.ts`: 后端接口调用。
+
+## 6. 接手验收
+
+- [ ] `git log -1` 为 `b6e46e0` 或更晚提交。
+- [ ] 页面打开且控制台无 Iconify/React 导出错误。
+- [ ] WT02 调整滑块后 AI 风险值变化。
+- [ ] 约束关闭后对应方案锁定，继续监测仍可执行。
+- [ ] 继续监测复测数据恶化，确认修复按钮置灰。
+- [ ] 实际维护通过后故障清除，切换风机状态不串台。
+- [ ] 引导第 4 步点击方案卡后确认按钮可用。
+
+## 7. 后续待办
+
+- 维护历史按操作类型着色并补充复测前后详情。
+- 为 WT01-WT08 配置差异化 CARE 初始案例。
+- 回归继续监测、二次维护、连续失败和 API 模式。
+- 补齐窄屏方案卡、SVG 海浪和小船视觉。
+- 解决 Windows Vite `spawn EPERM) 并通过完整 `npm run build`。
+
+## 8. Git 接力
+
+```powershell
+git pull origin main
+git add frontend/src docs/HANDOFF.md
+git commit -m "feat: describe the change"
+git push origin main
+```
+
+不要提交 `node_modules`、`.pnpm-store`、`.env) 或构建产物。每次只做一个明确任务，并说明修改文件、验证方式和已知限制。
