@@ -348,42 +348,13 @@ export default function App() {
     }
     const target = document.querySelector(`[data-guide-target="${targetName}"]`) as HTMLElement | null
     if (!target) return
-    target.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    const timer = window.setTimeout(() => {
-      target.classList.add('guide-target-highlight')
-      const updateBubblePosition = () => {
-        const rect = target.getBoundingClientRect()
-        const bubbleWidth = Math.min(300, window.innerWidth - 32)
-        const bubbleHeight = 178
-        if (guide.step === 4) {
-          const panelTop = (document.querySelector('.decision-intro') as HTMLElement | null)?.getBoundingClientRect().top ?? rect.top
-          const planTop = rect.top
-          const panelWidth = (document.querySelector('.inspector') as HTMLElement | null)?.getBoundingClientRect().width ?? window.innerWidth
-          const planBubbleWidth = Math.min(window.innerWidth * .9, panelWidth * .9)
-          const preferredTop = panelTop - bubbleHeight - 20
-          const top = preferredTop >= 12 && preferredTop + bubbleHeight + 20 <= planTop ? preferredTop : 12
-          setGuideBubbleStyle({ left: '50%', top, width: planBubbleWidth, transform: 'translateX(-50%)' })
-          return
-        }
-        const left = Math.min(window.innerWidth - bubbleWidth - 16, Math.max(16, rect.left + (rect.width - bubbleWidth) / 2))
-        const above = rect.top - bubbleHeight - 12
-        const below = rect.bottom + 12
-        const top = above >= 16 ? above : Math.min(window.innerHeight - bubbleHeight - 16, below)
-        setGuideBubbleStyle({ left, top })
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      const timer = window.setTimeout(() => {
+        target.classList.add('guide-target-highlight')
+      }, 150)
+      return () => {
+        window.clearTimeout(timer)
       }
-      updateBubblePosition()
-      window.addEventListener('scroll', updateBubblePosition, true)
-      window.addEventListener('resize', updateBubblePosition)
-      ;(target as HTMLElement & { __guideCleanup?: () => void }).__guideCleanup = () => {
-        window.removeEventListener('scroll', updateBubblePosition, true)
-        window.removeEventListener('resize', updateBubblePosition)
-      }
-    }, 150)
-    return () => {
-      window.clearTimeout(timer)
-      ;(target as HTMLElement & { __guideCleanup?: () => void }).__guideCleanup?.()
-      delete (target as HTMLElement & { __guideCleanup?: () => void }).__guideCleanup
-    }
   }, [guide.active, guide.step])
 
   const loadApiPlan = async (restricted: boolean, replan: boolean) => {

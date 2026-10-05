@@ -413,7 +413,9 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
     camera.lookAt(initialPosition[0], 8.7, initialPosition[1])
     cameraRef.current = camera
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' })
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    // Cap the render resolution on high-DPI displays. The scene remains sharp
+    // while avoiding a disproportionate GPU cost on laptops and integrated GPUs.
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
     renderer.toneMapping = THREE.ACESFilmicToneMapping
     renderer.toneMappingExposure = .72
     renderer.outputColorSpace = THREE.SRGBColorSpace
@@ -464,7 +466,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
     const sun = new THREE.DirectionalLight(0xfff5dc, 2.4)
     sun.position.set(-16, 34, 20)
     sun.castShadow = true
-    sun.shadow.mapSize.set(2048, 2048)
+    sun.shadow.mapSize.set(1024, 1024)
     sun.shadow.camera.left = -35; sun.shadow.camera.right = 35
     sun.shadow.camera.top = 35; sun.shadow.camera.bottom = -35
     sun.shadow.bias = -.0003
@@ -890,7 +892,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       viewRef.current.target.set(selectedPosition[0], y + 8.7, selectedPosition[1])
     }
     flyToRef.current(viewRef.current.position, viewRef.current.target, engineeringView ? 1200 : 1750)
-  }, [selectedId, engineeringView, turbines])
+  }, [selectedId, engineeringView])
 
   useEffect(() => {
     objectsRef.current.forEach((object, id) => {
