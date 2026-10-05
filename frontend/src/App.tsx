@@ -155,6 +155,7 @@ export default function App() {
   const [guideInitialTurbine, setGuideInitialTurbine] = useState('')
   const [guideInitialParams, setGuideInitialParams] = useState<DiagnosticParams>(defaultDiagnosticParams)
   const [guideInitialDecision, setGuideInitialDecision] = useState('')
+  const [guidePlanClicked, setGuidePlanClicked] = useState(false)
   const [guideBubbleStyle, setGuideBubbleStyle] = useState<CSSProperties>({})
   const [guideMinimized, setGuideMinimized] = useState(false)
   const [engineeringView, setEngineeringView] = useState(false)
@@ -411,6 +412,7 @@ export default function App() {
     setView('maintenance')
     if (guide.active && guide.step === 3) {
       setGuideInitialDecision(decisionAction)
+      setGuidePlanClicked(false)
       setGuide(state => ({ ...state, step: 4 }))
     }
     logAction('进入维护决策工作台')
@@ -419,6 +421,7 @@ export default function App() {
 
   const chooseAction = (action: string) => {
     setDecisionAction(action)
+    if (guide.active && guide.step === 4) setGuidePlanClicked(true)
     setSelectedPlan(action === 'CONTINUE_MONITORING' ? 'monitor' : action === 'SCHEDULE_MAINTENANCE' ? 'service' : 'inspect')
     logAction(`选择策略：${action === 'CONTINUE_MONITORING' ? '继续监测' : action === 'SCHEDULE_MAINTENANCE' ? '预防性维护' : '现场检查'}`)
   }
@@ -530,17 +533,21 @@ export default function App() {
   const startGuide = () => {
     setGuideInitialTurbine(selectedId)
     setGuideInitialParams(diagnosticParams)
+    setGuidePlanClicked(false)
     setGuideMinimized(false)
     setGuide({ active: true, step: 1 })
   }
   const closeGuide = () => {
     document.querySelectorAll('.guide-target-highlight').forEach(element => element.classList.remove('guide-target-highlight'))
     setGuide({ active: false, step: 0 })
+    setGuidePlanClicked(false)
     setGuideMinimized(false)
     localStorage.setItem('guideCompleted', 'true')
   }
   const guideParamsChanged = (Object.keys(diagnosticParams) as Array<keyof DiagnosticParams>).some(key => diagnosticParams[key] !== guideInitialParams[key])
-  const guideDecisionChanged = guide.active && guide.step === 4 && decisionAction !== guideInitialDecision
+  // A card click is the meaningful user action. The selected plan may equal the
+  // initially recommended value, so comparing values alone can leave the button inert.
+  const guideDecisionChanged = guide.active && guide.step === 4 && guidePlanClicked && Boolean(decisionAction)
   const advanceGuide = () => {
     if (guide.active && guide.step === 2 && guideParamsChanged) setGuide(state => ({ ...state, step: 3 }))
   }
