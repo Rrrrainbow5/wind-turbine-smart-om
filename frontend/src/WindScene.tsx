@@ -887,11 +887,19 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
     if (selected && engineeringView) {
       const selectedObject = objectsRef.current.get(selectedId)
       const cadModel = selectedObject?.cadModel || null
+      const selectedPosition = ridgeLayout[selected.turbine_id] || selected.position
+      const baseY = terrainHeight(selectedPosition[0], selectedPosition[1])
+      // The imported CAD can contain STEP coordinates far from its scene
+      // origin. Use the known turbine placement as the camera anchor so the
+      // cutaway always opens on the nacelle instead of the sea/background.
+      const fixedFocus = new THREE.Vector3(selectedPosition[0], baseY + 8.9, selectedPosition[1])
+      viewRef.current.target.copy(fixedFocus)
+      viewRef.current.position.copy(fixedFocus).add(new THREE.Vector3(4.8, 2.1, 7.2))
       const focusBounds = getCutawayFocus(cadModel)
       // Imported CAD names vary between STEP exports. If no internal parts
       // were classified, still focus the complete CAD model instead of
       // leaving the camera at the farm overview distance.
-      if (!focusBounds.isEmpty()) {
+      if (!focusBounds.isEmpty() && !cadModel) {
         const focus = focusBounds.getCenter(new THREE.Vector3())
         const focusSize = focusBounds.getSize(new THREE.Vector3())
         const distance = Math.min(10, Math.max(2.4, focusSize.length() * .9))
