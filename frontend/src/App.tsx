@@ -211,7 +211,10 @@ export default function App() {
   const selectedFault = wt02FaultEvents.find(event => event.id === faultEventId) || wt02FaultEvents[0]
   const eventRisk: Record<string, [number, number, Turbine['warning_level']]> = { 'B-53': [.76, 63.2, 'HIGH'], 'A-51': [.82, 58.4, 'HIGH'], 'A-0': [.61, 69.8, 'MEDIUM'], 'C-67': [.48, 76.2, 'MEDIUM'], 'C-81': [.71, 66.5, 'HIGH'] }
   const [eventFailureRisk, eventHealth, eventWarning] = eventRisk[faultEventId] || eventRisk['B-53']
-  const selectedInitial = selectedBase?.turbine_id === 'WT02' ? { ...selectedBase, failure_risk: eventFailureRisk, health_index: eventHealth, warning_level: eventWarning, anomaly_score: eventFailureRisk, event_id: Number(selectedFault.id.split('-')[1]), event_name: selectedFault.name, event_description: selectedFault.description, component_label: selectedFault.component, fault_category: selectedFault.category } : selectedBase
+  // In demo mode the selected event is applied to whichever turbine is active,
+  // so the guide can be demonstrated on WT01-WT08 instead of silently keeping
+  // the WT02-only baseline.
+  const selectedInitial = selectedBase ? { ...selectedBase, failure_risk: eventFailureRisk, health_index: eventHealth, warning_level: eventWarning, anomaly_score: eventFailureRisk, event_id: Number(selectedFault.id.split('-')[1]), event_name: selectedFault.name, event_description: selectedFault.description, component_label: selectedFault.component, fault_category: selectedFault.category } : selectedBase
   const persistedSelected = selectedBase ? turbineStates[selectedBase.turbine_id] : undefined
   const selected = selectedInitial && persistedSelected?.status === 'maintained'
     ? { ...selectedInitial, failure_risk: 0, health_index: 92, warning_level: 'NORMAL' as Turbine['warning_level'], anomaly_score: 0 }
