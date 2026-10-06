@@ -77,10 +77,6 @@ function ConfidenceBars({ scores }: { scores: Record<string, number> }) {
   return <div className="confidence-bars">{Object.entries(scores).map(([label, value]) => <div key={label} className="confidence-row"><span>{label}</span><div><i style={{ width: `${Math.max(4, value * 100)}%` }} /></div><strong>{(value * 100).toFixed(0)}%</strong></div>)}</div>
 }
 
-function diagnosticCategory(location: string): Turbine['fault_category'] {
-  return location === '齿轮箱' ? 'GEARBOX' : location === '发电机' ? 'GENERATOR' : location === '主轴/轴承' ? 'BEARING' : 'DRIVETRAIN'
-}
-
 function faultLocation(category: Turbine['fault_category']) {
   return category === 'GEARBOX' || category === 'GEARBOX_BEARING' ? '齿轮箱' : category === 'GENERATOR' ? '发电机' : category === 'BEARING' ? '主轴/轴承' : '主轴/联轴器'
 }
