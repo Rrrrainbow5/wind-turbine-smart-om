@@ -95,3 +95,6 @@ body{background:#07141d}
 .guide-drag-handle{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:-2px 18px 8px 0;cursor:grab;touch-action:none}.guide-drag-handle:active{cursor:grabbing}.guide-drag-handle span{font-size:9px;color:#83b8b3;white-space:nowrap}.guide-coach-v2{user-select:none}
 
 
+
+.locate-fault{display:inline-flex;align-items:center;gap:4px;border:1px solid #2a8994;background:#103c46;color:#9be6e8;border-radius:3px;padding:5px 7px;font-size:10px;cursor:pointer}.locate-fault:hover{background:#17606a}
+
