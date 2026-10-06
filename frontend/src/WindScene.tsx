@@ -357,6 +357,9 @@ function setFaultPartState(model: THREE.Object3D | null, category: Turbine['faul
     model.updateWorldMatrix(true, true)
     model.traverse(object => {
       if (!(object instanceof THREE.Mesh)) return
+      const source = String(object.userData.sourceCadName || object.name || '').toLowerCase()
+      const inherited = effectiveCadCategory(object, model)
+      if (inherited === 'ROTOR' || inherited === 'TOWER' || inherited === 'NACELLE' || /blade|lopat|rotor|stub|tower|poklopac|haub/.test(source)) return
       const bounds = new THREE.Box3().setFromObject(object)
       const center = bounds.getCenter(new THREE.Vector3())
       const size = bounds.getSize(new THREE.Vector3())
