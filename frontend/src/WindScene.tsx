@@ -199,7 +199,7 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
         material.depthWrite = true
         if (standard.color) standard.color.setHex(engineeringColors[category] || 0xc8d7da)
         if (standard.emissive) standard.emissive.setHex(category === 'GEARBOX_BEARING' ? 0x66120d : 0x071a20)
-      } else if (exterior || isMainNacelleShell || (active && category !== 'TOWER' && category !== 'ROTOR')) {
+      } else if (exterior || isMainNacelleShell) {
         material.opacity = category === 'TOWER' ? .08 : .045
         material.transparent = true
         material.depthWrite = false
