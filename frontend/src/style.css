@@ -5,6 +5,10 @@
 @media(max-width:700px){.app-shell{height:auto;min-height:100vh;overflow:visible}.topbar{height:60px;gap:9px;padding:0 13px}.brand{min-width:0;flex:1}.brand-mark{width:32px;height:32px}.brand strong{font-size:15px}.brand small{font-size:9px}.top-nav{position:absolute;top:60px;left:0;right:0;height:42px;padding:0 16px;background:#fff;border-bottom:1px solid #e2eae3;gap:24px}.top-actions{margin-left:0;gap:4px}.mode-switch button{min-width:40px}.workspace{display:block;padding-top:42px}.scene-panel{height:440px}.scene-heading{padding:18px}.scene-heading h1{font-size:20px;margin-top:8px}.scene-heading p{font-size:11px}.scene-bottom{left:13px;right:13px;bottom:14px}.scene-hint{display:none}.inspector{border-left:0;padding:0 18px 22px;overflow:visible}.fleet-summary{height:70px}.reading-primary{padding-top:16px}.metric-grid>div{min-height:76px}.data-footnote{padding-bottom:20px}}
 @media(max-width:390px){.brand small{display:none}.brand{gap:7px}.top-actions .icon-button{width:28px}.scene-legend{gap:9px;font-size:10px}.selector-row h2{font-size:18px}.turbine-tabs button{min-width:64px}}
 
+/* Trend severity follows the selected turbine warning level. */
+.watch-line{stroke:#e0a12f}
+.watch-dot{fill:#d29322}
+
 .icon-button.active-icon{color:#1c7665;background:#e4f1e9;box-shadow:inset 0 0 0 1px #a8d5c0}
 .status-neutral{color:#667a74;background:#f0f3f1;border-color:#d7dfda}
 .engineering-caption{position:absolute;left:38px;top:151px;z-index:1;display:flex;align-items:center;gap:7px;padding:8px 10px;background:#183b35e8;border:1px solid #91cbb7;color:#d8eee3;border-radius:4px;font-size:11px;box-shadow:0 4px 14px #23453b1f}.engineering-caption strong{color:#ffad9d;font-weight:700}.engineering-caption small{color:#a9c9ba;font-size:10px;margin-left:3px}.engineering-caption-dot{width:7px;height:7px;border-radius:50%;background:#e26355;box-shadow:0 0 0 3px #e2635530}
