@@ -339,6 +339,16 @@ function setFaultPartState(model: THREE.Object3D | null, category: Turbine['faul
   model.traverse(object => {
     if (!(object instanceof THREE.Mesh)) return
     const actualCategory = effectiveCadCategory(object, model)
+    // Clear any previous event styling before applying the new event. This
+    // prevents pink/red remnants when switching between cases.
+    const baseColor = engineeringColors[actualCategory]
+    const allMaterials = Array.isArray(object.material) ? object.material : [object.material]
+    allMaterials.forEach(material => {
+      const standard = material as THREE.MeshStandardMaterial
+      if (baseColor !== undefined && standard.color) standard.color.setHex(baseColor)
+      if (standard.emissive) standard.emissive.setHex(0x071a20)
+      standard.emissiveIntensity = .08
+    })
     // CARE's rotor-bearing event has no formal CAD mapping yet; use the
     // verified gearbox-bearing geometry as the visible engineering proxy.
     const categoryMatches = actualCategory === category || (category === 'BEARING' && (actualCategory === 'GEARBOX_BEARING' || actualCategory === 'ROTOR_BEARING'))
@@ -356,7 +366,7 @@ function setFaultPartState(model: THREE.Object3D | null, category: Turbine['faul
       material.depthWrite = true
     })
   })
-  if (!matched) {
+  if (!matched && false) {
     // STEP/glTF exports may omit the original component names. Keep the
     // visual diagnosis useful by selecting compact meshes in the nacelle
     // band as a positional fallback rather than leaving the 3D unchanged.
