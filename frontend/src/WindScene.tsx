@@ -187,7 +187,9 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
     const directPart = identifyCadPart(source, String(object.userData.turbineId || ''))
     const directInternal = directPart && ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN'].includes(directPart.category)
     const explicitShell = isExplicitNacelleShell(source) || hasExplicitNacelleShellAncestor(object, model)
-    const exterior = (explicitShell || isCadExterior(object, category)) && !directInternal
+    // NACELLE is assigned by the CAD parent to its render meshes; treat that
+    // explicit category as shell even when the child mesh has a generic name.
+    const exterior = (explicitShell || category === 'NACELLE' || isCadExterior(object, category)) && !directInternal
     if (object.userData.engineeringOriginalVisible === undefined) object.userData.engineeringOriginalVisible = object.visible
     object.visible = Boolean(object.userData.engineeringOriginalVisible)
     const materials = Array.isArray(object.material) ? object.material : [object.material]
