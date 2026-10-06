@@ -159,6 +159,9 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
     const category = effectiveCadCategory(object, model)
     const highlightedInternal = ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN'].includes(category)
     const source = String(object.userData.sourceCadName || '').toLowerCase()
+    const directPart = identifyCadPart(source, String(object.userData.turbineId || ''))
+    const mechanicalName = /(generator|generatora|motor|gear|zupcan|planetar|lezaj|le_aj|bearing|vratilo|osovina|spojnica|shaft|stator|ventilator)/i.test(source)
+    const internalByName = mechanicalName || Boolean(directPart && ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN'].includes(directPart.category))
     const exterior = isCadExterior(object, category)
     object.geometry.computeBoundingBox()
     const localSize = object.geometry.boundingBox?.getSize(new THREE.Vector3()) || new THREE.Vector3()
@@ -186,13 +189,13 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
         if (original.emissive !== undefined && standard.emissive) standard.emissive.setHex(original.emissive)
         return
       }
-      if (highlightedInternal) {
+        if (highlightedInternal || internalByName) {
         material.opacity = 1
         material.transparent = false
         material.depthWrite = true
         if (standard.color) standard.color.setHex(engineeringColors[category] || 0xc8d7da)
         if (standard.emissive) standard.emissive.setHex(category === 'GEARBOX_BEARING' ? 0x66120d : 0x071a20)
-      } else if (exterior) {
+      } else if (exterior && !internalByName) {
         material.opacity = category === 'TOWER' ? .08 : .045
         material.transparent = true
         material.depthWrite = false
