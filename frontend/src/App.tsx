@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { Activity, AlertTriangle, Anchor, ArrowRight, Check, ChevronDown, ClipboardList, Clock3, CloudSun, Database, Gauge, History, Layers3, MapPin, PackageCheck, Radio, RotateCcw, Search, Server, Settings2, ShieldCheck, UserRound, Wrench, X } from 'lucide-react'
 import WindScene from './WindScene'
 import { executeMaintenance, fetchRetests, fetchTurbines, optimizeMaintenance, replanMaintenance, type ApiMaintenancePlan, type ApiRetest } from './api'
@@ -157,6 +157,7 @@ export default function App() {
   const [guidePlanClicked, setGuidePlanClicked] = useState(false)
   const [guideBubbleStyle, setGuideBubbleStyle] = useState<CSSProperties>({})
   const [guideMinimized, setGuideMinimized] = useState(false)
+  const guideDragRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null)
   const [engineeringView, setEngineeringView] = useState(false)
   const [apiPlan, setApiPlan] = useState<ApiMaintenancePlan | null>(null)
   const [maintenanceRecordId, setMaintenanceRecordId] = useState('')
@@ -523,6 +524,22 @@ export default function App() {
   const confirmGuidePlan = () => {
     if (guide.active && guide.step === 4 && guideDecisionChanged) setGuide(state => ({ ...state, step: 5 }))
   }
+  const startGuideDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if ((event.target as HTMLElement).closest('button')) return
+    const rect = event.currentTarget.parentElement?.getBoundingClientRect()
+    if (!rect) return
+    guideDragRef.current = { x: event.clientX, y: event.clientY, left: rect.left, top: rect.top }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+  const moveGuideDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = guideDragRef.current
+    if (!drag) return
+    const width = event.currentTarget.parentElement?.getBoundingClientRect().width || 300
+    const left = Math.max(8, Math.min(window.innerWidth - width - 8, drag.left + event.clientX - drag.x))
+    const top = Math.max(8, Math.min(window.innerHeight - 80, drag.top + event.clientY - drag.y))
+    setGuideBubbleStyle({ left, top, right: 'auto', transform: 'none' })
+  }
+  const stopGuideDrag = () => { guideDragRef.current = null }
 
   return <div className="app-shell">
     <header className="topbar">
@@ -534,7 +551,7 @@ export default function App() {
     <main className="workspace">
       <button className="guide-launcher" onClick={startGuide}><Activity size={15} />重新查看引导</button>
       {guide.active && <div className="guide-overlay" aria-hidden="true" />}
-      {guide.active && !guideMinimized && <div className={`guide-coach guide-coach-v2 ${guide.step === 4 ? 'guide-plan-step' : ''}`} style={guideBubbleStyle} role="dialog" aria-live="polite"><button className="guide-minimize" aria-label="最小化引导" title="最小化" onClick={() => setGuideMinimized(true)}>—</button><strong>{guideCopy[guide.step - 1][0]}</strong>{guide.step === 4 ? <div className="guide-plan-copy"><p>对比三个方案的停机时长、成本和风险，选择一个维护方案。</p><small>💡建议选择“现场检查”或“预防性维护”以体验完整修复流程；选择“继续监测”可体验故障未处理时的复测结果。</small><small>💡你也可以先调整上方的工程约束条件（人员、备件、天气等），观察哪些方案会被锁定、推荐如何变化，然后再选方案。</small></div> : <p>{guideCopy[guide.step - 1][1]}</p>}<div className="guide-actions">{guide.step === 2 && <button className="guide-next" disabled={!guideParamsChanged} onClick={advanceGuide}>设置完成，下一步</button>}<button onClick={closeGuide}>跳过引导</button><button onClick={closeGuide}>关闭</button></div></div>}
+      {guide.active && !guideMinimized && <div className={`guide-coach guide-coach-v2 ${guide.step === 4 ? 'guide-plan-step' : ''}`} style={guideBubbleStyle} role="dialog" aria-live="polite"><div className="guide-drag-handle" onPointerDown={startGuideDrag} onPointerMove={moveGuideDrag} onPointerUp={stopGuideDrag} onPointerCancel={stopGuideDrag}><strong>{guideCopy[guide.step - 1][0]}</strong><span>拖动此处移动</span></div><button className="guide-minimize" aria-label="最小化引导" title="最小化" onClick={() => setGuideMinimized(true)}>—</button>{guide.step === 4 ? <div className="guide-plan-copy"><p>对比三个方案的停机时长、成本和风险，选择一个维护方案。</p><small>💡建议选择“现场检查”或“预防性维护”以体验完整修复流程；选择“继续监测”可体验故障未处理时的复测结果。</small><small>💡你也可以先调整上方的工程约束条件（人员、备件、天气等），观察哪些方案会被锁定、推荐如何变化，然后再选方案。</small></div> : <p>{guideCopy[guide.step - 1][1]}</p>}<div className="guide-actions">{guide.step === 2 && <button className="guide-next" disabled={!guideParamsChanged} onClick={advanceGuide}>设置完成，下一步</button>}<button onClick={closeGuide}>跳过引导</button><button onClick={closeGuide}>关闭</button></div></div>}
       {guide.active && guideMinimized && <button className="guide-pill" onClick={() => setGuideMinimized(false)}>💡 引导进行中</button>}
       <section className="scene-panel" aria-label="风电场三维场景">
         <div className="scene-heading"><div><div className="eyebrow"><MapPin size={13} /> 风电场数字场景 <span className="source-tag">{mode === 'demo' ? '演示数据' : '接口数据'}</span></div><h1>风场运行总览</h1><p>选择风机，查看状态与维护决策</p></div><div className="scene-weather"><CloudSun size={19} /><span>实时天气 <small>{weatherStatus}</small></span><b>{weather.wind.toFixed(1)} m/s · 浪 {weather.wave.toFixed(1)} m · 能见度 {weather.visibility.toFixed(1)} km</b></div></div>

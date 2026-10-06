@@ -91,3 +91,6 @@ body{background:#07141d}
 .log-panel .workbench-title h3{font-size:0}.log-panel .workbench-title h3:after{content:'维护历史';font-size:12px}.log-panel>div:not(.workbench-title){max-height:200px;overflow:auto}
 .diagnostic-diagram .diagram-blade{transform-box:fill-box;transform-origin:155px 82px;animation:diagnostic-blade-spin 5s linear infinite}@keyframes diagnostic-blade-spin{to{transform:rotate(360deg)}}
 
+
+.guide-drag-handle{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:-2px 18px 8px 0;cursor:grab;touch-action:none}.guide-drag-handle:active{cursor:grabbing}.guide-drag-handle span{font-size:9px;color:#83b8b3;white-space:nowrap}.guide-coach-v2{user-select:none}
+
