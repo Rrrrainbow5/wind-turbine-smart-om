@@ -944,7 +944,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
     })
   }, [selectedId, serviced, turbines, engineeringView, diagnosticFaultCategory])
 
-  return <div className="scene-canvas" ref={containerRef} aria-label="可点击的三维风电场">
+  return <div className={`scene-canvas ${engineeringView ? 'engineering-active' : ''}`} ref={containerRef} aria-label="可点击的三维风电场">
     <div className="drone-hud" aria-hidden="true">
       <span className="drone-corner drone-corner-tl" /><span className="drone-corner drone-corner-tr" />
       <span className="drone-corner drone-corner-bl" /><span className="drone-corner drone-corner-br" />
