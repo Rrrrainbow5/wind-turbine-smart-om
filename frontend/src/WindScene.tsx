@@ -161,13 +161,15 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
     const source = String(object.userData.sourceCadName || '').toLowerCase()
     const directPart = identifyCadPart(source, String(object.userData.turbineId || ''))
     const directInternal = directPart && ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN'].includes(directPart.category)
-    const exterior = isCadExterior(object, category) && !directInternal
     object.geometry.computeBoundingBox()
     const localSize = object.geometry.boundingBox?.getSize(new THREE.Vector3()) || new THREE.Vector3()
+    const maxDimension = Math.max(localSize.x, localSize.y, localSize.z)
+    const geometryShell = !directInternal && maxDimension > 2
+    const exterior = (isCadExterior(object, category) || geometryShell) && !directInternal
     // The upper nacelle cover is removed for the engineering cutaway; side/lower
     // housings remain as a translucent reference so the real drivetrain stays readable.
     const isUpperNacelleCover = (source.includes('gornje') && source.includes('kuci')) || source.includes('upper nacelle') || source.includes('top nacelle')
-    const isMainNacelleShell = isUpperNacelleCover || (source.startsWith('kuci') && Math.max(localSize.x, localSize.y, localSize.z) > 2.2)
+    const isMainNacelleShell = isUpperNacelleCover || geometryShell || (source.startsWith('kuci') && maxDimension > 2.2)
     if (object.userData.engineeringOriginalVisible === undefined) object.userData.engineeringOriginalVisible = object.visible
     // Keep the large white top cover out of the normal and cutaway views.
     object.visible = isUpperNacelleCover ? false : (active && isMainNacelleShell ? false : Boolean(object.userData.engineeringOriginalVisible))
