@@ -161,7 +161,10 @@ function isExplicitNacelleShell(source: string) {
     name.includes('za_tita za haubu prednja') ||
     name.includes('za_tita za haubu zadnja') ||
     name.includes('prednji deo haube koji ide na za_titu') ||
-    name.includes('zadnji deo haube koji ide na za_titu')
+    name.includes('zadnji deo haube koji ide na za_titu') ||
+    /^kuci_te [12](?:\.step|\.step\d+)?$/.test(name) ||
+    name === 'kuci_te gornje.step' ||
+    name === 'donji deo kuci_ta.step'
 }
 
 function hasExplicitNacelleShellAncestor(object: THREE.Object3D, root: THREE.Object3D) {
