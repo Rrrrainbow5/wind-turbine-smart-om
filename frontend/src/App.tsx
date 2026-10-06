@@ -505,7 +505,9 @@ export default function App() {
     setGuideInitialParams(diagnosticParams)
     setGuidePlanClicked(false)
     setGuideMinimized(false)
-    setGuideBubbleStyle({ left: 24, top: 118, right: 'auto', transform: 'none' })
+    // Default placement follows the requested scene-center position: just
+    // left of the inspector, clear of the scene title and right panel.
+    setGuideBubbleStyle({ left: 'calc(50% - 280px)', top: 320, right: 'auto', transform: 'none' })
     setGuide({ active: true, step: 1 })
   }
   const closeGuide = () => {
