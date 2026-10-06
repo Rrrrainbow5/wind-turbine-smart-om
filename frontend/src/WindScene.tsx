@@ -892,9 +892,11 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       // The imported CAD can contain STEP coordinates far from its scene
       // origin. Use the known turbine placement as the camera anchor so the
       // cutaway always opens on the nacelle instead of the sea/background.
-      const fixedFocus = new THREE.Vector3(selectedPosition[0], baseY + 8.9, selectedPosition[1])
+      const fixedFocus = new THREE.Vector3(selectedPosition[0], baseY + 8.65, selectedPosition[1])
       viewRef.current.target.copy(fixedFocus)
-      viewRef.current.position.copy(fixedFocus).add(new THREE.Vector3(4.8, 2.1, 7.2))
+      // Side/front inspection angle: the nacelle fills the viewport and its
+      // drivetrain reads like the reference engineering cutaway.
+      viewRef.current.position.copy(fixedFocus).add(new THREE.Vector3(1.2, 1.45, 10.8))
       const focusBounds = getCutawayFocus(cadModel)
       // Imported CAD names vary between STEP exports. If no internal parts
       // were classified, still focus the complete CAD model instead of
