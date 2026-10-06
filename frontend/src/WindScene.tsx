@@ -189,7 +189,8 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
     const explicitShell = isExplicitNacelleShell(source) || hasExplicitNacelleShellAncestor(object, model)
     // NACELLE is assigned by the CAD parent to its render meshes; treat that
     // explicit category as shell even when the child mesh has a generic name.
-    const exterior = (explicitShell || category === 'NACELLE' || isCadExterior(object, category)) && !directInternal
+    const forceCutawayShell = active && !directInternal && category === ''
+    const exterior = (explicitShell || category === 'NACELLE' || isCadExterior(object, category) || forceCutawayShell) && !directInternal
     if (object.userData.engineeringOriginalVisible === undefined) object.userData.engineeringOriginalVisible = object.visible
     object.visible = Boolean(object.userData.engineeringOriginalVisible)
     const materials = Array.isArray(object.material) ? object.material : [object.material]
