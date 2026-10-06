@@ -32,7 +32,8 @@ type TurbineSceneObject = {
   cadRotor: THREE.Group | null
 }
 
-const engineeringModelUrl = '/assets/wind-turbine-engineering.glb'
+const assetUrl = (path: string) => `${import.meta.env.BASE_URL}assets/${path}`
+const engineeringModelUrl = assetUrl('wind-turbine-engineering.glb')
 // Turbines follow two connected ridgelines, similar to an aerial mountain
 // wind-farm layout. They deliberately avoid a regular grid.
 const ridgeLayout: Record<string, [number, number]> = {
@@ -508,7 +509,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
     sun.shadow.bias = -.0003
     scene.add(sun)
 
-    new EXRLoader().load('/assets/environment/DaySkyHDRI070B_2K_HDR.exr', texture => {
+    new EXRLoader().load(assetUrl('environment/DaySkyHDRI070B_2K_HDR.exr'), texture => {
       if (disposed) { texture.dispose(); return }
       texture.mapping = THREE.EquirectangularReflectionMapping
       scene.background = texture
