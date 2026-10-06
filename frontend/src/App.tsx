@@ -78,7 +78,7 @@ function ConfidenceBars({ scores }: { scores: Record<string, number> }) {
 }
 
 function faultLocation(category: Turbine['fault_category']) {
-  return category === 'GEARBOX' || category === 'GEARBOX_BEARING' ? '齿轮箱' : category === 'GENERATOR' ? '发电机' : category === 'BEARING' ? '主轴/轴承' : '主轴/联轴器'
+  return category === 'GEARBOX' || category === 'GEARBOX_BEARING' ? '齿轮箱' : category === 'GENERATOR' ? '发电机' : category === 'ROTOR_BEARING' || category === 'BEARING' ? '主轴/轴承' : '主轴/联轴器'
 }
 
 function sliderTint(field: typeof diagnosticFields[number], value: number) {

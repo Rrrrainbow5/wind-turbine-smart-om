@@ -52,6 +52,7 @@ function identifyCadPart(sourceName: string, turbineId: string): CadPart | null 
   if (/^wt02_blade_\d+/.test(name)) return { id: `${turbineId}_ROTOR_BLADE`, label: '风轮叶片', category: 'ROTOR' }
   // This CAD uses Serbian/Croatian transliterations such as le_aj (lezaj)
   // for bearings and kuci_te za le_aj for their housings.
+  if (name.includes('glavni roller') || name.includes('glavno vratilo') && name.includes('le_aj')) return { id: `${turbineId}_ROTOR_BEARING`, label: '主轴转子轴承', category: 'ROTOR_BEARING' }
   if (name.includes('roller bearing') || name.includes('roller le_aj') || name.includes('le_aj za ') || name.includes('lezaj')) return { id: `${turbineId}_BEARING`, label: '滚动轴承', category: 'BEARING' }
   if ((name.includes('kuci') && (name.includes('le_aj') || name.includes('lezaj'))) || name.includes('bearing housing')) return { id: `${turbineId}_GEARBOX_BEARING`, label: '传动链轴承座', category: 'GEARBOX_BEARING' }
   if (name === 'generator-1' || name.includes('generator') || name.includes('generatora') || name.includes('rotor generatora') || name.includes('stator')) return { id: `${turbineId}_GENERATOR`, label: '发电机总成', category: 'GENERATOR' }
@@ -117,6 +118,7 @@ const engineeringColors: Record<string, number> = {
   GENERATOR: 0x9aaeb5,
   GEARBOX: 0xaab9bd,
   GEARBOX_BEARING: 0x9eafb4,
+  ROTOR_BEARING: 0x9eafb4,
   BEARING: 0x9eafb4,
   DRIVETRAIN: 0xb7c5c8,
   ROTOR: 0x80939a,
@@ -150,7 +152,7 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
   model.traverse(object => {
     if (!(object instanceof THREE.Mesh)) return
     const category = effectiveCadCategory(object, model)
-    const highlightedInternal = ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'BEARING', 'DRIVETRAIN'].includes(category)
+    const highlightedInternal = ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN'].includes(category)
     const exterior = isCadExterior(object, category)
     const source = String(object.userData.sourceCadName || '').toLowerCase()
     object.geometry.computeBoundingBox()
@@ -241,7 +243,7 @@ function getEngineeringBounds(model: THREE.Object3D | null) {
   model.traverse(object => {
     if (!(object instanceof THREE.Mesh)) return
     const category = effectiveCadCategory(object, model)
-    if (!['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'BEARING', 'DRIVETRAIN'].includes(category)) return
+    if (!['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN'].includes(category)) return
     bounds.expandByObject(object)
   })
   return bounds
@@ -336,7 +338,7 @@ function setFaultPartState(model: THREE.Object3D | null, category: Turbine['faul
     const actualCategory = effectiveCadCategory(object, model)
     // CARE's rotor-bearing event has no formal CAD mapping yet; use the
     // verified gearbox-bearing geometry as the visible engineering proxy.
-    const categoryMatches = actualCategory === category || (category === 'BEARING' && actualCategory === 'GEARBOX_BEARING')
+    const categoryMatches = actualCategory === category || (category === 'BEARING' && (actualCategory === 'GEARBOX_BEARING' || actualCategory === 'ROTOR_BEARING'))
     if (!categoryMatches) return
     matched += 1
     targets.push(object)
