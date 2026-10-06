@@ -217,10 +217,11 @@ export default function App() {
   const linkedWarning: Turbine['warning_level'] = linkedRisk >= .72 ? 'HIGH' : linkedRisk >= .42 ? 'MEDIUM' : linkedRisk >= .2 ? 'LOW' : 'NORMAL'
   const linkedHealth = caseAppliesToSelected ? Math.min(eventHealth, Math.max(0, 100 - linkedRisk * 42)) : Math.max(selectedBase?.health_index ?? 92, 100 - linkedRisk * 42)
   const healthCeiling = caseAppliesToSelected ? eventHealth : (selectedBase?.health_index ?? 92)
+  const faultForSelected = selectedBase?.turbine_id === 'WT02' ? selectedFault : null
   // In demo mode the selected event is applied to whichever turbine is active,
   // so the guide can be demonstrated on WT01-WT08 instead of silently keeping
   // the WT02-only baseline.
-  const selectedInitial = selectedBase ? { ...selectedBase, failure_risk: linkedRisk, health_index: linkedHealth, warning_level: linkedWarning || eventWarning, anomaly_score: linkedRisk, event_id: Number(selectedFault.id.split('-')[1]), event_name: selectedFault.name, event_description: selectedFault.description, component_label: selectedFault.component, fault_category: selectedFault.category } : selectedBase
+  const selectedInitial = selectedBase ? { ...selectedBase, failure_risk: linkedRisk, health_index: linkedHealth, warning_level: caseAppliesToSelected ? linkedWarning : selectedBase.warning_level, anomaly_score: linkedRisk, ...(faultForSelected ? { event_id: Number(faultForSelected.id.split('-')[1]), event_name: faultForSelected.name, event_description: faultForSelected.description, component_label: faultForSelected.component, fault_category: faultForSelected.category } : {}) } : selectedBase
   const persistedSelected = selectedBase ? turbineStates[selectedBase.turbine_id] : undefined
   const selected = selectedInitial && persistedSelected?.status === 'maintained'
     ? { ...selectedInitial, failure_risk: 0, health_index: 92, warning_level: 'NORMAL' as Turbine['warning_level'], anomaly_score: 0 }
