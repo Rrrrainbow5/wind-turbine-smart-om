@@ -177,6 +177,10 @@ function hasExplicitNacelleShellAncestor(object: THREE.Object3D, root: THREE.Obj
   return false
 }
 
+function looksLikeMechanicalInternal(source: string) {
+  return /(generator|generatora|motor|gear|zupcan|planetar|lezaj|le_aj|bearing|vratilo|osovina|spojnica|shaft|rotor|stator|ventilator)/i.test(source)
+}
+
 function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
   if (!model) return
   model.traverse(object => {
@@ -185,7 +189,7 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
     const highlightedInternal = ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN'].includes(category)
     const source = String(object.userData.sourceCadName || '').toLowerCase()
     const directPart = identifyCadPart(source, String(object.userData.turbineId || ''))
-    const directInternal = directPart && ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN'].includes(directPart.category)
+    const directInternal = (directPart && ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN'].includes(directPart.category)) || looksLikeMechanicalInternal(source)
     const explicitShell = isExplicitNacelleShell(source) || hasExplicitNacelleShellAncestor(object, model)
     // NACELLE is assigned by the CAD parent to its render meshes; treat that
     // explicit category as shell even when the child mesh has a generic name.
