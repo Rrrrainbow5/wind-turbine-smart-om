@@ -55,7 +55,7 @@ function identifyCadPart(sourceName: string, turbineId: string): CadPart | null 
   // The assembly contains two main-shaft roller bearings. The `- 1` node is
   // the second rotor bearing used by CARE Event B-53; keep the first bearing
   // unclassified so the event highlights one physical target only.
-  if (name.includes('glavni roller') && /- 1(?:\.step)?$/.test(name)) return { id: `${turbineId}_ROTOR_BEARING_2`, label: '转子轴承 2', category: 'ROTOR_BEARING' }
+  if (name.includes('glavni roller') && /- 1(?:\.|$)/.test(name)) return { id: `${turbineId}_ROTOR_BEARING_2`, label: '转子轴承 2', category: 'ROTOR_BEARING' }
   if (name.includes('roller bearing') || name.includes('roller le_aj') || name.includes('le_aj za ') || name.includes('lezaj')) return { id: `${turbineId}_BEARING`, label: '滚动轴承', category: 'BEARING' }
   if ((name.includes('kuci') && (name.includes('le_aj') || name.includes('lezaj'))) || name.includes('bearing housing')) return { id: `${turbineId}_GEARBOX_BEARING`, label: '传动链轴承座', category: 'GEARBOX_BEARING' }
   if (name === 'generator-1' || name.includes('generator') || name.includes('generatora') || name.includes('rotor generatora') || name.includes('stator')) return { id: `${turbineId}_GENERATOR`, label: '发电机总成', category: 'GENERATOR' }
