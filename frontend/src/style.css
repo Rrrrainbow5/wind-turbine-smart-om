@@ -21,8 +21,8 @@
 .diagnostic-diagram .diagram-tooltip{display:none}
 .diagnostic-diagram .diagram-blade{animation:none!important}
 .diagnostic-diagram svg{height:112px}
-.diagnostic-diagram .diagram-labels{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;margin-top:2px}
-.diagnostic-diagram .diagram-labels span{font-size:8px;gap:2px;overflow:hidden;text-overflow:ellipsis}
+.diagnostic-diagram .diagram-labels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px 10px;margin-top:4px;padding:0 4px}
+.diagnostic-diagram .diagram-labels span{justify-content:flex-start;font-size:9px;gap:4px;overflow:visible;white-space:nowrap}
 .diagnostic-summary{margin:6px 0 8px;align-items:center}
 .diagnostic-summary strong{max-width:105px;line-height:1.15}
 .diagnostic-summary span{max-width:110px;line-height:1.35}
