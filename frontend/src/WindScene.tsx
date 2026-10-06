@@ -158,8 +158,10 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
     if (!(object instanceof THREE.Mesh)) return
     const category = effectiveCadCategory(object, model)
     const highlightedInternal = ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN'].includes(category)
-    const exterior = isCadExterior(object, category)
     const source = String(object.userData.sourceCadName || '').toLowerCase()
+    const directPart = identifyCadPart(source, String(object.userData.turbineId || ''))
+    const directInternal = directPart && ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN'].includes(directPart.category)
+    const exterior = isCadExterior(object, category) && !directInternal
     object.geometry.computeBoundingBox()
     const localSize = object.geometry.boundingBox?.getSize(new THREE.Vector3()) || new THREE.Vector3()
     // The upper nacelle cover is removed for the engineering cutaway; side/lower
