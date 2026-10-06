@@ -98,4 +98,5 @@ body{background:#07141d}
 
 .locate-fault{display:inline-flex;align-items:center;gap:4px;border:1px solid #2a8994;background:#103c46;color:#9be6e8;border-radius:3px;padding:5px 7px;font-size:10px;cursor:pointer}.locate-fault:hover{background:#17606a}
 .engineering-active .drone-status{display:none}
+.meter span.meter-normal{background:#25cba6}.meter span.meter-warning{background:#e8aa3c}.meter span.meter-risk{background:#ff7669}
 
