@@ -164,6 +164,16 @@ function isExplicitNacelleShell(source: string) {
     name.includes('zadnji deo haube koji ide na za_titu')
 }
 
+function hasExplicitNacelleShellAncestor(object: THREE.Object3D, root: THREE.Object3D) {
+  let current: THREE.Object3D | null = object
+  while (current && current !== root) {
+    const source = String(current.userData.sourceCadName || current.name).toLowerCase()
+    if (isExplicitNacelleShell(source)) return true
+    current = current.parent
+  }
+  return false
+}
+
 function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
   if (!model) return
   model.traverse(object => {
@@ -173,7 +183,7 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
     const source = String(object.userData.sourceCadName || '').toLowerCase()
     const directPart = identifyCadPart(source, String(object.userData.turbineId || ''))
     const directInternal = directPart && ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN'].includes(directPart.category)
-    const explicitShell = isExplicitNacelleShell(source)
+    const explicitShell = isExplicitNacelleShell(source) || hasExplicitNacelleShellAncestor(object, model)
     const exterior = (explicitShell || isCadExterior(object, category)) && !directInternal
     if (object.userData.engineeringOriginalVisible === undefined) object.userData.engineeringOriginalVisible = object.visible
     object.visible = Boolean(object.userData.engineeringOriginalVisible)
