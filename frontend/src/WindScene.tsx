@@ -245,6 +245,23 @@ function getEngineeringBounds(model: THREE.Object3D | null) {
   return bounds
 }
 
+function getCutawayFocus(model: THREE.Object3D | null) {
+  const bounds = getEngineeringBounds(model)
+  if (!bounds.isEmpty()) return bounds
+  if (!model) return bounds
+  model.updateWorldMatrix(true, true)
+  // Some CAD exports do not preserve component metadata. Fall back to the
+  // model's upper nacelle region so cutaway mode never lands on the farm sea.
+  const full = new THREE.Box3().setFromObject(model)
+  if (full.isEmpty()) return full
+  const size = full.getSize(new THREE.Vector3())
+  const upper = new THREE.Box3(
+    new THREE.Vector3(full.min.x, full.min.y + size.y * .62, full.min.z),
+    full.max.clone(),
+  )
+  return upper.isEmpty() ? full : upper
+}
+
 function makeBearing(componentId: string, metal: THREE.Material, ring: THREE.Material) {
   const bearing = new THREE.Group()
   bearing.name = componentId
@@ -727,7 +744,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
         setBearingState(realBearings, engineeringActive && id === 'WT02' && turbine?.fault_category === 'BEARING')
         if (engineeringActive) {
           object.root.updateWorldMatrix(true, true)
-          const focusBounds = getEngineeringBounds(imported)
+          const focusBounds = getCutawayFocus(imported)
           if (!focusBounds.isEmpty()) {
             const focus = focusBounds.getCenter(new THREE.Vector3())
             const focusSize = focusBounds.getSize(new THREE.Vector3())
@@ -870,18 +887,14 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
     if (selected && engineeringView) {
       const selectedObject = objectsRef.current.get(selectedId)
       const cadModel = selectedObject?.cadModel || null
-      const focusBounds = getEngineeringBounds(cadModel)
+      const focusBounds = getCutawayFocus(cadModel)
       // Imported CAD names vary between STEP exports. If no internal parts
       // were classified, still focus the complete CAD model instead of
       // leaving the camera at the farm overview distance.
-      if (focusBounds.isEmpty() && cadModel) {
-        cadModel.updateWorldMatrix(true, true)
-        focusBounds.setFromObject(cadModel)
-      }
       if (!focusBounds.isEmpty()) {
         const focus = focusBounds.getCenter(new THREE.Vector3())
         const focusSize = focusBounds.getSize(new THREE.Vector3())
-        const distance = Math.min(14, Math.max(2.8, focusSize.length() * 1.05))
+        const distance = Math.min(10, Math.max(2.4, focusSize.length() * .9))
         viewRef.current.target.copy(focus)
         viewRef.current.position.copy(focus).add(new THREE.Vector3(distance * .55, distance * .24, distance))
       }
