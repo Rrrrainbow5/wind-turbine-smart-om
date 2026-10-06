@@ -152,35 +152,6 @@ function isCadExterior(object: THREE.Object3D, category: string) {
     source.includes('za haubu zadnja') || source.includes('hauba')
 }
 
-// Explicit shell names from the SolidWorks assembly. Do not infer shell
-// status from mesh dimensions: gearbox and generator housings are also large.
-function isExplicitNacelleShell(source: string) {
-  const name = source.toLowerCase()
-  return name.includes('deo za gondolu') ||
-    name.includes('poklopac za gondolu') ||
-    name.includes('za_tita za haubu prednja') ||
-    name.includes('za_tita za haubu zadnja') ||
-    name.includes('prednji deo haube koji ide na za_titu') ||
-    name.includes('zadnji deo haube koji ide na za_titu') ||
-    /^kuci_te [12](?:\.step|\.step\d+)?$/.test(name) ||
-    name === 'kuci_te gornje.step' ||
-    name === 'donji deo kuci_ta.step'
-}
-
-function hasExplicitNacelleShellAncestor(object: THREE.Object3D, root: THREE.Object3D) {
-  let current: THREE.Object3D | null = object
-  while (current && current !== root) {
-    const source = String(current.userData.sourceCadName || current.name).toLowerCase()
-    if (isExplicitNacelleShell(source)) return true
-    current = current.parent
-  }
-  return false
-}
-
-function looksLikeMechanicalInternal(source: string) {
-  return /(generator|generatora|motor|gear|zupcan|planetar|lezaj|le_aj|bearing|vratilo|osovina|spojnica|shaft|rotor|stator|ventilator)/i.test(source)
-}
-
 function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
   if (!model) return
   model.traverse(object => {
@@ -188,15 +159,13 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
     const category = effectiveCadCategory(object, model)
     const highlightedInternal = ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN'].includes(category)
     const source = String(object.userData.sourceCadName || '').toLowerCase()
-    const directPart = identifyCadPart(source, String(object.userData.turbineId || ''))
-    const directInternal = (directPart && ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN'].includes(directPart.category)) || looksLikeMechanicalInternal(source)
-    const explicitShell = isExplicitNacelleShell(source) || hasExplicitNacelleShellAncestor(object, model)
-    // NACELLE is assigned by the CAD parent to its render meshes; treat that
-    // explicit category as shell even when the child mesh has a generic name.
-    const forceCutawayShell = active && !directInternal && category === ''
-    const exterior = (explicitShell || category === 'NACELLE' || isCadExterior(object, category) || forceCutawayShell) && !directInternal
+    const exterior = isCadExterior(object, category)
+    object.geometry.computeBoundingBox()
+    const localSize = object.geometry.boundingBox?.getSize(new THREE.Vector3()) || new THREE.Vector3()
+    const isUpperNacelleCover = (source.includes('gornje') && source.includes('kuci')) || source.includes('upper nacelle') || source.includes('top nacelle')
+    const isMainNacelleShell = isUpperNacelleCover || (source.startsWith('kuci') && Math.max(localSize.x, localSize.y, localSize.z) > 2.2)
     if (object.userData.engineeringOriginalVisible === undefined) object.userData.engineeringOriginalVisible = object.visible
-    object.visible = Boolean(object.userData.engineeringOriginalVisible)
+    object.visible = isUpperNacelleCover ? false : (active && isMainNacelleShell ? false : Boolean(object.userData.engineeringOriginalVisible))
     const materials = Array.isArray(object.material) ? object.material : [object.material]
     materials.forEach(material => {
       const stored = material.userData.engineeringOriginal as { color?: number; opacity: number; transparent: boolean; depthWrite: boolean; emissive?: number } | undefined
@@ -224,7 +193,7 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
         if (standard.color) standard.color.setHex(engineeringColors[category] || 0xc8d7da)
         if (standard.emissive) standard.emissive.setHex(category === 'GEARBOX_BEARING' ? 0x66120d : 0x071a20)
       } else if (exterior) {
-        material.opacity = category === 'TOWER' ? .08 : (explicitShell ? .12 : .08)
+        material.opacity = category === 'TOWER' ? .08 : .045
         material.transparent = true
         material.depthWrite = false
         if (standard.color) standard.color.setHex(0x76a7b1)
