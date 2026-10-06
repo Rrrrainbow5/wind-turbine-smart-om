@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import type { Turbine } from './data'
@@ -677,6 +678,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
     const dracoLoader = new DRACOLoader()
     dracoLoader.setDecoderPath('/draco/')
     loader.setDRACOLoader(dracoLoader)
+    loader.setMeshoptDecoder(MeshoptDecoder)
     // One decoded CAD template is cloned for all eight turbines. Geometry and
     // textures remain shared; only materials are cloned where state styling is needed.
     loader.load(engineeringModelUrl, gltf => {
