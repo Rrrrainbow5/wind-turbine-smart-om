@@ -160,17 +160,12 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
     const highlightedInternal = ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN'].includes(category)
     const exterior = isCadExterior(object, category)
     const source = String(object.userData.sourceCadName || '').toLowerCase()
-    const directPart = identifyCadPart(source, String(object.userData.turbineId || ''))
     object.geometry.computeBoundingBox()
     const localSize = object.geometry.boundingBox?.getSize(new THREE.Vector3()) || new THREE.Vector3()
     // The upper nacelle cover is removed for the engineering cutaway; side/lower
     // housings remain as a translucent reference so the real drivetrain stays readable.
     const isUpperNacelleCover = (source.includes('gornje') && source.includes('kuci')) || source.includes('upper nacelle') || source.includes('top nacelle')
-    // Some SolidWorks exports lose the assembly parent name on the shell
-    // meshes. Recognize the large, low-profile nacelle panels by geometry as
-    // a final CAD-informed cutaway rule, while leaving drivetrain parts opaque.
-    const isLargeNacellePanel = !highlightedInternal && localSize.y < 3.2 && Math.max(localSize.x, localSize.z) > 2.4
-    const isMainNacelleShell = isUpperNacelleCover || isLargeNacellePanel || (source.startsWith('kuci') && Math.max(localSize.x, localSize.y, localSize.z) > 2.2)
+    const isMainNacelleShell = isUpperNacelleCover || (source.startsWith('kuci') && Math.max(localSize.x, localSize.y, localSize.z) > 2.2)
     if (object.userData.engineeringOriginalVisible === undefined) object.userData.engineeringOriginalVisible = object.visible
     // Keep the large white top cover out of the normal and cutaway views.
     object.visible = isUpperNacelleCover ? false : (active && isMainNacelleShell ? false : Boolean(object.userData.engineeringOriginalVisible))
@@ -200,7 +195,7 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
         material.depthWrite = true
         if (standard.color) standard.color.setHex(engineeringColors[category] || 0xc8d7da)
         if (standard.emissive) standard.emissive.setHex(category === 'GEARBOX_BEARING' ? 0x66120d : 0x071a20)
-      } else if (exterior || isMainNacelleShell || (active && category === 'NACELLE' && (!directPart || directPart.category === 'NACELLE'))) {
+      } else if (exterior) {
         material.opacity = category === 'TOWER' ? .08 : .045
         material.transparent = true
         material.depthWrite = false
