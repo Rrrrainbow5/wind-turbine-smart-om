@@ -505,6 +505,7 @@ export default function App() {
     setGuideInitialParams(diagnosticParams)
     setGuidePlanClicked(false)
     setGuideMinimized(false)
+    setGuideBubbleStyle({ left: 24, top: 118, right: 'auto', transform: 'none' })
     setGuide({ active: true, step: 1 })
   }
   const closeGuide = () => {
