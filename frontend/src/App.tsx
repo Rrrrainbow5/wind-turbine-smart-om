@@ -223,7 +223,7 @@ export default function App() {
   const selected = selectedInitial && persistedSelected?.status === 'maintained'
     ? { ...selectedInitial, failure_risk: 0, health_index: 92, warning_level: 'NORMAL' as Turbine['warning_level'], anomaly_score: 0 }
     : selectedInitial && persistedSelected?.fault
-      ? { ...selectedInitial, failure_risk: persistedSelected.fault.risk, health_index: persistedSelected.fault.healthIndex, warning_level: persistedSelected.fault.risk >= .72 ? 'HIGH' as Turbine['warning_level'] : persistedSelected.fault.risk >= .42 ? 'MEDIUM' as Turbine['warning_level'] : 'LOW' as Turbine['warning_level'], anomaly_score: persistedSelected.fault.risk }
+      ? { ...selectedInitial, failure_risk: persistedSelected.fault.risk, health_index: Math.min(eventHealth, Math.max(0, 100 - persistedSelected.fault.risk * 42)), warning_level: persistedSelected.fault.risk >= .72 ? 'HIGH' as Turbine['warning_level'] : persistedSelected.fault.risk >= .42 ? 'MEDIUM' as Turbine['warning_level'] : 'LOW' as Turbine['warning_level'], anomaly_score: persistedSelected.fault.risk }
       : selectedInitial
   const plans = useMemo(() => {
     const sourcePlans = mode === 'api' ? (apiPlan ? mapApiPlans(apiPlan) : [emptyApiPlan]) : getDemoPlans(weatherRestricted)
