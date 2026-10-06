@@ -366,45 +366,6 @@ function setFaultPartState(model: THREE.Object3D | null, category: Turbine['faul
       material.depthWrite = true
     })
   })
-  if (!matched && model && false) {
-    // STEP/glTF exports may omit the original component names. Keep the
-    // visual diagnosis useful by selecting compact meshes in the nacelle
-    // band as a positional fallback rather than leaving the 3D unchanged.
-    const candidates: Array<{ mesh: THREE.Mesh; volume: number }> = []
-    model.updateWorldMatrix(true, true)
-    model.traverse(object => {
-      if (!(object instanceof THREE.Mesh)) return
-      const source = String(object.userData.sourceCadName || object.name || '').toLowerCase()
-      const inherited = effectiveCadCategory(object, model)
-      if (inherited === 'ROTOR' || inherited === 'TOWER' || inherited === 'NACELLE' || /blade|lopat|rotor|stub|tower|poklopac|haub/.test(source)) return
-      const bounds = new THREE.Box3().setFromObject(object)
-      const center = bounds.getCenter(new THREE.Vector3())
-      const size = bounds.getSize(new THREE.Vector3())
-      const volume = size.x * size.y * size.z
-      if (center.y > 6.1 && center.y < 10.2 && volume > .002 && volume < 18) candidates.push({ mesh: object, volume })
-    })
-    if (category === 'BEARING') candidates.sort((a, b) => a.volume - b.volume)
-    else if (category === 'GENERATOR') candidates.sort((a, b) => b.volume - a.volume)
-    else if (category === 'DRIVETRAIN') candidates.sort((a, b) => {
-      const ax = new THREE.Box3().setFromObject(a.mesh).getSize(new THREE.Vector3()).x
-      const bx = new THREE.Box3().setFromObject(b.mesh).getSize(new THREE.Vector3()).x
-      return bx - ax
-    })
-    else candidates.sort((a, b) => b.volume - a.volume)
-    const fallbackCount = category === 'BEARING' ? 3 : category === 'DRIVETRAIN' ? 1 : 2
-    candidates.slice(0, fallbackCount).forEach(({ mesh }) => {
-      matched += 1
-      targets.push(mesh)
-      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
-      materials.forEach(material => {
-        const standard = material as THREE.MeshStandardMaterial
-        if (standard.color) standard.color.setHex(color)
-        if (standard.emissive) standard.emissive.setHex(glow)
-        standard.emissiveIntensity = level === 'HIGH' ? 3.5 : 2.2
-        material.opacity = 1; material.transparent = false; material.depthWrite = true
-      })
-    })
-  }
   // A separate unlit overlay keeps the fault unmistakable even when the
   // imported CAD material is white, metallic, or uses vertex colors.
   if (targets.length) {
