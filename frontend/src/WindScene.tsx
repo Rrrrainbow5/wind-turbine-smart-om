@@ -366,8 +366,16 @@ function setFaultPartState(model: THREE.Object3D | null, category: Turbine['faul
       const volume = size.x * size.y * size.z
       if (center.y > 6.1 && center.y < 10.2 && volume > .002 && volume < 18) candidates.push({ mesh: object, volume })
     })
-    candidates.sort((a, b) => b.volume - a.volume)
-    candidates.slice(0, category === 'BEARING' ? 3 : 2).forEach(({ mesh }) => {
+    if (category === 'BEARING') candidates.sort((a, b) => a.volume - b.volume)
+    else if (category === 'GENERATOR') candidates.sort((a, b) => b.volume - a.volume)
+    else if (category === 'DRIVETRAIN') candidates.sort((a, b) => {
+      const ax = new THREE.Box3().setFromObject(a.mesh).getSize(new THREE.Vector3()).x
+      const bx = new THREE.Box3().setFromObject(b.mesh).getSize(new THREE.Vector3()).x
+      return bx - ax
+    })
+    else candidates.sort((a, b) => b.volume - a.volume)
+    const fallbackCount = category === 'BEARING' ? 3 : category === 'DRIVETRAIN' ? 1 : 2
+    candidates.slice(0, fallbackCount).forEach(({ mesh }) => {
       matched += 1
       targets.push(mesh)
       const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
