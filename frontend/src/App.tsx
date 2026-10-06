@@ -212,9 +212,10 @@ export default function App() {
   const displayLocation = faultLocation(selectedFault.category)
   const eventRisk: Record<string, [number, number, Turbine['warning_level']]> = { 'B-53': [.76, 63.2, 'HIGH'], 'A-51': [.82, 58.4, 'HIGH'], 'A-0': [.61, 69.8, 'MEDIUM'], 'C-67': [.48, 76.2, 'MEDIUM'], 'C-81': [.71, 66.5, 'HIGH'] }
   const [eventFailureRisk, eventHealth, eventWarning] = eventRisk[faultEventId] || eventRisk['B-53']
-  const linkedRisk = Math.max(eventFailureRisk, diagnostic.risk)
+  const caseAppliesToSelected = selectedBase?.turbine_id === 'WT02' || selectedBase?.warning_level !== 'NORMAL'
+  const linkedRisk = caseAppliesToSelected ? Math.max(eventFailureRisk, diagnostic.risk) : Math.min(diagnostic.risk, selectedBase?.failure_risk ?? 0)
   const linkedWarning: Turbine['warning_level'] = linkedRisk >= .72 ? 'HIGH' : linkedRisk >= .42 ? 'MEDIUM' : linkedRisk >= .2 ? 'LOW' : 'NORMAL'
-  const linkedHealth = Math.min(eventHealth, Math.max(0, 100 - linkedRisk * 42))
+  const linkedHealth = caseAppliesToSelected ? Math.min(eventHealth, Math.max(0, 100 - linkedRisk * 42)) : Math.max(selectedBase?.health_index ?? 92, 100 - linkedRisk * 42)
   // In demo mode the selected event is applied to whichever turbine is active,
   // so the guide can be demonstrated on WT01-WT08 instead of silently keeping
   // the WT02-only baseline.
