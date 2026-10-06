@@ -896,7 +896,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       viewRef.current.target.copy(fixedFocus)
       // Side/front inspection angle: the nacelle fills the viewport and its
       // drivetrain reads like the reference engineering cutaway.
-      viewRef.current.position.copy(fixedFocus).add(new THREE.Vector3(1.2, 1.45, 10.8))
+      viewRef.current.position.copy(fixedFocus).add(new THREE.Vector3(.55, .72, 3.35))
       const focusBounds = getCutawayFocus(cadModel)
       // Imported CAD names vary between STEP exports. If no internal parts
       // were classified, still focus the complete CAD model instead of
