@@ -339,6 +339,7 @@ function setFaultPartState(model: THREE.Object3D | null, category: Turbine['faul
   model.traverse(object => {
     if (!(object instanceof THREE.Mesh)) return
     const actualCategory = effectiveCadCategory(object, model)
+    const sourceName = String(object.userData.sourceCadName || '').toLowerCase()
     // Clear any previous event styling before applying the new event. This
     // prevents pink/red remnants when switching between cases.
     const baseColor = engineeringColors[actualCategory]
@@ -351,7 +352,8 @@ function setFaultPartState(model: THREE.Object3D | null, category: Turbine['faul
     })
     // CARE's rotor-bearing event has no formal CAD mapping yet; use the
     // verified gearbox-bearing geometry as the visible engineering proxy.
-    const categoryMatches = actualCategory === category || (category === 'BEARING' && (actualCategory === 'GEARBOX_BEARING' || actualCategory === 'ROTOR_BEARING'))
+    const rotorBearingName = /roller.*le.?_?aj|le.?_?aj.*glavno|glavno.*vratilo.*le.?_?aj/.test(sourceName)
+    const categoryMatches = actualCategory === category || (category === 'ROTOR_BEARING' && rotorBearingName) || (category === 'BEARING' && (actualCategory === 'GEARBOX_BEARING' || actualCategory === 'ROTOR_BEARING'))
     if (!categoryMatches) return
     matched += 1
     targets.push(object)
