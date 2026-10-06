@@ -366,7 +366,7 @@ function setFaultPartState(model: THREE.Object3D | null, category: Turbine['faul
       material.depthWrite = true
     })
   })
-  if (!matched && false) {
+  if (!matched && model && false) {
     // STEP/glTF exports may omit the original component names. Keep the
     // visual diagnosis useful by selecting compact meshes in the nacelle
     // band as a positional fallback rather than leaving the 3D unchanged.
