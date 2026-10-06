@@ -211,7 +211,7 @@ export default function App() {
   const selectedFault = wt02FaultEvents.find(event => event.id === faultEventId) || wt02FaultEvents[0]
   const displayLocation = faultLocation(selectedFault.category)
   const eventRisk: Record<string, [number, number, Turbine['warning_level']]> = { 'B-53': [.76, 63.2, 'HIGH'], 'A-51': [.82, 58.4, 'HIGH'], 'A-0': [.61, 69.8, 'MEDIUM'], 'C-67': [.48, 76.2, 'MEDIUM'], 'C-81': [.71, 66.5, 'HIGH'] }
-  const [eventFailureRisk, eventHealth, eventWarning] = eventRisk[faultEventId] || eventRisk['B-53']
+  const [eventFailureRisk, eventHealth] = eventRisk[faultEventId] || eventRisk['B-53']
   const caseAppliesToSelected = selectedBase?.turbine_id === 'WT02'
   const linkedRisk = caseAppliesToSelected ? Math.max(eventFailureRisk, diagnostic.risk) : Math.min(diagnostic.risk, selectedBase?.failure_risk ?? 0)
   const linkedWarning: Turbine['warning_level'] = linkedRisk >= .72 ? 'HIGH' : linkedRisk >= .42 ? 'MEDIUM' : linkedRisk >= .2 ? 'LOW' : 'NORMAL'
