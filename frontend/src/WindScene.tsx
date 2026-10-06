@@ -160,6 +160,7 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
     const highlightedInternal = ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN'].includes(category)
     const exterior = isCadExterior(object, category)
     const source = String(object.userData.sourceCadName || '').toLowerCase()
+    const directPart = identifyCadPart(source, String(object.userData.turbineId || ''))
     object.geometry.computeBoundingBox()
     const localSize = object.geometry.boundingBox?.getSize(new THREE.Vector3()) || new THREE.Vector3()
     // The upper nacelle cover is removed for the engineering cutaway; side/lower
@@ -199,7 +200,7 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
         material.depthWrite = true
         if (standard.color) standard.color.setHex(engineeringColors[category] || 0xc8d7da)
         if (standard.emissive) standard.emissive.setHex(category === 'GEARBOX_BEARING' ? 0x66120d : 0x071a20)
-      } else if (exterior || isMainNacelleShell || (active && category === 'NACELLE')) {
+      } else if (exterior || isMainNacelleShell || (active && category === 'NACELLE' && (!directPart || directPart.category === 'NACELLE'))) {
         material.opacity = category === 'TOWER' ? .08 : .045
         material.transparent = true
         material.depthWrite = false
