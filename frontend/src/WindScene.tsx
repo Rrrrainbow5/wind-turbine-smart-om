@@ -163,10 +163,6 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
     const mechanicalName = /(generator|generatora|motor|gear|zupcan|planetar|lezaj|le_aj|bearing|vratilo|osovina|spojnica|shaft|stator|ventilator)/i.test(source)
     const internalByName = mechanicalName || Boolean(directPart && ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN'].includes(directPart.category))
     const exterior = isCadExterior(object, category)
-    object.geometry.computeBoundingBox()
-    const localSize = object.geometry.boundingBox?.getSize(new THREE.Vector3()) || new THREE.Vector3()
-    const isUpperNacelleCover = (source.includes('gornje') && source.includes('kuci')) || source.includes('upper nacelle') || source.includes('top nacelle')
-    const isMainNacelleShell = isUpperNacelleCover || (source.startsWith('kuci') && Math.max(localSize.x, localSize.y, localSize.z) > 2.2)
     if (object.userData.engineeringOriginalVisible === undefined) object.userData.engineeringOriginalVisible = object.visible
     // Keep exterior shells visible in cutaway mode; transparency reveals internals while preserving the silhouette.
     object.visible = Boolean(object.userData.engineeringOriginalVisible)
@@ -342,7 +338,6 @@ function setFaultPartState(model: THREE.Object3D | null, category: Turbine['faul
   const oldOverlay = model.getObjectByName('FAULT_HIGHLIGHT_OVERLAY')
   if (oldOverlay) oldOverlay.removeFromParent()
   const color = level === 'HIGH' ? 0xff1712 : 0xffa313
-  const glow = level === 'HIGH' ? 0xff0500 : 0x6b2600
   let matched = 0
   const targets: THREE.Mesh[] = []
   model.traverse(object => {
