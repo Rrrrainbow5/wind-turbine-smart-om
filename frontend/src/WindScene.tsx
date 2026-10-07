@@ -703,6 +703,9 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       const size = bounds.getSize(new THREE.Vector3())
       const scale = 10.8 / Math.max(size.x, size.y, size.z)
       rootMap.forEach((object, id) => {
+        // Keep the procedural low-poly scene for every turbine, but only
+        // attach the selected turbine's CAD model to the scene.
+        if (id !== selectedIdRef.current) return
         const imported = template.clone(true)
         imported.name = `${id}_ENGINEERING_CAD_MODEL`
         bindCadPartNames(imported, id)
@@ -913,7 +916,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       rootMap.clear()
       sceneRef.current = null; cameraRef.current = null
     }
-  }, [])
+  }, [selectedId])
 
   useEffect(() => {
     const selected = turbines.find(turbine => turbine.turbine_id === selectedId)
