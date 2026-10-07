@@ -168,7 +168,8 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
     const isUpperNacelleCover = (source.includes('gornje') && source.includes('kuci')) || source.includes('upper nacelle') || source.includes('top nacelle')
     const isMainNacelleShell = isUpperNacelleCover || (source.startsWith('kuci') && Math.max(localSize.x, localSize.y, localSize.z) > 2.2)
     if (object.userData.engineeringOriginalVisible === undefined) object.userData.engineeringOriginalVisible = object.visible
-    object.visible = isUpperNacelleCover ? false : (active && isMainNacelleShell ? false : Boolean(object.userData.engineeringOriginalVisible))
+    // Keep exterior shells visible in cutaway mode; transparency reveals internals while preserving the silhouette.
+    object.visible = Boolean(object.userData.engineeringOriginalVisible)
     const materials = Array.isArray(object.material) ? object.material : [object.material]
     materials.forEach(material => {
       const stored = material.userData.engineeringOriginal as { color?: number; opacity: number; transparent: boolean; depthWrite: boolean; emissive?: number } | undefined
@@ -185,6 +186,8 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
         material.opacity = original.opacity
         material.transparent = original.transparent
         material.depthWrite = original.depthWrite
+        material.side = THREE.FrontSide
+        material.clippingPlanes = null
         if (original.color !== undefined && standard.color) standard.color.setHex(original.color)
         if (original.emissive !== undefined && standard.emissive) standard.emissive.setHex(original.emissive)
         return
@@ -193,12 +196,16 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
         material.opacity = 1
         material.transparent = false
         material.depthWrite = true
+        material.side = THREE.DoubleSide
+        material.clippingPlanes = null
         if (standard.color) standard.color.setHex(engineeringColors[category] || 0xc8d7da)
         if (standard.emissive) standard.emissive.setHex(category === 'GEARBOX_BEARING' ? 0x66120d : 0x071a20)
       } else if (exterior && !internalByName) {
-        material.opacity = category === 'TOWER' ? .08 : .045
+        material.opacity = .35
         material.transparent = true
         material.depthWrite = false
+        material.side = THREE.DoubleSide
+        material.clippingPlanes = null
         if (standard.color) standard.color.setHex(0x76a7b1)
         if (standard.emissive) standard.emissive.setHex(0x06171c)
       } else {
@@ -362,12 +369,13 @@ function setFaultPartState(model: THREE.Object3D | null, category: Turbine['faul
     const materials = Array.isArray(object.material) ? object.material : [object.material]
     materials.forEach(material => {
       const standard = material as THREE.MeshStandardMaterial
-      if (standard.color) standard.color.setHex(color)
-      if (standard.emissive) standard.emissive.setHex(glow)
-      standard.emissiveIntensity = level === 'HIGH' ? 3.5 : 2.2
-      material.opacity = 1
-      material.transparent = false
+      if (standard.color) standard.color.setHex(0xff0000)
+      if (standard.emissive) standard.emissive.setHex(0xff0000)
+      standard.emissiveIntensity = .6
+      material.opacity = .85
+      material.transparent = true
       material.depthWrite = true
+      material.side = THREE.DoubleSide
     })
   })
   // A separate unlit overlay keeps the fault unmistakable even when the
