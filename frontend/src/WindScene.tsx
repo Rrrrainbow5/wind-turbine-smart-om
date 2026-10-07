@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import type { Turbine } from './data'
@@ -33,8 +32,7 @@ type TurbineSceneObject = {
   cadRotor: THREE.Group | null
 }
 
-const assetUrl = (path: string) => `${import.meta.env.BASE_URL}assets/${path}`
-const engineeringModelUrl = assetUrl('wind-turbine-engineering.glb')
+const engineeringModelUrl = '/assets/wind-turbine-engineering.glb'
 // Turbines follow two connected ridgelines, similar to an aerial mountain
 // wind-farm layout. They deliberately avoid a regular grid.
 const ridgeLayout: Record<string, [number, number]> = {
@@ -158,14 +156,24 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
     if (!(object instanceof THREE.Mesh)) return
     const category = effectiveCadCategory(object, model)
     const highlightedInternal = ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN'].includes(category)
-    const source = String(object.userData.sourceCadName || '').toLowerCase()
-    const directPart = identifyCadPart(source, String(object.userData.turbineId || ''))
-    const mechanicalName = /(generator|generatora|motor|gear|zupcan|planetar|lezaj|le_aj|bearing|vratilo|osovina|spojnica|shaft|stator|ventilator)/i.test(source)
-    const internalByName = mechanicalName || Boolean(directPart && ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN'].includes(directPart.category))
     const exterior = isCadExterior(object, category)
+    const source = String(object.userData.sourceCadName || '').toLowerCase()
+    const ancestry: string[] = []
+    let parent = object.parent
+    while (parent && parent !== model) { ancestry.push(String(parent.userData.sourceCadName || parent.name || '').toLowerCase()); parent = parent.parent }
+    const nameChain = `${source} ${ancestry.join(' ')}`
+    object.geometry.computeBoundingBox()
+    const localSize = object.geometry.boundingBox?.getSize(new THREE.Vector3()) || new THREE.Vector3()
+    // The upper nacelle cover is removed for the engineering cutaway; side/lower
+    // housings remain as a translucent reference so the real drivetrain stays readable.
+    const isUpperNacelleCover = exterior && (
+      (source.includes('gornje') && source.includes('kuci')) ||
+      /upper nacelle|top nacelle|cover|lid|roof|poklopac|gornje kuci|盖板|罩/.test(nameChain)
+    )
+    const isMainNacelleShell = isUpperNacelleCover || (source.startsWith('kuci') && Math.max(localSize.x, localSize.y, localSize.z) > 2.2)
     if (object.userData.engineeringOriginalVisible === undefined) object.userData.engineeringOriginalVisible = object.visible
-    // Keep exterior shells visible in cutaway mode; transparency reveals internals while preserving the silhouette.
-    object.visible = Boolean(object.userData.engineeringOriginalVisible)
+    // Keep the large white top cover out of the normal and cutaway views.
+    object.visible = isUpperNacelleCover ? false : (active && isMainNacelleShell ? false : Boolean(object.userData.engineeringOriginalVisible))
     const materials = Array.isArray(object.material) ? object.material : [object.material]
     materials.forEach(material => {
       const stored = material.userData.engineeringOriginal as { color?: number; opacity: number; transparent: boolean; depthWrite: boolean; emissive?: number } | undefined
@@ -182,26 +190,20 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
         material.opacity = original.opacity
         material.transparent = original.transparent
         material.depthWrite = original.depthWrite
-        material.side = THREE.FrontSide
-        material.clippingPlanes = null
         if (original.color !== undefined && standard.color) standard.color.setHex(original.color)
         if (original.emissive !== undefined && standard.emissive) standard.emissive.setHex(original.emissive)
         return
       }
-        if (highlightedInternal || internalByName) {
+      if (highlightedInternal) {
         material.opacity = 1
         material.transparent = false
         material.depthWrite = true
-        material.side = THREE.DoubleSide
-        material.clippingPlanes = null
         if (standard.color) standard.color.setHex(engineeringColors[category] || 0xc8d7da)
         if (standard.emissive) standard.emissive.setHex(category === 'GEARBOX_BEARING' ? 0x66120d : 0x071a20)
-      } else if (exterior && !internalByName) {
-        material.opacity = .35
+      } else if (exterior) {
+        material.opacity = category === 'TOWER' ? .08 : .045
         material.transparent = true
         material.depthWrite = false
-        material.side = THREE.DoubleSide
-        material.clippingPlanes = null
         if (standard.color) standard.color.setHex(0x76a7b1)
         if (standard.emissive) standard.emissive.setHex(0x06171c)
       } else {
@@ -215,6 +217,16 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
       }
     })
   })
+  if (active && !model.userData.upperMeshReportDone) {
+    model.updateWorldMatrix(true, true)
+    console.log('=== 剖切时外壳mesh列表 ===')
+    model.traverse(object => {
+      if (!(object instanceof THREE.Mesh) || !object.visible) return
+      const worldPosition = object.getWorldPosition(new THREE.Vector3())
+      if (worldPosition.y > 5) console.log('未隐藏的上层mesh:', object.name, '| parent:', object.parent?.name || '', '| y:', worldPosition.y.toFixed(1))
+    })
+    model.userData.upperMeshReportDone = true
+  }
 }
 
 function makeCadLabels(model: THREE.Object3D) {
@@ -338,6 +350,7 @@ function setFaultPartState(model: THREE.Object3D | null, category: Turbine['faul
   const oldOverlay = model.getObjectByName('FAULT_HIGHLIGHT_OVERLAY')
   if (oldOverlay) oldOverlay.removeFromParent()
   const color = level === 'HIGH' ? 0xff1712 : 0xffa313
+  const glow = level === 'HIGH' ? 0xff0500 : 0x6b2600
   let matched = 0
   const targets: THREE.Mesh[] = []
   model.traverse(object => {
@@ -364,13 +377,12 @@ function setFaultPartState(model: THREE.Object3D | null, category: Turbine['faul
     const materials = Array.isArray(object.material) ? object.material : [object.material]
     materials.forEach(material => {
       const standard = material as THREE.MeshStandardMaterial
-      if (standard.color) standard.color.setHex(0xff0000)
-      if (standard.emissive) standard.emissive.setHex(0xff0000)
-      standard.emissiveIntensity = .6
-      material.opacity = .85
-      material.transparent = true
+      if (standard.color) standard.color.setHex(color)
+      if (standard.emissive) standard.emissive.setHex(glow)
+      standard.emissiveIntensity = level === 'HIGH' ? 3.5 : 2.2
+      material.opacity = 1
+      material.transparent = false
       material.depthWrite = true
-      material.side = THREE.DoubleSide
     })
   })
   // A separate unlit overlay keeps the fault unmistakable even when the
@@ -513,7 +525,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
     sun.shadow.bias = -.0003
     scene.add(sun)
 
-    new EXRLoader().load(assetUrl('environment/DaySkyHDRI070B_2K_HDR.exr'), texture => {
+    new EXRLoader().load('/assets/environment/DaySkyHDRI070B_2K_HDR.exr', texture => {
       if (disposed) { texture.dispose(); return }
       texture.mapping = THREE.EquirectangularReflectionMapping
       scene.background = texture
@@ -681,7 +693,6 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
     const dracoLoader = new DRACOLoader()
     dracoLoader.setDecoderPath('/draco/')
     loader.setDRACOLoader(dracoLoader)
-    loader.setMeshoptDecoder(MeshoptDecoder)
     // One decoded CAD template is cloned for all eight turbines. Geometry and
     // textures remain shared; only materials are cloned where state styling is needed.
     loader.load(engineeringModelUrl, gltf => {
