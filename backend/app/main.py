@@ -371,6 +371,32 @@ def seed_database(database: Database) -> None:
         """,
         (now,),
     )
+    # Keep the local/API demo reproducible for every teammate while preserving
+    # any real or newer result already stored in the database.
+    if not database.fetch_one(
+        "SELECT id FROM ai_results WHERE component_id = ? ORDER BY observed_at DESC, id DESC LIMIT 1",
+        ("WT02_COMPONENT_01",),
+    ):
+        database.execute(
+            """
+            INSERT INTO ai_results (
+                turbine_id, component_id, observed_at, health_index, anomaly_score,
+                failure_risk, warning_level, model_version, data_origin, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "WT02",
+                "WT02_COMPONENT_01",
+                now,
+                63.2,
+                0.87,
+                0.76,
+                "HIGH",
+                "care-v6-offshore-demo-0.1",
+                "DERIVED",
+                now,
+            ),
+        )
 
 
 def ensure_ids_exist(database: Database, turbine_id: str, component_id: str) -> None:
