@@ -158,7 +158,6 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
     if (!(object instanceof THREE.Mesh)) return
     const category = effectiveCadCategory(object, model)
     const highlightedInternal = ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN'].includes(category)
-    const exterior = isCadExterior(object, category)
     const source = String(object.userData.sourceCadName || '').toLowerCase()
     const ancestry: string[] = []
     let parent = object.parent
@@ -166,13 +165,19 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
     const nameChain = `${source} ${ancestry.join(' ')}`
     object.geometry.computeBoundingBox()
     const localSize = object.geometry.boundingBox?.getSize(new THREE.Vector3()) || new THREE.Vector3()
+    // Geometry simplification can rename or flatten CAD nodes, so the
+    // original source-name rules may not identify the nacelle shell. Large
+    // unclassified meshes are the shell fallback; classified drivetrain
+    // meshes remain internal even when their geometry is sizable.
+    const fallbackNacelleShell = !highlightedInternal && !category && Math.max(localSize.x, localSize.y, localSize.z) > 2.2
+    const exterior = isCadExterior(object, category) || fallbackNacelleShell
     // The upper nacelle cover is removed for the engineering cutaway; side/lower
     // housings remain as a translucent reference so the real drivetrain stays readable.
     const isUpperNacelleCover = exterior && (
       (source.includes('gornje') && source.includes('kuci')) ||
       /upper nacelle|top nacelle|cover|lid|roof|poklopac|gornje kuci|盖板|罩/.test(nameChain)
     )
-    const isMainNacelleShell = isUpperNacelleCover || (source.startsWith('kuci') && Math.max(localSize.x, localSize.y, localSize.z) > 2.2)
+    const isMainNacelleShell = isUpperNacelleCover || fallbackNacelleShell || (source.startsWith('kuci') && Math.max(localSize.x, localSize.y, localSize.z) > 2.2)
     if (object.userData.engineeringOriginalVisible === undefined) object.userData.engineeringOriginalVisible = object.visible
     // Keep the large white top cover out of the normal and cutaway views.
     object.visible = isUpperNacelleCover ? false : (active && isMainNacelleShell ? false : Boolean(object.userData.engineeringOriginalVisible))
