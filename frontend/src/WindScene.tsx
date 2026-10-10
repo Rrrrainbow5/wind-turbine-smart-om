@@ -32,7 +32,9 @@ type TurbineSceneObject = {
   cadRotor: THREE.Group | null
 }
 
-const engineeringModelUrl = '/assets/wind-turbine-engineering.glb'
+// Resolve public assets through Vite's base path so GitHub Pages requests
+// include /wind-turbine-smart-om/ instead of targeting the domain root.
+const engineeringModelUrl = `${import.meta.env.BASE_URL}assets/wind-turbine-engineering.glb`
 // Turbines follow two connected ridgelines, similar to an aerial mountain
 // wind-farm layout. They deliberately avoid a regular grid.
 const ridgeLayout: Record<string, [number, number]> = {
@@ -691,7 +693,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
     let disposed = false
     const loader = new GLTFLoader()
     const dracoLoader = new DRACOLoader()
-    dracoLoader.setDecoderPath('/draco/')
+    dracoLoader.setDecoderPath(`${import.meta.env.BASE_URL}draco/`)
     loader.setDRACOLoader(dracoLoader)
     // One decoded CAD template is cloned for all eight turbines. Geometry and
     // textures remain shared; only materials are cloned where state styling is needed.
@@ -969,7 +971,9 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       object.ring.scale.setScalar(id === selectedId ? 1.2 : 1)
       object.ring.visible = false
       object.root.visible = !engineeringView || id === selectedId
-      object.blades.visible = false
+      // Keep the procedural rotor visible until the CAD model has loaded.
+      // The CAD load is asynchronous and may be slower on GitHub Pages.
+      object.blades.visible = !object.cadModel
       object.beacon.visible = !(engineeringView && id === selectedId)
       object.engineering.visible = false
       const engineeringActive = engineeringView && id === selectedId
