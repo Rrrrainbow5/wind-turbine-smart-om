@@ -177,7 +177,9 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
       (source.includes('gornje') && source.includes('kuci')) ||
       /upper nacelle|top nacelle|cover|lid|roof|poklopac|gornje kuci|盖板|罩/.test(nameChain)
     )
-    const isMainNacelleShell = isUpperNacelleCover || fallbackNacelleShell || (source.startsWith('kuci') && Math.max(localSize.x, localSize.y, localSize.z) > 2.2)
+    const isMainNacelleShell = isUpperNacelleCover || fallbackNacelleShell ||
+      (category === 'NACELLE' && Math.max(localSize.x, localSize.y, localSize.z) > 2.2) ||
+      (source.startsWith('kuci') && Math.max(localSize.x, localSize.y, localSize.z) > 2.2)
     if (object.userData.engineeringOriginalVisible === undefined) object.userData.engineeringOriginalVisible = object.visible
     // Keep the large white top cover out of the normal and cutaway views.
     object.visible = isUpperNacelleCover ? false : (active && isMainNacelleShell ? false : Boolean(object.userData.engineeringOriginalVisible))
