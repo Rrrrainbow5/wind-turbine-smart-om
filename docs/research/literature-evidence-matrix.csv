@@ -1,0 +1,11 @@
+literature_id,scope,year,title,venue,doi,dataset,signal_type,method,reported_metrics,advantages,limitations,code_available,verification_status,evidence_url,adopted_role
+LIT-001,engineering-feature-model,,,,,,,"XGBoost on engineered time/frequency features",,,,,PENDING_EXTERNAL_VERIFY,,"Candidate support for branch 1; do not cite in report before DOI verification"
+LIT-002,engineering-feature-model,,,,,,,"Gradient boosting with imbalance-aware evaluation",,,,,PENDING_EXTERNAL_VERIFY,,"Candidate support for branch 1"
+LIT-003,raw-signal-model,,,,,,,"1D-CNN for vibration/current sequence classification",,,,,PENDING_EXTERNAL_VERIFY,,"Candidate support for branch 2"
+LIT-004,raw-signal-model,,,,,,,"TCN for long sequence fault diagnosis",,,,,PENDING_EXTERNAL_VERIFY,,"Candidate support for branch 2"
+LIT-005,time-frequency-model,,,,,,,"STFT spectrogram plus lightweight CNN",,,,,PENDING_EXTERNAL_VERIFY,,"Candidate support for branch 3"
+LIT-006,time-frequency-model,,,,,,,"Wavelet packet energy plus CNN",,,,,PENDING_EXTERNAL_VERIFY,,"Candidate support for branch 3"
+LIT-007,fusion-model,,,,,,,"Feature-level or decision-level multi-branch fusion",,,,,PENDING_EXTERNAL_VERIFY,,"Candidate support for gated fusion"
+LIT-008,uncertainty-calibration,,,,,,,"Probability calibration and expected calibration error",,,,,PENDING_EXTERNAL_VERIFY,,"Candidate support for confidence/uncertainty reporting"
+LIT-009,split-protocol,,,,,,,"Grouped split by turbine/event/time to prevent leakage",,,,,PENDING_EXTERNAL_VERIFY,,"Evaluation protocol evidence"
+LIT-010,wind-turbine-review,,,,,,,"Recent wind-turbine fault diagnosis review",,,,,PENDING_EXTERNAL_VERIFY,,"Method comparison and terminology evidence"
