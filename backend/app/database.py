@@ -37,11 +37,35 @@ CREATE TABLE IF NOT EXISTS ai_results (
     warning_level TEXT NOT NULL,
     model_version TEXT NOT NULL,
     data_origin TEXT NOT NULL,
+    sample_id TEXT,
+    diagnosis_id TEXT,
+    event_id TEXT,
+    fault_id TEXT,
     created_at TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_ai_results_component_time
 ON ai_results(component_id, observed_at DESC, id DESC);
+
+CREATE TABLE IF NOT EXISTS diagnosis_samples (
+    diagnosis_id TEXT PRIMARY KEY,
+    processing_run_id TEXT NOT NULL,
+    sample_id TEXT NOT NULL,
+    turbine_id TEXT NOT NULL REFERENCES turbines(turbine_id),
+    component_id TEXT NOT NULL REFERENCES components(component_id),
+    event_id TEXT,
+    fault_id TEXT,
+    data_origin TEXT NOT NULL,
+    processing_status TEXT NOT NULL,
+    payload_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_diagnosis_samples_sample_time
+ON diagnosis_samples(sample_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_diagnosis_samples_turbine_time
+ON diagnosis_samples(turbine_id, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS maintenance_plans (
     plan_id TEXT PRIMARY KEY,
@@ -63,6 +87,8 @@ CREATE TABLE IF NOT EXISTS maintenance_plans (
     replan_trigger TEXT,
     confirmed_by TEXT,
     confirmed_at TEXT,
+    source_sample_id TEXT,
+    source_diagnosis_id TEXT,
     created_at TEXT NOT NULL
 );
 
@@ -102,7 +128,44 @@ class Database:
     def initialize(self) -> None:
         with self.connect() as connection:
             connection.executescript(SCHEMA)
+            self._migrate_ai_results(connection)
             self._migrate_maintenance_plans(connection)
+            self._migrate_diagnosis_samples(connection)
+
+    @staticmethod
+    def _migrate_diagnosis_samples(connection: sqlite3.Connection) -> None:
+        columns = {
+            str(row[1])
+            for row in connection.execute("PRAGMA table_info(diagnosis_samples)").fetchall()
+        }
+        if "processing_run_id" not in columns:
+            connection.execute("ALTER TABLE diagnosis_samples ADD COLUMN processing_run_id TEXT")
+            connection.execute(
+                "UPDATE diagnosis_samples SET processing_run_id = 'RUN-' || diagnosis_id "
+                "WHERE processing_run_id IS NULL"
+            )
+        connection.commit()
+
+    @staticmethod
+    def _migrate_ai_results(connection: sqlite3.Connection) -> None:
+        columns = {
+            str(row[1])
+            for row in connection.execute("PRAGMA table_info(ai_results)").fetchall()
+        }
+        migrations = {
+            "sample_id": "TEXT",
+            "diagnosis_id": "TEXT",
+            "event_id": "TEXT",
+            "fault_id": "TEXT",
+        }
+        for name, definition in migrations.items():
+            if name not in columns:
+                connection.execute(f"ALTER TABLE ai_results ADD COLUMN {name} {definition}")
+        connection.execute(
+            """CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_results_diagnosis
+               ON ai_results(diagnosis_id) WHERE diagnosis_id IS NOT NULL"""
+        )
+        connection.commit()
 
     @staticmethod
     def _migrate_maintenance_plans(connection: sqlite3.Connection) -> None:
@@ -121,6 +184,8 @@ class Database:
             "replan_trigger": "TEXT",
             "confirmed_by": "TEXT",
             "confirmed_at": "TEXT",
+            "source_sample_id": "TEXT",
+            "source_diagnosis_id": "TEXT",
         }
         for name, definition in migrations.items():
             if name not in columns:
