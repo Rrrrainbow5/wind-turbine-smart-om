@@ -39,6 +39,28 @@ validation/OOF gate, followed by train-only preprocessing/model selection.
 
 ## Reproduce
 
+Before attempting a leakage-safe learned gate, run:
+
+```powershell
+python -m ai.models.grouped_validation --output examples/bearing-validation-readiness-v0.2.json
+```
+
+The current manifest is `BLOCKED_INSUFFICIENT_BEARINGS`: at least one additional
+independently labelled physical bearing for **each** of healthy, outer-race and
+inner-race classes is needed even for the structural minimum of nested OOF.
+Extra runs/operating conditions from the existing bearings do not count.
+New bearing labels must be supported by official documentation before adapter
+registration; do not guess labels from filenames. Three bearings/class is not
+a promise of reliable performance or independent calibration.
+
+`nested_bearing_plan` implements deterministic outer physical-bearing holdouts
+and inner physical-bearing OOF plans, including unequal class group counts.
+Tests check complete once-only coverage and no group overlap at either level.
+It rejects fewer than three bearings/class. This is a tested split planner,
+**not yet a nested training implementation**. The older experimental training
+CLI below still uses its documented in-sample gate; it is preserved for
+reproduction and must not be called leakage-safe OOF gate training.
+
 Install `requirements-ai-training.txt` in an isolated Python environment, then run
 from the repository root:
 

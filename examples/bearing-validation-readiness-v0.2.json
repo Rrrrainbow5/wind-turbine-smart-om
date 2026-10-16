@@ -1,0 +1,21 @@
+{
+  "schema_version": "bearing-validation-readiness.v0.2",
+  "manifest_sha256": "8f1d6bc262371e386f4a9e681f8d1b1f53eb3769d106529d8909e3f484b35a9c",
+  "included_samples": 115,
+  "excluded_samples": 5,
+  "status": "BLOCKED_INSUFFICIENT_BEARINGS",
+  "bearings_per_class": {
+    "bearing_inner_race": 2,
+    "bearing_outer_race": 2,
+    "healthy": 2
+  },
+  "additional_bearings_minimum": {
+    "bearing_inner_race": 1,
+    "bearing_outer_race": 1,
+    "healthy": 1
+  },
+  "minimum_basis": "one outer held-out bearing plus at least two inner train/OOF bearings per class",
+  "warning": "Three bearings/class is only a structural minimum, not sufficient statistical validation or independent calibration.",
+  "gate_training_enabled": false,
+  "next_action": "Register more independently labelled physical bearings; more runs/windows from existing bearings do not satisfy deficits."
+}
