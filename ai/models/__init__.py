@@ -6,10 +6,12 @@ from .hybrid import (
     SignalRecord,
     grouped_train_test_split,
 )
+from .evaluation import evaluate_hybrid_model
 
 __all__ = [
     "HybridDiagnosticModel",
     "HybridFeatureSet",
     "SignalRecord",
     "grouped_train_test_split",
+    "evaluate_hybrid_model",
 ]

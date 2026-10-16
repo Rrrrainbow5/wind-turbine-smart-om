@@ -12,6 +12,20 @@ CARE Version 6 is aggregate SCADA data. It must not be rendered as measured high
 
 Train/validation/test groups must be separated by turbine, event and time. Required reports are Macro-F1, per-class precision/recall/F1, confusion matrix, PR/ROC, ECE, Brier and branch ablations. No score is promoted to final diagnosis until these reports exist.
 
+The repository now provides `ai.models.evaluate_hybrid_model` to produce this report from a
+labelled dataset. It uses a turbine/event/timestamp grouped holdout, records the random seed and
+sample IDs, and reports the full hybrid result, every single branch, and leave-one-branch-out
+ablations. Scores produced from simulated fixtures are software tests only and must not be quoted
+as field-performance evidence.
+
+## Implemented baseline
+
+The current executable contract has three inputs (engineering statistics, resampled raw signals,
+and STFT-derived features) and quality-weighted gated fusion. Its lightweight NumPy heads verify
+the end-to-end contract without claiming to be XGBoost, 1D-CNN/TCN, or a time-frequency CNN.
+Predictions include all class scores, confidence, entropy uncertainty, gate weights, model version,
+and the unchanged `sample_id`.
+
 ## Known limitations
 
 The current repository has no verified high-rate CARE waveform archive, labelled training set for the three model branches, or approved bearing geometry mapping. Consequently, feature-frequency formulas can be returned without Hz values. The simulator uses illustrative fault-specific periodic patterns and shared severity parameters; it is not a validated physical model or field evidence. The fixed JSON example has `model.status = NOT_INFERRED` and contains no AI diagnosis.

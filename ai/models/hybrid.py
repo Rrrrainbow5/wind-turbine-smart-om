@@ -127,10 +127,10 @@ def extract_features(record: SignalRecord) -> HybridFeatureSet:
 
 def grouped_train_test_split(records: Sequence[SignalRecord], *, test_fraction: float = 0.2,
                              seed: int = 7) -> tuple[list[int], list[int]]:
-    """Split by turbine/event/time group, never by adjacent windows."""
+    """Split by turbine/event group, keeping every event timestamp together."""
     if not records or not 0 < test_fraction < 1:
         raise ModelInputError("records are required and test_fraction must be between 0 and 1")
-    groups = np.asarray([f"{r.turbine_id}|{r.event_id}|{r.timestamp}" for r in records])
+    groups = np.asarray([f"{r.turbine_id}|{r.event_id}" for r in records])
     unique = np.unique(groups)
     rng = np.random.default_rng(seed)
     rng.shuffle(unique)
@@ -157,6 +157,7 @@ class HybridDiagnosticModel:
         self._heads: list[np.ndarray] | None = None
         self._means: list[np.ndarray] | None = None
         self._scales: list[np.ndarray] | None = None
+        self._gate_weights: np.ndarray | None = None
 
     @property
     def architecture(self) -> dict[str, str]:
@@ -164,7 +165,7 @@ class HybridDiagnosticModel:
             "engineering": "xgboost-compatible feature head (NumPy baseline)",
             "raw": "1D-CNN/TCN-compatible waveform head (NumPy baseline)",
             "time_frequency": "lightweight CNN-compatible STFT head (NumPy baseline)",
-            "fusion": "equal-weight gated logits",
+            "fusion": "branch-quality weighted gated logits",
         }
 
     def fit(self, features: Sequence[HybridFeatureSet], labels: Sequence[str],
@@ -175,7 +176,6 @@ class HybridDiagnosticModel:
             raise ModelInputError("duplicate sample_id is not allowed")
         if any(feature.sample_id != record.sample_id for feature, record in zip(features, records)):
             raise ModelInputError("feature and record sample_id values must match")
-        grouped_train_test_split(records, test_fraction=0.25)
         labels_array = np.asarray(labels, dtype=str)
         classes = np.unique(labels_array)
         if classes.size < 2:
@@ -187,6 +187,7 @@ class HybridDiagnosticModel:
         targets = np.zeros((len(labels), classes.size))
         for index, label in enumerate(labels_array):
             targets[index, np.flatnonzero(classes == label)[0]] = 1.0
+        branch_quality: list[float] = []
         for matrix in matrices:
             mean = np.mean(matrix, axis=0)
             scale = np.std(matrix, axis=0)
@@ -195,24 +196,40 @@ class HybridDiagnosticModel:
             augmented = np.column_stack([np.ones(len(normalized)), normalized])
             regularizer = self.ridge * np.eye(augmented.shape[1])
             regularizer[0, 0] = 0.0
-            self._heads.append(np.linalg.solve(augmented.T @ augmented + regularizer, augmented.T @ targets))
+            head = np.linalg.solve(augmented.T @ augmented + regularizer, augmented.T @ targets)
+            self._heads.append(head)
             self._means.append(mean)
             self._scales.append(scale)
+            logits = augmented @ head
+            probabilities = np.exp(logits - np.max(logits, axis=1, keepdims=True))
+            probabilities /= np.sum(probabilities, axis=1, keepdims=True)
+            brier = float(np.mean(np.sum((probabilities - targets) ** 2, axis=1)))
+            branch_quality.append(1.0 / max(brier, 1e-12))
+        quality = np.asarray(branch_quality, dtype=float)
+        self._gate_weights = quality / np.sum(quality)
         self.classes_ = classes
         self.status = "TRAINED_BASELINE"
         return self
 
-    def predict(self, feature: HybridFeatureSet) -> dict[str, Any]:
+    def predict(self, feature: HybridFeatureSet, *,
+                branches: Sequence[str] | None = None) -> dict[str, Any]:
         if self.status != "TRAINED_BASELINE" or self._heads is None or self.classes_ is None:
             return {"status": "NOT_TRAINED", "sample_id": feature.sample_id,
                     "model_version": self.MODEL_VERSION}
+        branch_names = ("engineering", "raw", "time_frequency")
+        selected = set(branch_names if branches is None else branches)
+        if not selected or not selected.issubset(branch_names):
+            raise ModelInputError("branches must select engineering, raw and/or time_frequency")
         vectors = [feature.engineering, feature.raw, feature.time_frequency]
         logits = []
         for vector, mean, scale, head in zip(vectors, self._means, self._scales, self._heads):
             normalized = (vector - mean) / scale
             logits.append(np.r_[1.0, normalized] @ head)
         branch_logits = np.stack(logits)
-        fused = np.mean(branch_logits, axis=0)
+        selected_indexes = [index for index, name in enumerate(branch_names) if name in selected]
+        weights = self._gate_weights[selected_indexes]
+        weights = weights / np.sum(weights)
+        fused = np.sum(branch_logits[selected_indexes] * weights[:, None], axis=0)
         probabilities = np.exp(fused - np.max(fused))
         probabilities /= np.sum(probabilities)
         entropy = -float(np.sum(probabilities * np.log(np.clip(probabilities, 1e-12, 1.0))))
@@ -223,7 +240,11 @@ class HybridDiagnosticModel:
             "model_version": self.MODEL_VERSION,
             "fault_class": str(self.classes_[winner]),
             "confidence": float(probabilities[winner]),
+            "class_probabilities": {str(name): float(probability)
+                                    for name, probability in zip(self.classes_, probabilities)},
             "uncertainty": {"entropy": entropy, "max_entropy": float(np.log(self.classes_.size))},
             "branch_contributions": {name: float(np.max(values)) for name, values in
-                                     zip(("engineering", "raw", "time_frequency"), branch_logits)},
+                                     zip(branch_names, branch_logits) if name in selected},
+            "gate_weights": {branch_names[index]: float(weight)
+                             for index, weight in zip(selected_indexes, weights)},
         }
