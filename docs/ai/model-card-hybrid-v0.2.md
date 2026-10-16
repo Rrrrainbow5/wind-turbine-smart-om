@@ -28,7 +28,45 @@ the end-to-end contract without claiming to be XGBoost, 1D-CNN/TCN, or a time-fr
 Predictions include all class scores, confidence, entropy uncertainty, gate weights, model version,
 and the unchanged `sample_id`.
 
-## Known limitations
+## Measured Paderborn baseline experiment
+
+`examples/paderborn-evaluation-v0.2.json` contains real-source, out-of-fold baseline
+predictions, complete ROC/PR curves, calibration bins, confusion matrices and seven
+branch ablations. It is not a synthetic fixture and is not the final neural model.
+115 source measurements were evaluated; five source-timebase-gap records were excluded.
+All source hashes and manifest/sample identities were verified before extraction.
+One entire physical bearing per class is held out, then the assignments are reversed.
+No source record or physical bearing crosses the train/test boundary within a fold.
+
+| Configuration | Pooled Macro-F1 |
+| --- | ---: |
+| Three-branch NumPy baseline | 0.3342 |
+| Engineering only | 0.2974 |
+| Raw only | 0.3390 |
+| Time-frequency only | 0.3059 |
+| Without engineering | 0.3493 |
+| Without raw | 0.3067 |
+| Without time-frequency | 0.3452 |
+
+Pooled accuracy is 0.3652, ECE is 0.1758 and multiclass Brier (sum across classes,
+mean across records) is 0.7267. Fold Macro-F1 values are 0.1772 and 0.4471.
+The fusion does not outperform its strongest ablation. These weak and unstable
+cross-bearing results do **not** establish diagnostic readiness. Neither these
+scores nor the training-error gates are independently calibrated probabilities.
+The experiment uses vibration and phase current 1; phase current 2 is audited but
+not an input to this baseline. No final deployable model is exported.
+
+Reproduce from the repository root with an environment containing the AI dependencies:
+
+```powershell
+python -m ai.models.paderborn_experiment --raw-root "PATH_TO_PADERBORN_RAW" --output examples/paderborn-evaluation-v0.2.json --seed 7
+```
+
+The raw root must contain the six bearing subdirectories; licensed MAT files stay
+outside Git. Next work is genuine XGBoost/1D-CNN/TF-CNN implementation with proper
+anti-aliased waveform inputs and additional physical bearings for validation.
+
+## Remaining limitations
 
 The current repository has no verified high-rate CARE waveform archive or approved bearing geometry mapping. Consequently, feature-frequency formulas can be returned without bearing-defect Hz values. The local Paderborn subset is labelled but contains only two physical bearings per class; repeated runs are grouped by physical bearing, and this small group count cannot support a stable three-way cross-bearing split or broad generalization claim. The simulator uses illustrative fault-specific periodic patterns and shared severity parameters; it is not a validated physical model or field evidence. The fixed JSON example has `model.status = NOT_INFERRED` and contains no AI diagnosis.
 
