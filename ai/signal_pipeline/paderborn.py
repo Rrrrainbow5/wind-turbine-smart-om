@@ -26,8 +26,11 @@ _FILENAME = re.compile(
 )
 _LABELS = {
     "K001": "healthy",
+    "K002": "healthy",
     "KA01": "bearing_outer_race",
+    "KA03": "bearing_outer_race",
     "KI01": "bearing_inner_race",
+    "KI03": "bearing_inner_race",
 }
 _REQUIRED_CHANNELS = ("vibration_1", "phase_current_1", "phase_current_2")
 
@@ -45,6 +48,10 @@ class PaderbornSample:
     run_index: int
     split_group: str
     sampling_rate_hz: float
+    source_sample_count: int
+    timebase_resampled: bool
+    source_gap_count: int
+    max_source_gap_seconds: float
     channels: dict[str, np.ndarray]
     channel_units: dict[str, str]
     data_origin: str = DATA_ORIGIN
@@ -56,7 +63,10 @@ class PaderbornSample:
             raise SignalInputError(f"unknown Paderborn channel: {channel}")
         source_reference = (
             f"{DATASET_URL}; file={Path(self.source_path).name}; "
-            f"sha256={self.source_sha256}"
+            f"sha256={self.source_sha256}; source_samples={self.source_sample_count}; "
+            f"timebase_resampled={str(self.timebase_resampled).lower()}; "
+            f"source_gap_count={self.source_gap_count}; "
+            f"max_source_gap_seconds={self.max_source_gap_seconds:.9g}"
         )
         return SignalMetadata(
             sample_id=self.sample_id,
@@ -95,7 +105,7 @@ def _root_object(document: dict[str, Any], expected_name: str) -> Any:
     return candidates[0]
 
 
-def _derive_sampling_rate(root: Any, waveform: Any) -> float:
+def _uniform_channel(root: Any, waveform: Any) -> tuple[np.ndarray, int, bool, int, float]:
     try:
         x_index = int(waveform.XIndex) - 1
         time = np.asarray(root.X[x_index].Data, dtype=float).reshape(-1)
@@ -109,12 +119,25 @@ def _derive_sampling_rate(root: Any, waveform: Any) -> float:
     duration = float(time[-1] - time[0])
     if duration <= 0:
         raise SignalInputError("Paderborn time base must be strictly increasing overall")
-    measured_rate = (time.size - 1) / duration
-    if abs(measured_rate - NOMINAL_SAMPLING_RATE_HZ) / NOMINAL_SAMPLING_RATE_HZ > 0.01:
-        raise SignalInputError(
-            f"expected Paderborn 64 kHz waveform raster, derived {measured_rate:.3f} Hz"
-        )
-    return NOMINAL_SAMPLING_RATE_HZ
+    gaps = np.diff(time)
+    max_gap = float(np.max(gaps))
+    if max_gap > 0.1:
+        raise SignalInputError("Paderborn time base contains a gap larger than 0.1 seconds")
+    source_gap_count = int(np.count_nonzero(gaps > 4.0 / NOMINAL_SAMPLING_RATE_HZ))
+
+    target_intervals = int(round(duration * NOMINAL_SAMPLING_RATE_HZ))
+    if target_intervals < 15:
+        raise SignalInputError("Paderborn waveform duration is too short")
+    target_time = np.linspace(time[0], time[-1], target_intervals + 1)
+    timebase_resampled = time.size != target_time.size or not np.allclose(
+        time,
+        target_time,
+        rtol=0.0,
+        atol=0.05 / NOMINAL_SAMPLING_RATE_HZ,
+    )
+    if timebase_resampled:
+        values = np.interp(target_time, time, values)
+    return values, time.size, timebase_resampled, source_gap_count, max_gap
 
 
 def load_paderborn_sample(
@@ -147,20 +170,20 @@ def load_paderborn_sample(
     if missing:
         raise SignalInputError(f"missing Paderborn channels: {', '.join(missing)}")
 
-    channels = {
-        name: np.asarray(y_channels[name].Data, dtype=float).reshape(-1)
-        for name in _REQUIRED_CHANNELS
+    channel_results = {
+        name: _uniform_channel(root, y_channels[name]) for name in _REQUIRED_CHANNELS
     }
+    channels = {name: result[0] for name, result in channel_results.items()}
+    source_counts = {result[1] for result in channel_results.values()}
+    if len(source_counts) != 1:
+        raise SignalInputError("Paderborn source channel lengths do not match")
     lengths = {values.size for values in channels.values()}
     if len(lengths) != 1:
-        raise SignalInputError("Paderborn waveform channel lengths do not match")
-    if next(iter(lengths)) < 16 or not all(np.isfinite(values).all() for values in channels.values()):
+        raise SignalInputError("Paderborn resampled channel lengths do not match")
+    if next(iter(lengths)) < 16 or not all(
+        np.isfinite(values).all() for values in channels.values()
+    ):
         raise SignalInputError("Paderborn waveforms must be finite and contain at least 16 samples")
-
-    sampling_rate_hz = _derive_sampling_rate(root, y_channels["vibration_1"])
-    for name in _REQUIRED_CHANNELS[1:]:
-        if _derive_sampling_rate(root, y_channels[name]) != sampling_rate_hz:
-            raise SignalInputError("Paderborn waveform channels use different sampling rates")
 
     condition = match.group("condition").upper()
     run_index = int(match.group("run"))
@@ -177,7 +200,11 @@ def load_paderborn_sample(
         operating_condition=condition,
         run_index=run_index,
         split_group=f"paderborn-bearing-{bearing_code.lower()}",
-        sampling_rate_hz=sampling_rate_hz,
+        sampling_rate_hz=NOMINAL_SAMPLING_RATE_HZ,
+        source_sample_count=next(iter(source_counts)),
+        timebase_resampled=any(result[2] for result in channel_results.values()),
+        source_gap_count=max(result[3] for result in channel_results.values()),
+        max_source_gap_seconds=max(result[4] for result in channel_results.values()),
         channels=channels,
         channel_units={name: SOURCE_UNIT_UNSPECIFIED for name in _REQUIRED_CHANNELS},
     )
