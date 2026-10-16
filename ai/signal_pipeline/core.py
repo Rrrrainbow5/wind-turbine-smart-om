@@ -25,10 +25,12 @@ class SignalMetadata:
 def _validate(values: np.ndarray, metadata: SignalMetadata) -> np.ndarray:
     if not metadata.sample_id.strip() or not metadata.channel.strip() or not metadata.unit.strip():
         raise SignalInputError("sample_id, channel and unit are required")
-    if metadata.data_origin not in {"REAL", "SIMULATED", "REFERENCE"}:
-        raise SignalInputError("waveform origin must be REAL, SIMULATED or REFERENCE")
+    if metadata.data_origin not in {"REAL", "EXTERNAL_PUBLIC", "SIMULATED", "REFERENCE"}:
+        raise SignalInputError(
+            "waveform origin must be REAL, EXTERNAL_PUBLIC, SIMULATED or REFERENCE"
+        )
     if metadata.data_origin != "SIMULATED" and not metadata.source_reference:
-        raise SignalInputError("real/reference waveforms require source_reference")
+        raise SignalInputError("non-simulated waveforms require source_reference")
     if values.ndim != 1 or values.size < 16:
         raise SignalInputError("waveform must contain at least 16 one-dimensional samples")
     if not np.isfinite(values).all():
