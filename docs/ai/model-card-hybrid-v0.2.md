@@ -22,6 +22,16 @@ as field-performance evidence.
 
 ## Implemented baseline
 
+An actual experimental XGBoost + 1D CNN + STFT CNN + MLP gate implementation now
+exists separately in `ai/models/neural_hybrid.py`. Its first fixed-parameter
+cross-bearing run scored Macro-F1 0.2792 and accuracy 0.3478, below the NumPy
+contract baseline. It is **not** the default backend or a diagnostic-ready model.
+The gate collapses toward STFT and inner-race recall is zero. See
+`docs/ai/neural-hybrid-experiment-v0.2.md` and
+`examples/paderborn-neural-evaluation-v0.2.json` for architecture, calibration,
+ablations, source tracing and reproduction. Local fold weights are excluded from
+Git; the training CLI saves their hashes and verifies reloaded inference.
+
 The current executable contract has three inputs (engineering statistics, resampled raw signals,
 and STFT-derived features) and quality-weighted gated fusion. Its lightweight NumPy heads verify
 the end-to-end contract without claiming to be XGBoost, 1D-CNN/TCN, or a time-frequency CNN.

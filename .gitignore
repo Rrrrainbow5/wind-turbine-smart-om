@@ -16,3 +16,4 @@ frontend/*.tsbuildinfo
 # Licensed external waveform archives and extracted signals stay local.
 data/external/paderborn/raw/
 data/external/paderborn/processed/
+artifacts/ai/
