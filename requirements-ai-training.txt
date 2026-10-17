@@ -1,0 +1,4 @@
+-r requirements-ai.txt
+torch>=2.6,<3
+xgboost>=3,<4
+scikit-learn>=1.6,<2
