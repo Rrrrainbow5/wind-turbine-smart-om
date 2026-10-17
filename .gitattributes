@@ -1,0 +1,9 @@
+# Keep audit manifests and handoff artifacts byte-stable across Windows and Unix.
+docs/data/*.csv text eol=lf
+docs/data/*.md text eol=lf
+docs/integration/*.json text eol=lf
+docs/integration/*.md text eol=lf
+docs/research/*.csv text eol=lf
+docs/research/*.md text eol=lf
+docs/standards/*.json text eol=lf
+docs/standards/*.md text eol=lf
