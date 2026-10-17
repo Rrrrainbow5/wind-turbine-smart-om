@@ -556,7 +556,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
     sun.shadow.bias = -.0003
     scene.add(sun)
 
-    new EXRLoader().load('/assets/environment/DaySkyHDRI070B_2K_HDR.exr', texture => {
+    new EXRLoader().load(`${import.meta.env.BASE_URL}assets/environment/DaySkyHDRI070B_2K_HDR.exr`, texture => {
       if (disposed) { texture.dispose(); return }
       texture.mapping = THREE.EquirectangularReflectionMapping
       scene.background = texture

@@ -84,13 +84,6 @@ function SignalPanel({ turbine, record, onLocate, onMaintenance }: { turbine: Tu
 
 type DiagnosticParams = { rpm: number; oil: number; wind: number; noise: number; power: number }
 const defaultDiagnosticParams: DiagnosticParams = { rpm: 12, oil: 54, wind: 8.3, noise: 68, power: 1580 }
-const eventDiagnosticPresets: Record<string, DiagnosticParams> = {
-  'B-53': { rpm: 10.8, oil: 58, wind: 8.3, noise: 74, power: 1580 },
-  'A-51': { rpm: 10.2, oil: 72, wind: 8.3, noise: 86, power: 1480 },
-  'A-0': { rpm: 11.4, oil: 64, wind: 8.3, noise: 81, power: 1380 },
-  'C-67': { rpm: 12.1, oil: 55, wind: 8.3, noise: 70, power: 2250 },
-  'C-81': { rpm: 8.1, oil: 52, wind: 8.3, noise: 82, power: 920 },
-}
 const diagnosticFields: Array<{ key: keyof DiagnosticParams; label: string; min: number; max: number; step: number; unit: string; normal: [number, number] }> = [
   { key: 'rpm', label: '叶片转速', min: 0, max: 20, step: .1, unit: 'rpm', normal: [8, 15] },
   { key: 'oil', label: '齿轮箱油温', min: 20, max: 100, step: 1, unit: '°C', normal: [35, 65] },
@@ -102,7 +95,7 @@ const diagnosticFields: Array<{ key: keyof DiagnosticParams; label: string; min:
 function diagnosticInference(params: DiagnosticParams) {
   const scores = {
     '齿轮箱': Math.max(0, (params.oil - 65) / 35) * .72 + Math.max(0, (params.noise - 78) / 32) * .28,
-    '主轴/轴承': Math.max(0, (12 - params.rpm) / 12) * .35 + Math.max(0, (params.noise - 78) / 32) * .35 + Math.max(0, (45 - params.wind) / 45) * .3,
+    '主轴/轴承': Math.max(0, (8 - params.rpm) / 8) * .35 + Math.max(0, (params.noise - 78) / 32) * .35 + Math.max(0, (5 - params.wind) / 5) * .3,
     '发电机': Math.max(0, (params.power - 2100) / 400) * .55 + Math.max(0, (params.oil - 65) / 35) * .45,
   }
   const ranked = Object.entries(scores).sort((a, b) => b[1] - a[1])
@@ -128,8 +121,8 @@ function buildDiagnosticRecord(turbine: Turbine, mode: Mode, location: string, e
   const source = mode === 'api' ? turbine.source : 'SIMULATED'
   const suffix = eventId || turbine.event_id || 'baseline'
   return {
-    sampleId: `${source}-${turbine.turbine_id}-${suffix}`,
-    diagnosisId: `DX-${turbine.turbine_id}-${suffix}`,
+    sampleId: mode === 'api' ? turbine.sample_id || '后端尚未返回 sample_id' : `SIM-${turbine.turbine_id}-${suffix}`,
+    diagnosisId: mode === 'api' ? turbine.diagnosis_id || '后端尚未返回 diagnosis_id' : `DEMO-${turbine.turbine_id}-${suffix}`,
     source,
     modelVersion: mode === 'api' ? turbine.model_version : 'demo-rule-v0.2',
     turbineId: turbine.turbine_id,
@@ -251,7 +244,7 @@ export default function App() {
   const [maintenanceAttempts, setMaintenanceAttempts] = useState(0)
   const [decisionConfirm, setDecisionConfirm] = useState<string | null>(null)
   const [decisionFeedback, setDecisionFeedback] = useState('')
-  const [faultEventId, setFaultEventId] = useState('B-53')
+  const [faultEventId] = useState('B-53')
   const [personnelAvailable, setPersonnelAvailable] = useState(true)
   const [spareAvailable, setSpareAvailable] = useState(true)
   const [shutdownAllowed, setShutdownAllowed] = useState(true)
@@ -529,9 +522,16 @@ export default function App() {
 
   const executePlan = async () => {
     if (!selected) return
-    setBeforeRetest(createRetestSnapshot(false)); setAfterRetest(null); setError('')
+    setAfterRetest(null); setError('')
     if (mode === 'api') {
       if (!apiPlan) { setError('尚未生成可执行的维护方案。'); return }
+      setBeforeRetest({
+        location: publicComponentLabel(selected.component_label),
+        confidence: selected.failure_risk,
+        risk: selected.failure_risk,
+        health: selected.health_index,
+        conclusion: '维护前接口诊断状态',
+      })
       try {
         setLoading(true)
         const record = await executeMaintenance(apiPlan.plan_id)
@@ -544,17 +544,24 @@ export default function App() {
           const message = reason instanceof Error ? reason.message : '复测结果尚未生成'
           if (!message.includes('404')) setError(message)
         } finally { setRetestLoading(false) }
-        if (!fetchedRetests.length) fetchedRetests = retests
         const apiResult = fetchedRetests[0]
-        setAfterRetest(apiResult ? { location: apiResult.conclusion.includes('消除') ? '无异常' : selected.component_label, confidence: apiResult.conclusion.includes('消除') ? 0 : apiResult.failure_risk, risk: apiResult.failure_risk, health: apiResult.health_index, conclusion: apiResult.conclusion } : createRetestSnapshot(selectedPlan !== 'monitor'))
+        if (apiResult) {
+          setAfterRetest({ location: apiResult.conclusion.includes('消除') ? '无异常' : publicComponentLabel(selected.component_label), confidence: apiResult.conclusion.includes('消除') ? 0 : apiResult.failure_risk, risk: apiResult.failure_risk, health: apiResult.health_index, conclusion: apiResult.conclusion })
+        }
         if (selectedPlan === 'monitor' || decisionAction === 'CONTINUE_MONITORING') {
           setTurbineStates(current => current[selectedId] ? { ...current, [selectedId]: { ...current[selectedId], status: 'monitoring' } } : current)
         }
-        setDecisionFeedback(decisionAction === 'CONTINUE_MONITORING' ? '你选择了继续监测，当前未停机，故障风险将继续跟踪。' : `你选择了${decisionAction === 'SCHEDULE_MAINTENANCE' ? '预防性维护' : '现场检查'}，已进入复测流程。`)
-        setRetestPhase('result'); playConfirmSound(); logAction('维护完成，已生成复测结果')
+        if (apiResult) {
+          setDecisionFeedback('后端已返回复测记录，请核对结果后确认。')
+          setRetestPhase('result'); playConfirmSound(); logAction('维护完成，已获取后端复测结果')
+        } else {
+          setDecisionFeedback('维护执行已记录，等待后端生成复测结果。')
+          setRetestPhase('idle'); logAction('维护已记录，后端复测结果待生成')
+        }
       } catch (reason) { setError(reason instanceof Error ? reason.message : '维护请求失败'); setRetestPhase('idle') }
       finally { setLoading(false) }
     } else {
+      setBeforeRetest(createRetestSnapshot(false))
       await runRetestProgress()
       setAfterRetest(createRetestSnapshot(selectedPlan !== 'monitor' && maintenanceAttempts >= 1))
       if (selectedPlan === 'monitor' || decisionAction === 'CONTINUE_MONITORING') {
@@ -670,8 +677,7 @@ export default function App() {
             <div className="reading-primary"><div className="reading-label"><Gauge size={18} /> 健康指数 <span title="与信号诊断共享同一 diagnosis_id">ⓘ</span></div><div className="reading-number">{selected.has_analysis === false ? '--' : serviced ? '待复测' : selected.health_index.toFixed(1)}{selected.has_analysis !== false && !serviced && <small>/ 100</small>}</div><div className="meter"><span style={{ width: selected.has_analysis === false || serviced ? '0%' : `${selected.health_index}%` }} className={selected.health_index < 70 ? 'meter-risk' : selected.health_index < 85 ? 'meter-warning' : 'meter-normal'} /></div><p>{selected.has_analysis === false ? '后端尚无该部件的 AI 分析结果。' : serviced ? '维护执行已记录，设备健康状态应由复测数据确认。' : selected.warning_level === 'HIGH' ? '状态持续偏离正常区间，建议进入维护评估。' : '当前状态以信号诊断结果为准。'}</p><small className="record-link">诊断记录 {diagnosticRecord?.diagnosisId} · 样本 {diagnosticRecord?.sampleId} · {diagnosticRecord?.source}</small></div>
             <div className="metric-grid"><div><span>异常分数</span><strong>{selected.has_analysis === false ? '--' : selected.anomaly_score.toFixed(2)}</strong><small>模型输出</small></div><div><span>风险评分</span><strong>{selected.has_analysis === false ? '--' : selected.failure_risk.toFixed(2)}</strong><small>0-1 指标，非校准概率</small></div><div><span>当前功率</span><strong>{selected.power_kw !== 0 ? selected.power_kw.toLocaleString() : '--'}<em> kW</em></strong><small>{selected.source === 'DERIVED' ? 'CARE 派生' : selected.power_kw !== 0 ? '运行示例' : '未提供'}</small></div><div><span>风速</span><strong>{selected.wind_ms !== 0 ? selected.wind_ms : '--'}<em> m/s</em></strong><small>{selected.source === 'DERIVED' ? 'CARE 派生' : selected.wind_ms !== 0 ? '运行示例' : '未提供'}</small></div></div>
             <div className="info-section"><div className="section-title"><h3>{selected.trend_label || '传感器趋势'}</h3><span>{selected.trend_unit || 'CARE telemetry'}</span></div><Sparkline values={selected.trend} level={selected.warning_level} /></div>
-          <section className="ai-workbench" data-guide-target="slider-panel" aria-label="实时AI故障检测"><div className="workbench-title"><h3><Activity size={15} /> 实时 AI 故障检测</h3><span className="simulated-tag">SIMULATED · 拖动即推理</span></div><div className="diagnostic-layout"><div className="diagnostic-controls">{diagnosticFields.map(field => <label className="diagnostic-slider" key={field.key}><span><b>{field.label}</b><em>{diagnosticParams[field.key].toFixed(field.step < 1 ? 1 : 0)} {field.unit}</em></span><input style={{ '--slider-color': sliderTint(field, diagnosticParams[field.key]) } as CSSProperties} type="range" min={field.min} max={field.max} step={field.step} value={diagnosticParams[field.key]} onChange={event => updateDiagnosticParam(field.key, Number(event.target.value))} /><small>安全范围 {field.normal[0]}–{field.normal[1]} {field.unit}</small></label>)}<button className="reset-diagnostic" onClick={() => setDiagnosticParams(defaultDiagnosticParams)}><RotateCcw size={14} /> 一键重置参数</button></div><div className="diagnostic-result"><div className="ai-status-line"><span className={`ai-pulse ${diagnostic.level.toLowerCase()}`} />AI 推理完成 <StatusBadge level={diagnostic.level} /></div><DiagnosticDiagram location={displayLocation} risk={diagnostic.risk} /><div className="diagnostic-summary"><strong>{displayLocation}</strong><span>置信度 {(diagnostic.risk * 100).toFixed(0)}% · 风险评分 {diagnostic.risk.toFixed(2)}</span><button className="locate-fault" onClick={() => setEngineeringView(true)}><Eye size={13} /> 在三维中定位</button></div><ConfidenceBars scores={diagnostic.scores} /></div></div><div className="diagnostic-history"><div><strong><History size={14} /> 最近检测</strong><span>{diagnosticHistory.length ? `${diagnosticHistory.length} 条` : '暂无记录'}</span></div>{diagnosticHistory.slice(0, 3).map(item => <span key={`${item.at}-${item.risk}`}>{item.at} · {item.location} · ${(item.risk * 100).toFixed(0)}%</span>)}</div></section>
-          <div className="event-selector" data-guide-target="slider-panel"><label htmlFor="wt02-event">{selectedId} 演示故障案例</label><select id="wt02-event" value={faultEventId} onChange={event => { const id = event.target.value; setFaultEventId(id); setDiagnosticParams(eventDiagnosticPresets[id] || defaultDiagnosticParams); logAction(`载入故障案例基线：${id}`) }}>{wt02FaultEvents.map(item => <option key={item.id} value={item.id}>{item.id} · {item.name}</option>)}</select><small>选择一个预设，只用于载入对应的初始传感器参数；拖动滑块后，AI 演示会按当前参数重新计算。</small></div>
+          <section className="ai-workbench" aria-label="参数演示入口"><div className="workbench-title"><h3><Activity size={15} /> 参数演示</h3><span className="simulated-tag">SIMULATED</span></div><p>故障预设、滑块与规则演示已从设备状态页移出。演示结果不代表接口诊断、CARE 实测或已部署 AI 模型。</p><button className="secondary-action" data-guide-target="slider-panel" onClick={() => setView('demo')}><Activity size={15} /> 打开独立演示模式 <ArrowRight size={15} /></button></section>
           <div className="component-line"><div className="component-symbol"><Settings2 size={18} /></div><div><strong>{publicComponentLabel(selected.component_label)}</strong><span>{selected.component_id} · {selectedFault.name}</span></div><ChevronDown size={17} /></div>
             <div className="overview-actions"><button className="secondary-action" onClick={() => setView('signal')}><Activity size={16} /> 查看信号诊断 <ArrowRight size={16} /></button><button className="primary-action" data-guide-target="enter-maintenance" disabled={!activeFault} title={!activeFault ? '当前设备无激活故障，无需维护' : '查看维护方案'} onClick={openMaintenance}><Wrench size={17} /> {activeFault ? '查看维护方案' : '设备正常，无需维护'} {activeFault && <ArrowRight size={17} />}</button></div>
           </> : <>

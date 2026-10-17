@@ -16,6 +16,8 @@ interface ApiAiResult {
   warning_level: WarningLevel
   model_version: string
   data_origin: SourceKind
+  sample_id?: string | null
+  diagnosis_id?: string | null
 }
 
 interface ApiTurbineState {
@@ -124,6 +126,8 @@ export async function fetchTurbines(): Promise<Turbine[]> {
       trend_unit: sensorTrend.length ? '°C' : undefined,
       source: latest?.data_origin || telemetry?.data_origin || item.data_origin || 'REFERENCE',
       model_version: latest?.model_version || '未提供',
+      sample_id: latest?.sample_id || undefined,
+      diagnosis_id: latest?.diagnosis_id || undefined,
       ...(item.wind_farm === 'Wind Farm B' && item.turbine_id === 'WT02' ? {
         event_id: 53,
         event_name: '转子轴承 2损伤',
