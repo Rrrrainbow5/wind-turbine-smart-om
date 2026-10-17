@@ -32,7 +32,9 @@ type TurbineSceneObject = {
   cadRotor: THREE.Group | null
 }
 
-const engineeringModelUrl = '/assets/wind-turbine-engineering.glb'
+// Resolve public assets through Vite's base path so GitHub Pages requests
+// include /wind-turbine-smart-om/ instead of targeting the domain root.
+const engineeringModelUrl = `${import.meta.env.BASE_URL}assets/wind-turbine-engineering.glb`
 // Turbines follow two connected ridgelines, similar to an aerial mountain
 // wind-farm layout. They deliberately avoid a regular grid.
 const ridgeLayout: Record<string, [number, number]> = {
@@ -50,9 +52,15 @@ function identifyCadPart(sourceName: string, turbineId: string): CadPart | null 
   const name = sourceName.toLowerCase()
   if (name.includes('lopat') || name.includes('blade')) return { id: `${turbineId}_ROTOR_BLADE`, label: '风轮叶片', category: 'ROTOR' }
   if (/^wt02_blade_\d+/.test(name)) return { id: `${turbineId}_ROTOR_BLADE`, label: '风轮叶片', category: 'ROTOR' }
+  // This CAD uses Serbian/Croatian transliterations such as le_aj (lezaj)
+  // for bearings and kuci_te za le_aj for their housings.
+  // The assembly contains two main-shaft roller bearings. The `- 1` node is
+  // the second rotor bearing used by CARE Event B-53; keep the first bearing
+  // unclassified so the event highlights one physical target only.
+  if (name.includes('glavni roller') || name.includes('glavno roller')) return { id: `${turbineId}_ROTOR_BEARING_2`, label: '转子轴承 2', category: 'ROTOR_BEARING' }
+  if (name.includes('roller bearing') || name.includes('roller le_aj') || name.includes('le_aj za ') || name.includes('lezaj')) return { id: `${turbineId}_BEARING`, label: '滚动轴承', category: 'BEARING' }
+  if ((name.includes('kuci') && (name.includes('le_aj') || name.includes('lezaj'))) || name.includes('bearing housing')) return { id: `${turbineId}_GEARBOX_BEARING`, label: '传动链轴承座', category: 'GEARBOX_BEARING' }
   if (name === 'generator-1' || name.includes('generator') || name.includes('generatora') || name.includes('rotor generatora') || name.includes('stator')) return { id: `${turbineId}_GENERATOR`, label: '发电机总成', category: 'GENERATOR' }
-  if (name.startsWith('radial ball bearing') || name.startsWith('taper roller bearing')) return { id: `${turbineId}_BEARING`, label: '滚动轴承', category: 'BEARING' }
-  if ((name.includes('kuci') && name.includes('le瀉j')) || name.includes('bearing housing')) return { id: `${turbineId}_GEARBOX_BEARING`, label: '传动链轴承座', category: 'GEARBOX_BEARING' }
   if (name.includes('spur ge') || name.includes('internal spur') || name.includes('zupcan') || name.includes('planetarni') || name.includes('planetarci')) return { id: `${turbineId}_GEAR`, label: '齿轮传动件', category: 'GEARBOX' }
   if ((name.includes('glavno vratilo') || name.includes('glavna osovina') || name.includes('main shaft') || name.includes('spojnica')) && !name.includes('civija') && !name.includes('navrtka') && !name.includes('sraf')) return { id: `${turbineId}_MAIN_SHAFT`, label: '主轴/联轴器', category: 'DRIVETRAIN' }
   if (name.includes('sve u gondoli') || name.includes('gondol')) return { id: `${turbineId}_NACELLE`, label: '机舱及机舱附件', category: 'NACELLE' }
@@ -115,6 +123,7 @@ const engineeringColors: Record<string, number> = {
   GENERATOR: 0x9aaeb5,
   GEARBOX: 0xaab9bd,
   GEARBOX_BEARING: 0x9eafb4,
+  ROTOR_BEARING: 0x9eafb4,
   BEARING: 0x9eafb4,
   DRIVETRAIN: 0xb7c5c8,
   ROTOR: 0x80939a,
@@ -148,18 +157,34 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
   model.traverse(object => {
     if (!(object instanceof THREE.Mesh)) return
     const category = effectiveCadCategory(object, model)
-    const highlightedInternal = ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'BEARING', 'DRIVETRAIN'].includes(category)
-    const exterior = isCadExterior(object, category)
+    const highlightedInternal = ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN'].includes(category)
     const source = String(object.userData.sourceCadName || '').toLowerCase()
+    const ancestry: string[] = []
+    let parent = object.parent
+    while (parent && parent !== model) { ancestry.push(String(parent.userData.sourceCadName || parent.name || '').toLowerCase()); parent = parent.parent }
+    const nameChain = `${source} ${ancestry.join(' ')}`
     object.geometry.computeBoundingBox()
     const localSize = object.geometry.boundingBox?.getSize(new THREE.Vector3()) || new THREE.Vector3()
-    // The upper nacelle cover is removed for the engineering cutaway; side/lower
-    // housings remain as a translucent reference so the real drivetrain stays readable.
-    const isUpperNacelleCover = (source.includes('gornje') && source.includes('kuci')) || source.includes('upper nacelle') || source.includes('top nacelle')
-    const isMainNacelleShell = isUpperNacelleCover || (source.startsWith('kuci') && Math.max(localSize.x, localSize.y, localSize.z) > 2.2)
+    // Geometry simplification can rename or flatten CAD nodes, so the
+    // original source-name rules may not identify the nacelle shell. Large
+    // unclassified meshes are the shell fallback; classified drivetrain
+    // meshes remain internal even when their geometry is sizable.
+    const fallbackNacelleShell = !highlightedInternal && !category && Math.max(localSize.x, localSize.y, localSize.z) > 2.2
+    const exterior = isCadExterior(object, category) || fallbackNacelleShell
+    // The CAD nacelle is exported as many small panels below a shared NACELLE
+    // assembly. Hiding only large meshes leaves those panels looking like a
+    // complete white shell, so cutaway mode removes the whole shell branch.
+    // Explicitly classified drivetrain parts keep their own category and remain.
+    const isUpperNacelleCover = exterior && (
+      (source.includes('gornje') && source.includes('kuci')) ||
+      /upper nacelle|top nacelle|cover|lid|roof|poklopac|gornje kuci|盖板|罩/.test(nameChain)
+    )
+    const isMainNacelleShell = category === 'NACELLE' || isUpperNacelleCover || fallbackNacelleShell ||
+      (source.startsWith('kuci') && Math.max(localSize.x, localSize.y, localSize.z) > 2.2)
     if (object.userData.engineeringOriginalVisible === undefined) object.userData.engineeringOriginalVisible = object.visible
-    // Keep the large white top cover out of the normal and cutaway views.
-    object.visible = isUpperNacelleCover ? false : (active && isMainNacelleShell ? false : Boolean(object.userData.engineeringOriginalVisible))
+    object.visible = active && isMainNacelleShell
+      ? false
+      : Boolean(object.userData.engineeringOriginalVisible)
     const materials = Array.isArray(object.material) ? object.material : [object.material]
     materials.forEach(material => {
       const stored = material.userData.engineeringOriginal as { color?: number; opacity: number; transparent: boolean; depthWrite: boolean; emissive?: number } | undefined
@@ -203,6 +228,16 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
       }
     })
   })
+  if (active && !model.userData.upperMeshReportDone) {
+    model.updateWorldMatrix(true, true)
+    console.log('=== 剖切时外壳mesh列表 ===')
+    model.traverse(object => {
+      if (!(object instanceof THREE.Mesh) || !object.visible) return
+      const worldPosition = object.getWorldPosition(new THREE.Vector3())
+      if (worldPosition.y > 5) console.log('未隐藏的上层mesh:', object.name, '| parent:', object.parent?.name || '', '| y:', worldPosition.y.toFixed(1))
+    })
+    model.userData.upperMeshReportDone = true
+  }
 }
 
 function makeCadLabels(model: THREE.Object3D) {
@@ -239,10 +274,27 @@ function getEngineeringBounds(model: THREE.Object3D | null) {
   model.traverse(object => {
     if (!(object instanceof THREE.Mesh)) return
     const category = effectiveCadCategory(object, model)
-    if (!['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'BEARING', 'DRIVETRAIN'].includes(category)) return
+    if (!['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN'].includes(category)) return
     bounds.expandByObject(object)
   })
   return bounds
+}
+
+function getCutawayFocus(model: THREE.Object3D | null) {
+  const bounds = getEngineeringBounds(model)
+  if (!bounds.isEmpty()) return bounds
+  if (!model) return bounds
+  model.updateWorldMatrix(true, true)
+  // Some CAD exports do not preserve component metadata. Fall back to the
+  // model's upper nacelle region so cutaway mode never lands on the farm sea.
+  const full = new THREE.Box3().setFromObject(model)
+  if (full.isEmpty()) return full
+  const size = full.getSize(new THREE.Vector3())
+  const upper = new THREE.Box3(
+    new THREE.Vector3(full.min.x, full.min.y + size.y * .62, full.min.z),
+    full.max.clone(),
+  )
+  return upper.isEmpty() ? full : upper
 }
 
 function makeBearing(componentId: string, metal: THREE.Material, ring: THREE.Material) {
@@ -315,9 +367,21 @@ function setFaultPartState(model: THREE.Object3D | null, category: Turbine['faul
   model.traverse(object => {
     if (!(object instanceof THREE.Mesh)) return
     const actualCategory = effectiveCadCategory(object, model)
+    const sourceName = String(object.userData.sourceCadName || '').toLowerCase()
+    // Clear any previous event styling before applying the new event. This
+    // prevents pink/red remnants when switching between cases.
+    const baseColor = engineeringColors[actualCategory]
+    const allMaterials = Array.isArray(object.material) ? object.material : [object.material]
+    allMaterials.forEach(material => {
+      const standard = material as THREE.MeshStandardMaterial
+      if (baseColor !== undefined && standard.color) standard.color.setHex(baseColor)
+      if (standard.emissive) standard.emissive.setHex(0x071a20)
+      standard.emissiveIntensity = .08
+    })
     // CARE's rotor-bearing event has no formal CAD mapping yet; use the
     // verified gearbox-bearing geometry as the visible engineering proxy.
-    const categoryMatches = actualCategory === category || (category === 'BEARING' && actualCategory === 'GEARBOX_BEARING')
+    const rotorBearingName = /roller.*le.?_?aj|le.?_?aj.*glavno|glavno.*vratilo.*le.?_?aj/.test(sourceName)
+    const categoryMatches = actualCategory === category || (category === 'ROTOR_BEARING' && rotorBearingName) || (category === 'BEARING' && (actualCategory === 'GEARBOX_BEARING' || actualCategory === 'ROTOR_BEARING'))
     if (!categoryMatches) return
     matched += 1
     targets.push(object)
@@ -332,6 +396,26 @@ function setFaultPartState(model: THREE.Object3D | null, category: Turbine['faul
       material.depthWrite = true
     })
   })
+  // CAD exports do not use one naming convention. If the normalized category
+  // pass found nothing, use original source names as a conservative fallback
+  // so a mapped bearing/gear/generator is still visible to the user.
+  if (!targets.length) {
+    model.traverse(object => {
+      if (!(object instanceof THREE.Mesh)) return
+      const source = String(object.userData.sourceCadName || '').toLowerCase()
+      const bearing = source.includes('bearing') || source.includes('lezaj') || source.includes('le_aj') || source.includes('roller')
+      const gearbox = source.includes('gear') || source.includes('zupcan') || source.includes('planet') || source.includes('spur')
+      const generator = source.includes('generator') || source.includes('stator')
+      const drivetrain = source.includes('shaft') || source.includes('osovina') || source.includes('spojnica')
+      const matches = category === 'ROTOR_BEARING' ? bearing && !source.includes('kuci')
+        : category === 'GEARBOX_BEARING' || category === 'BEARING' ? bearing
+          : category === 'GEARBOX' ? gearbox
+            : category === 'GENERATOR' ? generator
+              : category === 'DRIVETRAIN' ? drivetrain : false
+      if (matches) targets.push(object)
+    })
+  }
+  if (!matched && targets.length) matched = targets.length
   // A separate unlit overlay keeps the fault unmistakable even when the
   // imported CAD material is white, metallic, or uses vertex colors.
   if (targets.length) {
@@ -413,7 +497,9 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
     camera.lookAt(initialPosition[0], 8.7, initialPosition[1])
     cameraRef.current = camera
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' })
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    // Cap the render resolution on high-DPI displays. The scene remains sharp
+    // while avoiding a disproportionate GPU cost on laptops and integrated GPUs.
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
     renderer.toneMapping = THREE.ACESFilmicToneMapping
     renderer.toneMappingExposure = .72
     renderer.outputColorSpace = THREE.SRGBColorSpace
@@ -464,7 +550,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
     const sun = new THREE.DirectionalLight(0xfff5dc, 2.4)
     sun.position.set(-16, 34, 20)
     sun.castShadow = true
-    sun.shadow.mapSize.set(2048, 2048)
+    sun.shadow.mapSize.set(1024, 1024)
     sun.shadow.camera.left = -35; sun.shadow.camera.right = 35
     sun.shadow.camera.top = 35; sun.shadow.camera.bottom = -35
     sun.shadow.bias = -.0003
@@ -636,7 +722,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
     let disposed = false
     const loader = new GLTFLoader()
     const dracoLoader = new DRACOLoader()
-    dracoLoader.setDecoderPath('/draco/')
+    dracoLoader.setDecoderPath(`${import.meta.env.BASE_URL}draco/`)
     loader.setDRACOLoader(dracoLoader)
     // One decoded CAD template is cloned for all eight turbines. Geometry and
     // textures remain shared; only materials are cloned where state styling is needed.
@@ -648,6 +734,9 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       const size = bounds.getSize(new THREE.Vector3())
       const scale = 10.8 / Math.max(size.x, size.y, size.z)
       rootMap.forEach((object, id) => {
+        // Keep the procedural low-poly scene for every turbine, but only
+        // attach the selected turbine's CAD model to the scene.
+        if (id !== selectedIdRef.current) return
         const imported = template.clone(true)
         imported.name = `${id}_ENGINEERING_CAD_MODEL`
         bindCadPartNames(imported, id)
@@ -725,7 +814,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
         setBearingState(realBearings, engineeringActive && id === 'WT02' && turbine?.fault_category === 'BEARING')
         if (engineeringActive) {
           object.root.updateWorldMatrix(true, true)
-          const focusBounds = getEngineeringBounds(imported)
+          const focusBounds = getCutawayFocus(imported)
           if (!focusBounds.isEmpty()) {
             const focus = focusBounds.getCenter(new THREE.Vector3())
             const focusSize = focusBounds.getSize(new THREE.Vector3())
@@ -858,7 +947,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       rootMap.clear()
       sceneRef.current = null; cameraRef.current = null
     }
-  }, [turbines])
+  }, [selectedId])
 
   useEffect(() => {
     const selected = turbines.find(turbine => turbine.turbine_id === selectedId)
@@ -868,18 +957,24 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
     if (selected && engineeringView) {
       const selectedObject = objectsRef.current.get(selectedId)
       const cadModel = selectedObject?.cadModel || null
-      const focusBounds = getEngineeringBounds(cadModel)
+      const selectedPosition = ridgeLayout[selected.turbine_id] || selected.position
+      const baseY = terrainHeight(selectedPosition[0], selectedPosition[1])
+      // The imported CAD can contain STEP coordinates far from its scene
+      // origin. Use the known turbine placement as the camera anchor so the
+      // cutaway always opens on the nacelle instead of the sea/background.
+      const fixedFocus = new THREE.Vector3(selectedPosition[0], baseY + 8.05, selectedPosition[1])
+      viewRef.current.target.copy(fixedFocus)
+      // Side/front inspection angle: the nacelle fills the viewport and its
+      // drivetrain reads like the reference engineering cutaway.
+      viewRef.current.position.copy(fixedFocus).add(new THREE.Vector3(.45, .62, 2.75))
+      const focusBounds = getCutawayFocus(cadModel)
       // Imported CAD names vary between STEP exports. If no internal parts
       // were classified, still focus the complete CAD model instead of
       // leaving the camera at the farm overview distance.
-      if (focusBounds.isEmpty() && cadModel) {
-        cadModel.updateWorldMatrix(true, true)
-        focusBounds.setFromObject(cadModel)
-      }
-      if (!focusBounds.isEmpty()) {
+      if (!focusBounds.isEmpty() && !cadModel) {
         const focus = focusBounds.getCenter(new THREE.Vector3())
         const focusSize = focusBounds.getSize(new THREE.Vector3())
-        const distance = Math.min(14, Math.max(2.8, focusSize.length() * 1.05))
+        const distance = Math.min(10, Math.max(2.4, focusSize.length() * .9))
         viewRef.current.target.copy(focus)
         viewRef.current.position.copy(focus).add(new THREE.Vector3(distance * .55, distance * .24, distance))
       }
@@ -890,7 +985,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       viewRef.current.target.set(selectedPosition[0], y + 8.7, selectedPosition[1])
     }
     flyToRef.current(viewRef.current.position, viewRef.current.target, engineeringView ? 1200 : 1750)
-  }, [selectedId, engineeringView, turbines])
+  }, [selectedId, engineeringView])
 
   useEffect(() => {
     objectsRef.current.forEach((object, id) => {
@@ -905,7 +1000,9 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       object.ring.scale.setScalar(id === selectedId ? 1.2 : 1)
       object.ring.visible = false
       object.root.visible = !engineeringView || id === selectedId
-      object.blades.visible = false
+      // Keep the procedural rotor visible until the CAD model has loaded.
+      // The CAD load is asynchronous and may be slower on GitHub Pages.
+      object.blades.visible = !object.cadModel
       object.beacon.visible = !(engineeringView && id === selectedId)
       object.engineering.visible = false
       const engineeringActive = engineeringView && id === selectedId
@@ -919,7 +1016,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
     })
   }, [selectedId, serviced, turbines, engineeringView, diagnosticFaultCategory])
 
-  return <div className="scene-canvas" ref={containerRef} aria-label="可点击的三维风电场">
+  return <div className={`scene-canvas ${engineeringView ? 'engineering-active' : ''}`} ref={containerRef} aria-label="可点击的三维风电场">
     <div className="drone-hud" aria-hidden="true">
       <span className="drone-corner drone-corner-tl" /><span className="drone-corner drone-corner-tr" />
       <span className="drone-corner drone-corner-bl" /><span className="drone-corner drone-corner-br" />
@@ -928,7 +1025,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       <div className="drone-rec"><i /> REC</div>
     </div>
     <div className="camera-presets" aria-label="预设视角">
-      {[['1', '巡检'], ['2', '叶轮'], ['3', '机舱'], ['4', '全场']].map(([key, label]) =>
+      {[['1', '巡检视角'], ['2', '叶轮视角'], ['3', '机舱视角'], ['4', '全场视角']].map(([key, label]) =>
         <button key={key} onClick={() => presetRef.current(Number(key))}><b>{key}</b>{label}</button>)}
     </div>
   </div>

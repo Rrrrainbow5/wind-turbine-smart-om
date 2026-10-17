@@ -3,14 +3,19 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 import json
+import math
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from backend.app.config import allowed_origins, database_path
 from backend.app.database import Database
+from backend.app.diagnosis import create_diagnosis_router
 from backend.app.maintenance import decide_maintenance
 from backend.app.schemas import (
     AIResult,
@@ -31,6 +36,19 @@ def iso(value: datetime) -> str:
     return value.astimezone(timezone.utc).isoformat()
 
 
+def json_safe_validation_detail(value: Any) -> Any:
+    """Keep 422 error details serializable when invalid input contains NaN/Inf."""
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if isinstance(value, dict):
+        return {str(key): json_safe_validation_detail(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [json_safe_validation_detail(item) for item in value]
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    return str(value)
+
+
 def create_app(db_path: Path | None = None) -> FastAPI:
     database = Database(db_path or database_path())
 
@@ -42,8 +60,8 @@ def create_app(db_path: Path | None = None) -> FastAPI:
 
     app = FastAPI(
         title="WindCare Backend",
-        version="0.1.0",
-        description="风电装备智能运维项目的后端、状态接口与基础维护决策服务。",
+        version="0.2.0",
+        description="风电装备智能运维项目的状态、可追溯诊断结果与维护决策服务。",
         lifespan=lifespan,
     )
     app.state.database = database
@@ -54,6 +72,17 @@ def create_app(db_path: Path | None = None) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.exception_handler(RequestValidationError)
+    async def request_validation_error_handler(
+        _, exc: RequestValidationError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            content={"detail": json_safe_validation_detail(exc.errors())},
+        )
+
+    app.include_router(create_diagnosis_router(database))
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -124,13 +153,22 @@ def create_app(db_path: Path | None = None) -> FastAPI:
     @app.post("/api/ai-results", response_model=AIResult, status_code=status.HTTP_201_CREATED)
     def create_ai_result(payload: AIResultCreate) -> AIResult:
         ensure_ids_exist(database, payload.turbine_id, payload.component_id)
+        if payload.sample_id is not None or payload.diagnosis_id is not None:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "sample_id and diagnosis_id are server-managed on traced results; "
+                    "submit them to /api/diagnosis/analyze"
+                ),
+            )
         created_at = datetime.now(timezone.utc)
         result_id = database.execute(
             """
             INSERT INTO ai_results (
                 turbine_id, component_id, observed_at, health_index, anomaly_score,
-                failure_risk, warning_level, model_version, data_origin, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                failure_risk, warning_level, model_version, data_origin,
+                sample_id, diagnosis_id, event_id, fault_id, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 payload.turbine_id,
@@ -142,6 +180,10 @@ def create_app(db_path: Path | None = None) -> FastAPI:
                 payload.warning_level.value,
                 payload.model_version,
                 payload.data_origin.value,
+                payload.sample_id,
+                payload.diagnosis_id,
+                payload.event_id,
+                payload.fault_id,
                 iso(created_at),
             ),
         )
@@ -151,7 +193,9 @@ def create_app(db_path: Path | None = None) -> FastAPI:
         payload: MaintenanceOptimizeRequest, *, is_replan: bool
     ) -> MaintenancePlan:
         ensure_ids_exist(database, payload.turbine_id, payload.component_id)
-        failure_risk, warning_level = resolve_risk(database, payload)
+        failure_risk, warning_level, source_sample_id, source_diagnosis_id = resolve_risk(
+            database, payload
+        )
         action, priority, rationale, requires_replan, candidates = decide_maintenance(
             failure_risk=failure_risk,
             warning_level=warning_level,
@@ -165,7 +209,9 @@ def create_app(db_path: Path | None = None) -> FastAPI:
         source_plan = None
         if parent_plan_id:
             source_plan = database.fetch_one(
-                "SELECT plan_id, turbine_id, component_id FROM maintenance_plans WHERE plan_id = ?",
+                """SELECT plan_id, turbine_id, component_id, source_sample_id,
+                          source_diagnosis_id
+                   FROM maintenance_plans WHERE plan_id = ?""",
                 (parent_plan_id,),
             )
             if not source_plan:
@@ -175,6 +221,8 @@ def create_app(db_path: Path | None = None) -> FastAPI:
                 or source_plan["component_id"] != payload.component_id
             ):
                 raise HTTPException(status_code=409, detail="Source plan does not match turbine/component")
+            source_sample_id = source_sample_id or source_plan.get("source_sample_id")
+            source_diagnosis_id = source_diagnosis_id or source_plan.get("source_diagnosis_id")
         created_at = datetime.now(timezone.utc)
         plan = MaintenancePlan(
             plan_id=str(uuid4()),
@@ -195,6 +243,8 @@ def create_app(db_path: Path | None = None) -> FastAPI:
             replan_trigger=replan_trigger,
             confirmed_by=payload.confirmed_by,
             confirmed_at=payload.confirmed_at,
+            source_sample_id=str(source_sample_id) if source_sample_id else None,
+            source_diagnosis_id=str(source_diagnosis_id) if source_diagnosis_id else None,
             candidates=candidates,
             created_at=created_at,
         )
@@ -206,8 +256,9 @@ def create_app(db_path: Path | None = None) -> FastAPI:
                     rationale, requires_replan, decision_origin, conditions_origin,
                     rule_version, input_failure_risk, input_warning_level,
                     maintenance_window_available, personnel_available, parent_plan_id,
-                    replan_trigger, confirmed_by, confirmed_at, created_at
-                ) VALUES (?, ?, ?, ?, ?, 'PROPOSED', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    replan_trigger, confirmed_by, confirmed_at, source_sample_id,
+                    source_diagnosis_id, created_at
+                ) VALUES (?, ?, ?, ?, ?, 'PROPOSED', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     plan.plan_id,
@@ -228,6 +279,8 @@ def create_app(db_path: Path | None = None) -> FastAPI:
                     plan.replan_trigger,
                     plan.confirmed_by,
                     iso(plan.confirmed_at) if plan.confirmed_at else None,
+                    plan.source_sample_id,
+                    plan.source_diagnosis_id,
                     iso(plan.created_at),
                 ),
             )
@@ -371,6 +424,32 @@ def seed_database(database: Database) -> None:
         """,
         (now,),
     )
+    # Keep the local/API demo reproducible for every teammate while preserving
+    # any real or newer result already stored in the database.
+    if not database.fetch_one(
+        "SELECT id FROM ai_results WHERE component_id = ? ORDER BY observed_at DESC, id DESC LIMIT 1",
+        ("WT02_COMPONENT_01",),
+    ):
+        database.execute(
+            """
+            INSERT INTO ai_results (
+                turbine_id, component_id, observed_at, health_index, anomaly_score,
+                failure_risk, warning_level, model_version, data_origin, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "WT02",
+                "WT02_COMPONENT_01",
+                now,
+                63.2,
+                0.87,
+                0.76,
+                "HIGH",
+                "care-v6-offshore-demo-0.1",
+                "DERIVED",
+                now,
+            ),
+        )
 
 
 def ensure_ids_exist(database: Database, turbine_id: str, component_id: str) -> None:
@@ -411,7 +490,8 @@ def latest_ai_result(database: Database, component_id: str) -> dict[str, object]
     return database.fetch_one(
         """
         SELECT id, turbine_id, component_id, observed_at AS timestamp, health_index,
-               anomaly_score, failure_risk, warning_level, model_version, data_origin, created_at
+               anomaly_score, failure_risk, warning_level, model_version, data_origin,
+               sample_id, diagnosis_id, event_id, fault_id, created_at
         FROM ai_results
         WHERE component_id = ?
         ORDER BY observed_at DESC, id DESC
@@ -434,13 +514,74 @@ def component_state(database: Database, component: dict[str, object]) -> Turbine
 
 def resolve_risk(
     database: Database, payload: MaintenanceOptimizeRequest
-) -> tuple[float, WarningLevel]:
+) -> tuple[float, WarningLevel, str | None, str | None]:
+    source_sample_id = payload.source_sample_id
+    source_diagnosis_id = payload.source_diagnosis_id
+    source_ai: dict[str, object] | None = None
+    if source_diagnosis_id:
+        source_ai = database.fetch_one(
+            """
+            SELECT ai.turbine_id, ai.component_id, ai.sample_id, ai.diagnosis_id,
+                   ai.failure_risk, ai.warning_level
+            FROM ai_results ai
+            JOIN diagnosis_samples ds
+              ON ds.diagnosis_id = ai.diagnosis_id
+             AND ds.sample_id = ai.sample_id
+             AND ds.turbine_id = ai.turbine_id
+             AND ds.component_id = ai.component_id
+            WHERE ai.diagnosis_id = ?
+            ORDER BY ai.observed_at DESC, ai.id DESC LIMIT 1
+            """,
+            (source_diagnosis_id,),
+        )
+        if not source_ai:
+            raise HTTPException(status_code=404, detail="Source diagnosis not found")
+        if (
+            source_ai["turbine_id"] != payload.turbine_id
+            or source_ai["component_id"] != payload.component_id
+        ):
+            raise HTTPException(status_code=409, detail="Source diagnosis does not match turbine/component")
+        if source_sample_id and source_sample_id != source_ai.get("sample_id"):
+            raise HTTPException(status_code=409, detail="Source sample does not match diagnosis")
+        source_sample_id = str(source_ai["sample_id"]) if source_ai.get("sample_id") else None
+    elif source_sample_id:
+        source_ai = database.fetch_one(
+            """
+            SELECT ai.turbine_id, ai.component_id, ai.sample_id, ai.diagnosis_id,
+                   ai.failure_risk, ai.warning_level
+            FROM ai_results ai
+            JOIN diagnosis_samples ds
+              ON ds.diagnosis_id = ai.diagnosis_id
+             AND ds.sample_id = ai.sample_id
+             AND ds.turbine_id = ai.turbine_id
+             AND ds.component_id = ai.component_id
+            WHERE ai.sample_id = ? AND ai.component_id = ?
+            ORDER BY ai.observed_at DESC, ai.id DESC LIMIT 1
+            """,
+            (source_sample_id, payload.component_id),
+        )
+        if not source_ai:
+            raise HTTPException(status_code=404, detail="Source sample AI result not found")
+        source_diagnosis_id = (
+            str(source_ai["diagnosis_id"]) if source_ai.get("diagnosis_id") else None
+        )
     if payload.failure_risk is not None and payload.warning_level is not None:
-        return payload.failure_risk, payload.warning_level
-    latest = latest_ai_result(database, payload.component_id)
+        return (
+            payload.failure_risk,
+            payload.warning_level,
+            source_sample_id,
+            source_diagnosis_id,
+        )
+    latest = source_ai or latest_ai_result(database, payload.component_id)
     if not latest:
         raise HTTPException(status_code=409, detail="No AI result is available for this component")
-    return float(latest["failure_risk"]), WarningLevel(str(latest["warning_level"]))
+    return (
+        float(latest["failure_risk"]),
+        WarningLevel(str(latest["warning_level"])),
+        source_sample_id or (str(latest["sample_id"]) if latest.get("sample_id") else None),
+        source_diagnosis_id
+        or (str(latest["diagnosis_id"]) if latest.get("diagnosis_id") else None),
+    )
 
 
 app = create_app()

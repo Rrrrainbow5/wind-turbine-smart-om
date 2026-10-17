@@ -16,6 +16,12 @@
 - `SIMULATED`：仿真产生的数据或事件
 - `ASSUMED`：工程假设参数
 - `REFERENCE`：来自论文、标准或数据集说明的参考信息
+- `USER_INPUT`：用户在数字录入界面提交的数据
+- `EXTERNAL_PUBLIC`：有公开来源和许可说明的外部数据
+
+CARE Version 6 当前接入内容是聚合状态/SCADA 数据。除非另有可追溯的高采样原始文件，
+不得将 CARE 聚合字段描述为原始振动或电流波形，也不得据此伪造 FFT、STFT、
+小波包或轴承特征频率。演示生成的波形必须标记为 `SIMULATED`。
 
 ## AI 结果
 
@@ -31,9 +37,17 @@
   "failure_risk": 0.76,
   "warning_level": "HIGH",
   "model_version": "baseline-v0.1.0",
-  "data_origin": "DERIVED"
+  "data_origin": "DERIVED",
+  "sample_id": null,
+  "diagnosis_id": null,
+  "event_id": "51",
+  "fault_id": "BEARING_RACEWAY_DAMAGE"
 }
 ```
+
+旧 `/api/ai-results` 只保存未追溯的兼容结果，客户端不能在该接口自报 `sample_id` 或
+`diagnosis_id`。需要贯通样本、处理中间产物和维护方案时，必须使用
+`POST /api/diagnosis/analyze`，由服务端生成并核验 `diagnosis_id`。
 
 数值范围：
 
@@ -58,8 +72,103 @@
 | POST | `/api/retests` | 保存维护后复测结果 |
 | GET | `/api/maintenance/records/{record_id}/retests` | 查询一次维护执行的复测结果 |
 | GET | `/api/turbines/{turbine_id}/telemetry` | 查询 CARE 传感器摘要；无原始文件时返回 null，不补造数值 |
+| GET | `/api/fault-library` | 查询标准/公开方法整理的故障机理与特征公式 |
+| POST | `/api/diagnosis/analyze` | 接收一份带 `sample_id` 的信号处理和诊断结果 |
+| POST | `/api/demo/simulate` | 生成明确标记为 `SIMULATED` 的演示样本 |
+| GET | `/api/diagnosis/{diagnosis_id}` | 查询单次诊断结果 |
+| GET | `/api/diagnosis/sample/{sample_id}` | 按输入样本查询全部诊断运行 |
+| GET | `/api/diagnosis/history` | 按风机或样本查询诊断历史 |
+| GET | `/api/models/{model_version}` | 查询模型方法、输入来源和限制 |
 
 接口实现和实时请求示例以 FastAPI 自动生成的 `/docs` 页面为准。
+
+## 信号分析与诊断 v0.2
+
+`POST /api/diagnosis/analyze` 使用 `signal-analysis.v2` 载荷。原始输入、预处理、
+时域特征、频谱峰、时频产物、二维嵌入、二维示意图和三维高亮必须使用同一个
+`sample_id`。服务端保留 B 提供的 `processing_run_id`（缺失时生成一个）并生成唯一
+`diagnosis_id`，然后将诊断摘要同步写入现有 AI 结果表，
+因此后续维护方案可以沿用 `/api/maintenance/optimize`。
+
+该接口的准确语义是“校验并接收 B 端诊断结果”，不是由 D 自己运行训练模型。当前
+`hybrid-ai-v0.2.0` 在模型登记中为 `NOT_IMPLEMENTED`，在 B 提交可复现模型、输入契约和
+验证结果前会被拒绝。独立的 `/api/demo/simulate` 使用 `rule-demo-v0.2.0`，其状态为
+`DEMO_ONLY`，不得在答辩中表述为自研混合 AI。
+
+最小请求示例：
+
+```json
+{
+  "schema_version": "signal-analysis.v2",
+  "sample_id": "USER-20261015-0001",
+  "processing_run_id": "B-RUN-20261015-0001",
+  "turbine_id": "WT02",
+  "component_id": "WT02_COMPONENT_01",
+  "event_id": "51",
+  "event_name": "Gearbox bearings damaged",
+  "fault_id": "BEARING_RACEWAY_DAMAGE",
+  "data_origin": "USER_INPUT",
+  "sampling_rate_hz": 1000,
+  "channels": [
+    {
+      "name": "drive_train_vibration",
+      "unit": "g",
+      "samples": [0.1, 0.2, 0.3, 0.2],
+      "data_origin": "USER_INPUT",
+      "sensor_location": "nacelle_drivetrain",
+      "window_length": 4,
+      "overlap": 0
+    },
+    {
+      "name": "generator_current",
+      "unit": "A",
+      "samples": [1.0, 1.1, 1.0, 0.9],
+      "data_origin": "USER_INPUT",
+      "sensor_location": "generator_output",
+      "window_length": 4,
+      "overlap": 0
+    }
+  ],
+  "preprocessing": [
+    {"name": "demean", "method": "remove_mean", "parameters": {}, "output_reference": "preprocessed"}
+  ],
+  "spectral_peaks": [],
+  "time_frequency_artifacts": [],
+  "embedding_2d": [],
+  "diagnosis": {
+    "model_version": "rule-demo-v0.2.0",
+    "class_probabilities": {"BEARING_RACEWAY_DAMAGE": 0.8, "NORMAL": 0.2},
+    "predicted_class": "BEARING_RACEWAY_DAMAGE",
+    "uncertainty": 0.2,
+    "component_key": "gearbox_bearing",
+    "mapping_status": "UNMAPPED",
+    "health_index": 65,
+    "anomaly_score": 0.7,
+    "failure_risk": 0.7,
+    "warning_level": "MEDIUM",
+    "rationale": "用户录入样本的诊断结果；概率尚未校准。"
+  }
+}
+```
+
+校验规则：
+
+- 传入通道时必须提供正数 `sampling_rate_hz`，全部通道长度必须一致；
+- 内联样本只保存不超过 4096 点的预览；更大的原始文件使用 `artifact_uri`、`sample_count`
+  和 `sha256` 引用，避免把大波形塞进 SQLite；
+- 所有样本、特征、概率和嵌入坐标必须是有限数，拒绝 NaN/Inf；
+- 类别概率必须在 0 到 1 之间且总和误差不超过 `0.001`；
+- 频谱峰不能超过 Nyquist 频率；
+- `REAL` 必须携带至少一个信号通道；
+- 未完成 CAD 工程映射时返回 `mapping_status = UNMAPPED`，不能把候选节点表述为官方确认部件；
+- 未提供齿数、轴承几何、实际转速等必需参数时只展示公式和“条件不足”，不生成具体特征频率。
+- `GET /api/diagnosis/history` 只返回摘要，不返回整段信号；完整预览通过单条诊断接口读取。
+- 同一 `sample_id` 可用于多个处理运行，但其风机、部件、事件、故障和来源元数据必须一致。
+
+存在波形通道时，D 会透明复算每个通道的均值、总体方差、RMS 和超额峭度，标准字段以
+服务端复算结果为准。D 不伪造 FFT/STFT/小波包或 t-SNE 结果；这些中间产物由 B 提供后原样
+保留来源标签。`POST /api/demo/simulate` 只用于答辩演示，响应始终为 `SIMULATED`，其中的
+风险和类别置信度不是经过校准的真实故障概率。
 
 ### 维护决策追溯字段
 

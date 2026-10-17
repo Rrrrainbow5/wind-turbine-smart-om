@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
+  base: process.env.GITHUB_ACTIONS ? '/wind-turbine-smart-om/' : '/',
   server: {
     proxy: {
       '/api': {

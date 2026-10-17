@@ -1,0 +1,505 @@
+{
+  "schema_version": "fault-feature-library-v0.2",
+  "version": "0.2.0",
+  "title": "风力发电机传动链故障与信号特征库",
+  "status": "REFERENCE",
+  "scope": {
+    "equipment": "水平轴风力发电机传动链及发电机/变流器相关监测",
+    "purpose": "为信号处理、诊断解释和三维部件映射提供可追溯的参考条目",
+    "not_a_threshold_table": true,
+    "not_a_certification": true,
+    "note": "条目是标准和公开工程方法的参考整理，不替代设备制造商限值、现场风险评估或法定检验。"
+  },
+  "evidence_classes": {
+    "REFERENCE": "来自标准、公开教材或可追溯方法；用于定义术语、公式和处理步骤",
+    "REAL": "可追溯的现场或公开原始测量数据",
+    "DERIVED": "由已登记数据计算得到的特征或模型输出",
+    "SIMULATED": "为演示生成的信号或参数",
+    "ASSUMED": "尚无来源支持的试行规则或阈值"
+  },
+  "standards": [
+    {
+      "ref_id": "ISO-15243",
+      "citation": "ISO 15243, Rolling bearings - Damage and failures - Terms, characteristics and causes",
+      "role": "滚动轴承损伤类型、术语和失效机理分类",
+      "edition_note": "使用前由团队按购买或机构可访问的现行版本核对年份和条款。"
+    },
+    {
+      "ref_id": "ISO-13373-2",
+      "citation": "ISO 13373-2, Condition monitoring and diagnostics of machines - Vibration condition monitoring - Part 2: Processing, analysis and presentation of vibration data",
+      "role": "振动信号采集、处理、分析和展示链路",
+      "edition_note": "使用前核对现行版本；本库不复制标准正文。"
+    },
+    {
+      "ref_id": "ISO-13374",
+      "citation": "ISO 13374, Condition monitoring and diagnostics of machines - Data processing, communication and presentation",
+      "role": "从数据采集到信息展示的状态监测处理架构",
+      "edition_note": "使用前核对现行分册和版本。"
+    },
+    {
+      "ref_id": "ISO-13379-1",
+      "citation": "ISO 13379-1, Condition monitoring and diagnostics of machines - Data interpretation and diagnostics techniques - Part 1: General guidelines",
+      "role": "诊断推理、证据和不确定性表达",
+      "edition_note": "使用前核对现行版本和适用范围。"
+    },
+    {
+      "ref_id": "ISO-20816-21",
+      "citation": "ISO 20816-21, Mechanical vibration - Measurement and evaluation of machine vibration by measurements on non-rotating parts - Part 21: Horizontal axis wind turbines with gearbox and generator",
+      "role": "水平轴风机振动测量与评价的参考框架",
+      "edition_note": "不得把标准评价区间直接当成本项目的 AI 阈值；使用前核对现行版本。"
+    },
+    {
+      "ref_id": "IEC-61400-25",
+      "citation": "IEC 61400-25 series, Communications for monitoring and control of wind power plants",
+      "role": "风电监测对象、信息模型和数据交换语境",
+      "edition_note": "具体分册和版本应按项目接口约定登记。"
+    }
+  ],
+  "categories": [
+    {
+      "id": "GEAR",
+      "name_zh": "齿轮故障",
+      "name_en": "Gear faults",
+      "component_targets": ["gearbox", "planetary_stage", "parallel_stage", "gear_pair"],
+      "failure_modes": [
+        {
+          "id": "GEAR_TOOTH_BREAKAGE",
+          "name_zh": "断齿、裂齿或齿面剥落",
+          "mechanism": "疲劳接触应力、弯曲应力、润滑不足或异物冲击使齿面形成点蚀、剥落或裂纹，进一步发展为断齿。",
+          "typical_symptoms": ["啮合冲击增强", "啮合频率及其边带能量升高", "齿轮箱温度或油液状态变化"],
+          "signals": [
+            {
+              "signal_id": "gearbox_vibration",
+              "label": "齿轮箱振动时序",
+              "unit": "m/s^2 or g",
+              "care_fields": ["Wind Farm B:sensor_54_avg"],
+              "care_representation": "聚合统计量（平均值、最小值、最大值、标准差），不是原始波形",
+              "raw_waveform_required": true,
+              "notes": "仅凭聚合振动值不能计算可靠的啮合频谱。"
+            },
+            {
+              "signal_id": "gearbox_oil_temperature",
+              "label": "齿轮箱油温",
+              "unit": "degC",
+              "care_fields": ["Wind Farm A:sensor_12_avg", "Wind Farm B:sensor_38_avg", "Wind Farm B:sensor_39_avg", "Wind Farm C:sensor_186_avg", "Wind Farm C:sensor_187_avg"],
+              "care_representation": "SCADA 聚合值",
+              "raw_waveform_required": false,
+              "notes": "适合作为热状态和工况上下文，不单独证明断齿。"
+            },
+            {
+              "signal_id": "shaft_speed",
+              "label": "齿轮/转子轴转速",
+              "unit": "rpm",
+              "care_fields": ["Wind Farm A:sensor_52_avg", "Wind Farm B:sensor_20_avg", "Wind Farm B:sensor_25_avg", "Wind Farm C:sensor_146_avg", "Wind Farm C:sensor_147_avg"],
+              "care_representation": "SCADA 聚合值",
+              "raw_waveform_required": false,
+              "notes": "用于把阶次或啮合频率换算到 Hz。"
+            }
+          ],
+          "frequency_features": [
+            {
+              "feature_id": "GMF",
+              "label": "齿轮啮合频率",
+              "formula": "f_mesh = z_p * f_p = z_g * f_g",
+              "unit": "Hz",
+              "required_parameters": ["z_p: 小齿轮齿数", "z_g: 大齿轮齿数", "f_p/f_g: 对应轴旋转频率 (Hz)"],
+              "applicability": "稳态或转速已知的普通齿轮副；行星级必须按太阳轮、行星架和齿圈的相对运动另行建模",
+              "care_status": "不可由当前 CARE 聚合字段单独计算；需齿数和同一时刻轴速，且最好有原始振动波形。",
+              "source_refs": ["ISO-13373-2"]
+            },
+            {
+              "feature_id": "GMF_SIDEBAND",
+              "label": "啮合频率边带",
+              "formula": "f_sideband = f_mesh +/- k * f_r",
+              "unit": "Hz",
+              "required_parameters": ["f_mesh: 啮合频率", "f_r: 调制源轴频率", "k: 正整数阶次"],
+              "applicability": "调制、偏心、齿面局部损伤的频谱分析",
+              "care_status": "需要原始振动或包络谱；不对 CARE 的 10 分钟聚合序列伪造频谱。",
+              "source_refs": ["ISO-13373-2", "ISO-13379-1"]
+            }
+          ],
+          "evidence_level": "REFERENCE",
+          "mapping_caution": "齿轮箱轴承温度异常不等同于齿轮断齿；三维高亮必须依据事件标签或经过审核的部件映射。"
+        },
+        {
+          "id": "GEAR_PITTING_SCORING",
+          "name_zh": "点蚀、胶合或磨损",
+          "mechanism": "接触疲劳、润滑膜失效、污染物或过载造成齿面材料移除，表现为点蚀、擦伤、胶合或渐进磨损。",
+          "typical_symptoms": ["高频冲击和包络能量增加", "油温上升", "扭矩/功率与转速关系偏离"],
+          "signals": [
+            {
+              "signal_id": "gearbox_temperature",
+              "label": "齿轮箱油温/轴承温度",
+              "unit": "degC",
+              "care_fields": ["Wind Farm A:sensor_11_avg", "Wind Farm A:sensor_12_avg", "Wind Farm B:sensor_34_avg", "Wind Farm B:sensor_35_avg", "Wind Farm B:sensor_36_avg", "Wind Farm B:sensor_37_avg"],
+              "care_representation": "SCADA 聚合值",
+              "raw_waveform_required": false,
+              "notes": "只能支持热趋势和异常上下文。"
+            },
+            {
+              "signal_id": "power_speed_context",
+              "label": "有功功率与轴速",
+              "unit": "kW, rpm",
+              "care_fields": ["Wind Farm A:power_29_avg", "Wind Farm A:power_30_avg", "Wind Farm A:sensor_52_avg", "Wind Farm B:power_62_avg", "Wind Farm B:sensor_20_avg"],
+              "care_representation": "SCADA 聚合值",
+              "raw_waveform_required": false,
+              "notes": "应按风速和负载分层后比较。"
+            }
+          ],
+          "frequency_features": [
+            {
+              "feature_id": "ORDER_ENERGY",
+              "label": "啮合阶次能量",
+              "formula": "E_order(m) = integral of |X(f)|^2 over the band around m * f_r",
+              "unit": "signal_unit^2",
+              "required_parameters": ["X(f): 振动频谱", "f_r: 轴频", "m: 目标阶次", "bandwidth: 频带宽度"],
+              "applicability": "变速工况下的阶次跟踪",
+              "care_status": "需原始振动波形和转速同步；当前 CARE 字段不能直接提供。",
+              "source_refs": ["ISO-13373-2"]
+            }
+          ],
+          "evidence_level": "REFERENCE",
+          "mapping_caution": "热趋势是间接证据，不能代替齿面目视、油液或振动证据。"
+        }
+      ]
+    },
+    {
+      "id": "BEARING",
+      "name_zh": "轴承故障",
+      "name_en": "Bearing faults",
+      "component_targets": ["gearbox_bearing", "rotor_bearing", "generator_bearing"],
+      "failure_modes": [
+        {
+          "id": "BEARING_RACEWAY_DAMAGE",
+          "name_zh": "内圈、外圈或滚动体疲劳损伤",
+          "mechanism": "接触疲劳、润滑不足、污染、安装偏差或过载导致滚道和滚动体出现点蚀、剥落或裂纹。",
+          "typical_symptoms": ["冲击和包络谱特征增强", "轴承温度上升", "振动峭度或峰值因子上升"],
+          "signals": [
+            {
+              "signal_id": "bearing_vibration",
+              "label": "轴承座加速度原始波形",
+              "unit": "m/s^2 or g",
+              "care_fields": ["Wind Farm B:sensor_54_avg", "Wind Farm C:sensor_90_avg", "Wind Farm C:sensor_91_avg", "Wind Farm C:sensor_92_avg", "Wind Farm C:sensor_93_avg"],
+              "care_representation": "CARE 中为聚合量或位置不同的振动量；不是轴承座高采样原始波形",
+              "raw_waveform_required": true,
+              "notes": "只有原始波形、采样率和安装位置齐全时，才可做包络谱。"
+            },
+            {
+              "signal_id": "bearing_temperature",
+              "label": "轴承温度",
+              "unit": "degC",
+              "care_fields": ["Wind Farm A:sensor_11_avg", "Wind Farm A:sensor_13_avg", "Wind Farm A:sensor_14_avg", "Wind Farm B:sensor_32_avg", "Wind Farm B:sensor_33_avg", "Wind Farm B:sensor_51_avg", "Wind Farm B:sensor_52_avg", "Wind Farm C:sensor_194_avg", "Wind Farm C:sensor_195_avg", "Wind Farm C:sensor_196_avg", "Wind Farm C:sensor_197_avg", "Wind Farm C:sensor_198_avg"],
+              "care_representation": "SCADA 聚合值",
+              "raw_waveform_required": false,
+              "notes": "温度趋势应与负载、环境温度和转速联合解释。"
+            }
+          ],
+          "frequency_features": [
+            {
+              "feature_id": "FTF",
+              "label": "保持架频率",
+              "formula": "FTF = 0.5 * f_r * (1 - (d / D) * cos(theta))",
+              "unit": "Hz",
+              "required_parameters": ["n: 滚动体数量（用于其他特征）", "d: 滚动体直径", "D: 轴承节圆直径", "theta: 接触角", "f_r: 轴承内圈相对转频"],
+              "applicability": "滚动轴承几何参数已知且转速可用；公式采用常见外圈固定、内圈旋转和无滑动近似，其他结构必须调整",
+              "care_status": "当前数据未登记轴承几何参数和高采样波形；不可生成具体 Hz 数值。",
+              "source_refs": ["ISO-15243", "ISO-13373-2"]
+            },
+            {
+              "feature_id": "BPFO",
+              "label": "外圈通过频率",
+              "formula": "BPFO = (n / 2) * f_r * (1 - (d / D) * cos(theta))",
+              "unit": "Hz",
+              "required_parameters": ["n: 滚动体数量", "d: 滚动体直径", "D: 轴承节圆直径", "theta: 接触角", "f_r: 轴承内圈相对转频"],
+              "applicability": "外圈局部损伤的包络谱候选频率；采用常见外圈固定、内圈旋转和无滑动近似",
+              "care_status": "需轴承几何参数、转速、采样率和原始振动；当前 CARE 仅能提供温度或聚合上下文。",
+              "source_refs": ["ISO-15243", "ISO-13373-2"]
+            },
+            {
+              "feature_id": "BPFI",
+              "label": "内圈通过频率",
+              "formula": "BPFI = (n / 2) * f_r * (1 + (d / D) * cos(theta))",
+              "unit": "Hz",
+              "required_parameters": ["n: 滚动体数量", "d: 滚动体直径", "D: 轴承节圆直径", "theta: 接触角", "f_r: 轴承内圈相对转频"],
+              "applicability": "内圈局部损伤的包络谱候选频率；采用常见外圈固定、内圈旋转和无滑动近似",
+              "care_status": "没有几何参数和原始波形时只展示公式，不展示数值或诊断结论。",
+              "source_refs": ["ISO-15243", "ISO-13373-2"]
+            },
+            {
+              "feature_id": "BSF",
+              "label": "滚动体自转频率",
+              "formula": "BSF = (D / (2 * d)) * f_r * (1 - ((d / D) * cos(theta))^2)",
+              "unit": "Hz",
+              "required_parameters": ["d: 滚动体直径", "D: 轴承节圆直径", "theta: 接触角", "f_r: 轴承内圈相对转频"],
+              "applicability": "滚动体损伤的包络谱候选频率；采用常见外圈固定、内圈旋转和无滑动近似",
+              "care_status": "需几何参数、转速和原始振动；当前 CARE 不足以计算。",
+              "source_refs": ["ISO-15243", "ISO-13373-2"]
+            }
+          ],
+          "evidence_level": "REFERENCE",
+          "mapping_caution": "Event 51 的官方描述是 Gearbox bearings damaged；系统映射到具体 CAD 节点前仍需保持映射状态和证据标签。"
+        },
+        {
+          "id": "BEARING_LUBRICATION_OR_MISALIGNMENT",
+          "name_zh": "润滑不足、污染或不对中",
+          "mechanism": "油膜不足、颗粒污染、轴系不对中或预紧异常改变接触载荷，引起温升、摩擦和周期性振动。",
+          "typical_symptoms": ["温度缓慢上升", "低阶或转频相关振动变化", "润滑/载荷变化下特征随工况改变"],
+          "signals": [
+            {
+              "signal_id": "temperature_context",
+              "label": "轴承/油温和环境温度",
+              "unit": "degC",
+              "care_fields": ["Wind Farm A:sensor_0_avg", "Wind Farm A:sensor_11_avg", "Wind Farm A:sensor_12_avg", "Wind Farm B:sensor_8_avg", "Wind Farm B:sensor_34_avg", "Wind Farm C:sensor_177_avg", "Wind Farm C:sensor_186_avg"],
+              "care_representation": "SCADA 聚合值",
+              "raw_waveform_required": false,
+              "notes": "需要按负荷和环境条件归一化。"
+            }
+          ],
+          "frequency_features": [
+            {
+              "feature_id": "ROTATIONAL_ORDER",
+              "label": "转频及其阶次",
+              "formula": "f_order(k) = k * f_r",
+              "unit": "Hz",
+              "required_parameters": ["f_r: 轴转频", "k: 阶次"],
+              "applicability": "不对中、偏心或载荷调制的阶次分析",
+              "care_status": "需要同步转速和原始振动；聚合 rpm 只能用于上下文。",
+              "source_refs": ["ISO-13373-2"]
+            }
+          ],
+          "evidence_level": "REFERENCE",
+          "mapping_caution": "不能仅用温度趋势区分润滑、负载和环境因素；需要维护记录或油液/振动证据。"
+        }
+      ]
+    },
+    {
+      "id": "VIBRATION",
+      "name_zh": "振动异常",
+      "name_en": "Vibration anomalies",
+      "component_targets": ["drivetrain", "nacelle", "tower", "bearing_housing"],
+      "failure_modes": [
+        {
+          "id": "BROADBAND_IMPACT",
+          "name_zh": "宽带冲击和非平稳振动",
+          "mechanism": "松动、冲击、局部损伤或瞬态载荷造成波形尖峰和宽带能量增加；振动异常本身是观测现象，不是唯一故障结论。",
+          "typical_symptoms": ["RMS 增大", "峭度和峰值因子增大", "包络谱或时频图出现局部能量聚集"],
+          "signals": [
+            {
+              "signal_id": "raw_acceleration",
+              "label": "加速度原始时序",
+              "unit": "m/s^2 or g",
+              "care_fields": ["Wind Farm B:sensor_54_avg", "Wind Farm B:sensor_55_avg", "Wind Farm B:sensor_56_avg", "Wind Farm C:sensor_90_avg", "Wind Farm C:sensor_91_avg", "Wind Farm C:sensor_92_avg", "Wind Farm C:sensor_93_avg"],
+              "care_representation": "当前 CARE 字段为聚合统计量；原始波形需另行登记",
+              "raw_waveform_required": true,
+              "notes": "展示 RMS/峭度前必须记录采样率、窗口长度、去趋势和滤波设置。"
+            }
+          ],
+          "frequency_features": [
+            {
+              "feature_id": "RMS",
+              "label": "均方根",
+              "formula": "RMS = sqrt((1 / N) * sum(x_i^2))",
+              "unit": "signal_unit",
+              "required_parameters": ["x_i: 窗口内样本", "N: 样本数"],
+              "applicability": "振动幅值总体水平",
+              "care_status": "若只有 std_dev/avg 等聚合字段，只能使用数据集提供的统计量，不能反算原始 RMS。",
+              "source_refs": ["ISO-13373-2", "ISO-20816-21"]
+            },
+            {
+              "feature_id": "KURTOSIS",
+              "label": "峭度",
+              "formula": "kurtosis = (1 / N) * sum((x_i - mean(x))^4) / variance(x)^2",
+              "unit": "dimensionless",
+              "required_parameters": ["原始窗口 x_i", "N: 样本数", "均值和方差定义"],
+              "applicability": "冲击性和非高斯特征",
+              "care_status": "CARE 字段字典没有原始样本，不能从平均值和标准差唯一反推出峭度。",
+              "source_refs": ["ISO-13373-2"]
+            },
+            {
+              "feature_id": "SPECTRAL_PEAK",
+              "label": "频谱峰值",
+              "formula": "f_peak = argmax_f |X(f)|",
+              "unit": "Hz",
+              "required_parameters": ["X(f): 经采样率标定的 FFT/STFT 频谱", "sampling_rate: 采样率"],
+              "applicability": "识别转频、啮合、结构模态或故障候选峰",
+              "care_status": "只有原始波形和采样率可用时才计算；当前 CARE 聚合序列不满足条件。",
+              "source_refs": ["ISO-13373-2"]
+            }
+          ],
+          "evidence_level": "REFERENCE",
+          "mapping_caution": "振动异常需要结合转速、负载、安装方向和频率特征解释，不能直接等同为某个部件损坏。"
+        },
+        {
+          "id": "RESONANCE_OR_TOWER_VIBRATION",
+          "name_zh": "结构共振或塔架振动异常",
+          "mechanism": "激励频率接近结构固有频率，或基础/塔架刚度、阻尼和载荷变化导致响应放大。",
+          "typical_symptoms": ["窄带频率峰稳定或随转速穿越", "塔架振动方向性变化", "风速/转速变化时响应显著改变"],
+          "signals": [
+            {
+              "signal_id": "tower_vibration",
+              "label": "塔架/机舱振动",
+              "unit": "mG or m/s^2",
+              "care_fields": ["Wind Farm B:sensor_55_avg", "Wind Farm B:sensor_56_avg", "Wind Farm C:sensor_90_avg", "Wind Farm C:sensor_91_avg", "Wind Farm C:sensor_92_avg", "Wind Farm C:sensor_93_avg"],
+              "care_representation": "聚合统计量",
+              "raw_waveform_required": true,
+              "notes": "应保留测点方向和安装位置。"
+            },
+            {
+              "signal_id": "estimated_natural_frequency",
+              "label": "估计结构固有频率",
+              "unit": "mHz",
+              "care_fields": ["Wind Farm B:sensor_9_avg"],
+              "care_representation": "SCADA 聚合字段",
+              "raw_waveform_required": false,
+              "notes": "字段为数据集定义的估计量，不能替代现场模态试验。"
+            }
+          ],
+          "frequency_features": [
+            {
+              "feature_id": "NATURAL_FREQUENCY",
+              "label": "结构响应主频",
+              "formula": "f_n = argmax_f PSD(f) within the identified structural band",
+              "unit": "Hz",
+              "required_parameters": ["PSD(f): 功率谱密度", "sampling_rate: 采样率", "identified structural band"],
+              "applicability": "结构振动监测",
+              "care_status": "需原始振动和测点信息；sensor_9_avg 仅作为数据集提供的参考字段。",
+              "source_refs": ["ISO-13373-2", "ISO-20816-21"]
+            }
+          ],
+          "evidence_level": "REFERENCE",
+          "mapping_caution": "共振风险的判定需要结构参数、转速扫频或现场验算，不能由单个振动分数直接确认。"
+        }
+      ]
+    },
+    {
+      "id": "MOTOR_ELECTRICAL",
+      "name_zh": "电机电气故障",
+      "name_en": "Motor and electrical faults",
+      "component_targets": ["generator", "converter", "stator", "rotor_circuit", "transformer"],
+      "failure_modes": [
+        {
+          "id": "STATOR_WINDING_OR_PHASE_IMBALANCE",
+          "name_zh": "定子绕组异常或三相不平衡",
+          "mechanism": "绕组匝间绝缘退化、相间不平衡、接线或电源质量问题造成电流/电压不对称和附加发热。",
+          "typical_symptoms": ["三相电流或电压不平衡", "绕组温度上升", "功率和无功响应异常"],
+          "signals": [
+            {
+              "signal_id": "phase_current",
+              "label": "三相电流",
+              "unit": "A",
+              "care_fields": ["Wind Farm A:sensor_23_avg", "Wind Farm A:sensor_24_avg", "Wind Farm A:sensor_25_avg", "Wind Farm B:sensor_16_avg", "Wind Farm B:sensor_17_avg", "Wind Farm B:sensor_18_avg", "Wind Farm C:sensor_130_avg", "Wind Farm C:sensor_131_avg", "Wind Farm C:sensor_132_avg"],
+              "care_representation": "SCADA 聚合/RMS 字段，非高采样瞬时波形",
+              "raw_waveform_required": false,
+              "notes": "若要分析谐波和负序，必须获得同步采样的瞬时电流或明确 RMS 计算窗口。"
+            },
+            {
+              "signal_id": "phase_voltage",
+              "label": "三相电压",
+              "unit": "V",
+              "care_fields": ["Wind Farm A:sensor_32_avg", "Wind Farm A:sensor_33_avg", "Wind Farm A:sensor_34_avg", "Wind Farm B:sensor_13_avg", "Wind Farm B:sensor_14_avg", "Wind Farm B:sensor_15_avg", "Wind Farm C:sensor_139_avg", "Wind Farm C:sensor_140_avg", "Wind Farm C:sensor_141_avg"],
+              "care_representation": "SCADA 聚合/RMS 字段",
+              "raw_waveform_required": false,
+              "notes": "按数据字典区分线电压、相电压和测点。"
+            },
+            {
+              "signal_id": "stator_temperature",
+              "label": "定子绕组温度",
+              "unit": "degC",
+              "care_fields": ["Wind Farm A:sensor_15_avg", "Wind Farm A:sensor_16_avg", "Wind Farm A:sensor_17_avg", "Wind Farm C:sensor_199_avg", "Wind Farm C:sensor_200_avg", "Wind Farm C:sensor_201_avg", "Wind Farm C:sensor_202_avg", "Wind Farm C:sensor_203_avg", "Wind Farm C:sensor_204_avg"],
+              "care_representation": "SCADA 聚合值",
+              "raw_waveform_required": false,
+              "notes": "需和负载、冷却状态及环境温度联合解释。"
+            }
+          ],
+          "frequency_features": [
+            {
+              "feature_id": "ELECTRICAL_FUNDAMENTAL",
+              "label": "电气基波",
+              "formula": "f_e = p * n_s / 120",
+              "unit": "Hz",
+              "required_parameters": ["p: 极数", "n_s: 同步转速 (rpm)"],
+              "applicability": "工频或变频控制下的电流/电压频谱参考",
+              "care_status": "需要极数、同步转速和采样率；CARE 的 grid frequency 可作为上下文，不能替代原始频谱。",
+              "source_refs": ["ISO-13379-1", "IEC-61400-25"]
+            },
+            {
+              "feature_id": "CURRENT_IMBALANCE",
+              "label": "三相电流不平衡指标",
+              "formula": "I_imbalance = max(I_a, I_b, I_c) - min(I_a, I_b, I_c)",
+              "unit": "A",
+              "required_parameters": ["同一时间窗的三相电流值", "相同统计定义（平均或 RMS）"],
+              "applicability": "三相不平衡的初筛指标",
+              "care_status": "可在三相同口径聚合值上计算相对指标，但不能直接套用未核验的报警阈值。",
+              "source_refs": ["IEC-61400-25", "ISO-13379-1"]
+            }
+          ],
+          "evidence_level": "REFERENCE",
+          "mapping_caution": "三相差异可能来自工况、测量链或控制策略；需要电气测量质量和现场规则复核。"
+        },
+        {
+          "id": "CONVERTER_OR_IGBT_THERMAL",
+          "name_zh": "变流器/IGBT 热异常或直流链路异常",
+          "mechanism": "功率器件导通损耗、冷却不足、直流链路波动或控制异常造成器件温度、电压和功率响应偏离。",
+          "typical_symptoms": ["IGBT 或柜体温度升高", "直流链路电压变化", "有功/无功功率受限或波动"],
+          "signals": [
+            {
+              "signal_id": "converter_temperature",
+              "label": "变流器器件温度",
+              "unit": "degC",
+              "care_fields": ["Wind Farm A:sensor_21_avg", "Wind Farm A:sensor_35_avg", "Wind Farm A:sensor_36_avg", "Wind Farm A:sensor_37_avg", "Wind Farm C:sensor_172_avg", "Wind Farm C:sensor_205_avg", "Wind Farm C:sensor_206_avg", "Wind Farm C:sensor_207_avg"],
+              "care_representation": "SCADA 聚合值",
+              "raw_waveform_required": false,
+              "notes": "字段命名和测点应以对应风场 feature_description.csv 为准。"
+            },
+            {
+              "signal_id": "dc_link_voltage",
+              "label": "直流链路电压",
+              "unit": "V",
+              "care_fields": ["Wind Farm C:sensor_35_avg", "Wind Farm C:sensor_36_avg", "Wind Farm C:sensor_37_avg"],
+              "care_representation": "SCADA 聚合值",
+              "raw_waveform_required": false,
+              "notes": "当前库只登记可追溯字段，不推断故障阈值。"
+            },
+            {
+              "signal_id": "power_response",
+              "label": "变流器/电网有功功率",
+              "unit": "kW",
+              "care_fields": ["Wind Farm C:power_17_avg", "Wind Farm C:power_5_avg", "Wind Farm C:power_6_avg", "Wind Farm B:power_62_avg"],
+              "care_representation": "SCADA 聚合值",
+              "raw_waveform_required": false,
+              "notes": "需区分可用功率、变流器功率和电网功率。"
+            }
+          ],
+          "frequency_features": [
+            {
+              "feature_id": "SWITCHING_HARMONIC",
+              "label": "开关频率及其谐波",
+              "formula": "f_h = k * f_sw or k * f_e, depending on the converter measurement point",
+              "unit": "Hz",
+              "required_parameters": ["f_sw: 开关频率", "f_e: 电气基波", "k: 谐波阶次", "采样率和测量点"],
+              "applicability": "变流器电流/电压原始波形频谱",
+              "care_status": "CARE 字段没有开关频率或高采样波形；只可展示待采集参数和公式。",
+              "source_refs": ["IEC-61400-25", "ISO-13379-1"]
+            }
+          ],
+          "evidence_level": "REFERENCE",
+          "mapping_caution": "温度或功率偏差不能单独证明 IGBT 失效；需要告警、器件测量和控制日志。"
+        }
+      ]
+    }
+  ],
+  "care_signal_policy": {
+    "dataset": "CARE to Compare Version 6",
+    "available_representation": "风场 A/B/C 的事件标签和 SCADA 聚合统计字段；不同风场字段定义不同",
+    "raw_waveform_available_in_registered_fields": false,
+    "time_resolution_example": "Wind Farm A Event 51 为 10 分钟记录",
+    "allowed_uses": ["事件标签核验", "温度/功率/转速/电流趋势", "聚合统计特征和工况上下文"],
+    "disallowed_claims": ["从聚合值直接生成轴承 BPFO/BPFI 数值", "把聚合振动字段称为原始波形", "无几何参数时给出具体特征频率", "把参考条目当成已验证诊断结论"],
+    "source_file": "docs/data/field-dictionary.csv"
+  },
+  "integration_contract": {
+    "required_trace_ids": ["sample_id", "processing_run_id", "model_version"],
+    "required_signal_metadata": ["source", "data_origin", "channel", "unit", "sampling_rate_hz", "window_length", "overlap", "sensor_location"],
+    "rule": "同一个 sample_id 必须贯穿原始信号、预处理、时频特征、模型输出、故障类别和三维部件映射；缺失字段不得伪造。"
+  }
+}

@@ -108,7 +108,11 @@ export async function fetchTurbines(): Promise<Turbine[]> {
       health_index: latest?.health_index ?? 0,
       anomaly_score: latest?.anomaly_score ?? 0,
       failure_risk: latest?.failure_risk ?? 0,
-      power_kw: telemetry?.active_power_kw ?? 0,
+      // Treat tiny negative sensor offsets as zero for display; preserve larger
+      // negative values so genuine reverse power flow remains diagnosable.
+      power_kw: telemetry?.active_power_kw != null && telemetry.active_power_kw < 0 && telemetry.active_power_kw > -0.01
+        ? 0
+        : telemetry?.active_power_kw ?? 0,
       wind_ms: telemetry?.wind_speed_ms ?? 0,
       component_id: state?.component_id || `${item.turbine_id}_COMPONENT_01`,
       component_label: verified ? state.component_name : '待核验关键部件',

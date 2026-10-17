@@ -12,7 +12,11 @@
 - 中性稳定部件 ID，字段映射确认前不预设具体部件含义
 - AI 结果的统一接入和最新状态查询
 - 可解释的规则型维护决策与重新规划
-- 数据来源类型标记：`REAL`、`DERIVED`、`SIMULATED`、`ASSUMED`、`REFERENCE`
+- 数据来源类型标记：`REAL`、`DERIVED`、`SIMULATED`、`ASSUMED`、`REFERENCE`、`USER_INPUT`、`EXTERNAL_PUBLIC`
+- v0.2 故障特征库：齿轮、轴承、振动和电机电气 4 类、8 个失效模式
+- `sample_id` / `processing_run_id` / `diagnosis_id` 全链路诊断追踪
+- 信号通道、时域统计、频谱峰、时频产物和嵌入结果的校验与查询接口
+- 明确区分 B 端结果入库与 `DEMO_ONLY` 规则模拟，不将模拟置信度表述为真实故障概率
 - 项目提供的 SolidWorks/STEP 工程风机 GLB、CARE Event 51 工程剖切与零部件状态高亮
 - 海上风场无人机巡检场景：动态海面、单桩基础、黄色防撞段、离岸阵列和巡检 HUD
 - 风场总览、状态趋势、维护优化、条件变化重规划和执行记录前端流程
