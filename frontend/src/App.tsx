@@ -7,6 +7,40 @@ import { demoTurbines, getDemoPlans, warningText, wt02FaultEvents, type Maintena
 type Mode = 'demo' | 'api'
 type View = 'overview' | 'maintenance'
 
+type CareTelemetry = {
+  turbine_id: string
+  component_id: string
+  timestamp: string
+  active_power_kw: number
+  available_power_kw: number
+  wind_speed_ms: number
+  bearing_temperature_c: number
+  trend: Array<{ timestamp: string; active_power_kw: number; wind_speed_ms: number; rotor_bearing_temperature_2_c: number }>
+  data_origin: string
+  source_dataset: string
+  source_file: string
+  sample_rows: number
+  sampling_interval_minutes_median: number
+  notes: string[]
+}
+
+function CareTelemetryPanel({ telemetry }: { telemetry: CareTelemetry }) {
+  const temperatures = telemetry.trend.map(point => point.rotor_bearing_temperature_2_c)
+  return <section className="telemetry-evidence" aria-label="CARE真实遥测数据">
+    <div className="workbench-title"><h3><Database size={15} /> CARE 遥测证据</h3><span className="source-tag">{telemetry.data_origin} · 已登记</span></div>
+    <p className="telemetry-boundary">当前样本来自 CARE Version 6 的十分钟聚合记录，不包含高采样率原始振动或电流波形。</p>
+    <div className="telemetry-metrics">
+      <div><span>风速</span><strong>{telemetry.wind_speed_ms.toFixed(2)} <em>m/s</em></strong></div>
+      <div><span>有功功率</span><strong>{telemetry.active_power_kw.toFixed(3)} <em>记录单位</em></strong></div>
+      <div><span>轴承温度</span><strong>{telemetry.bearing_temperature_c.toFixed(2)} <em>°C</em></strong></div>
+      <div><span>样本记录</span><strong>{telemetry.sample_rows.toLocaleString()} <em>行</em></strong></div>
+    </div>
+    <div className="telemetry-trend"><div className="section-title"><h3>轴承温度趋势</h3><span>°C · 10 min 聚合</span></div><Sparkline values={temperatures} high={false} /></div>
+    <div className="unavailable-grid"><div><strong>原始波形</strong><span>当前数据未提供</span></div><div><strong>FFT / STFT</strong><span>不能由聚合值推导</span></div><div><strong>AI故障结论</strong><span>需原始波形或已验证模型</span></div></div>
+    <small className="telemetry-source">来源：{telemetry.source_dataset} · {telemetry.source_file} · 中位采样间隔 {telemetry.sampling_interval_minutes_median} 分钟</small>
+  </section>
+}
+
 function Sparkline({ values, high }: { values: number[], high: boolean }) {
   if (values.length < 2) return <div className="no-trend">暂无趋势数据</div>
   const minimum = Math.min(...values)
@@ -154,13 +188,14 @@ export default function App() {
   const [activityLog, setActivityLog] = useState<string[]>([])
   const [diagnosticParams, setDiagnosticParams] = useState<DiagnosticParams>(defaultDiagnosticParams)
   const [diagnosticHistory, setDiagnosticHistory] = useState<Array<{ at: string; location: string; risk: number }>>([])
+  const [careTelemetry, setCareTelemetry] = useState<CareTelemetry | null>(null)
   const diagnostic = useMemo(() => diagnosticInference(diagnosticParams), [diagnosticParams])
 
   const selectedBase = turbines.find(t => t.turbine_id === selectedId) || turbines[0]
   const selectedFault = wt02FaultEvents.find(event => event.id === faultEventId) || wt02FaultEvents[0]
   const eventRisk: Record<string, [number, number, Turbine['warning_level']]> = { 'B-53': [.76, 63.2, 'HIGH'], 'A-51': [.82, 58.4, 'HIGH'], 'A-0': [.61, 69.8, 'MEDIUM'], 'C-67': [.48, 76.2, 'MEDIUM'], 'C-81': [.71, 66.5, 'HIGH'] }
   const [eventFailureRisk, eventHealth, eventWarning] = eventRisk[faultEventId] || eventRisk['B-53']
-  const selected = selectedBase?.turbine_id === 'WT02' ? { ...selectedBase, failure_risk: eventFailureRisk, health_index: eventHealth, warning_level: eventWarning, anomaly_score: eventFailureRisk, event_id: Number(selectedFault.id.split('-')[1]), event_name: selectedFault.name, event_description: selectedFault.description, component_label: selectedFault.component, fault_category: selectedFault.category } : selectedBase
+  const selected = selectedBase?.turbine_id === 'WT02' && !careTelemetry ? { ...selectedBase, failure_risk: eventFailureRisk, health_index: eventHealth, warning_level: eventWarning, anomaly_score: eventFailureRisk, event_id: Number(selectedFault.id.split('-')[1]), event_name: selectedFault.name, event_description: selectedFault.description, component_label: selectedFault.component, fault_category: selectedFault.category } : selectedBase
   const plans = useMemo(() => mode === 'api' ? (apiPlan ? mapApiPlans(apiPlan) : [emptyApiPlan]) : getDemoPlans(weatherRestricted), [apiPlan, mode, weatherRestricted])
   const plan = plans.find(p => p.id === selectedPlan) || plans[0]
   const highCount = turbines.filter(t => t.has_analysis !== false && t.warning_level === 'HIGH').length
@@ -178,8 +213,28 @@ export default function App() {
     if (mode === 'demo') {
       setTurbines(demoTurbines); setSelectedId('WT02'); setError(''); setLoading(false); setApiPlan(null)
       setView('overview'); setServiced(false); setMaintenanceRecordId(''); setRetests([])
+      fetch('/telemetry/WT02_telemetry_summary.json').then(response => response.ok ? response.json() as Promise<CareTelemetry> : Promise.reject(new Error('CARE遥测文件不可用'))).then(summary => {
+        setCareTelemetry(summary)
+        setTurbines(current => current.map(turbine => turbine.turbine_id === 'WT02' ? {
+          ...turbine,
+          source: 'DERIVED',
+          model_version: 'CARE-v6-telemetry-evidence',
+          updated_at: summary.timestamp,
+          power_kw: summary.active_power_kw,
+          wind_ms: summary.wind_speed_ms,
+          trend: summary.trend.map(point => point.rotor_bearing_temperature_2_c),
+          trend_label: '转子轴承温度趋势',
+          trend_unit: '°C · CARE 10 min 聚合',
+          has_analysis: false,
+          failure_risk: 0,
+          anomaly_score: 0,
+          health_index: 0,
+          warning_level: 'NORMAL',
+        } : turbine))
+      }).catch(() => setCareTelemetry(null))
       return
     }
+    setCareTelemetry(null)
     let active = true
     setLoading(true); setError('')
     fetchTurbines().then(data => {
@@ -296,9 +351,9 @@ export default function App() {
             <div className="reading-primary"><div className="reading-label"><Gauge size={18} /> 健康指数 <span title="B 的模型输出；演示模式中的数值为模拟数据">ⓘ</span></div><div className="reading-number">{selected.has_analysis === false ? '--' : serviced ? '待复测' : selected.health_index.toFixed(1)}{selected.has_analysis !== false && !serviced && <small>/ 100</small>}</div><div className="meter"><span style={{ width: selected.has_analysis === false || serviced ? '0%' : `${selected.health_index}%` }} className={selected.warning_level === 'HIGH' ? 'meter-risk' : ''} /></div><p>{selected.has_analysis === false ? '后端尚无该部件的 AI 分析结果。' : serviced ? '维护执行已记录，设备健康状态应由复测数据确认。' : selected.warning_level === 'HIGH' ? '状态持续偏离正常区间，建议进入维护评估。' : '当前状态以数据分析结果为准。'}</p></div>
             <div className="metric-grid"><div><span>异常分数</span><strong>{selected.has_analysis === false ? '--' : selected.anomaly_score.toFixed(2)}</strong><small>模型输出</small></div><div><span>风险评分</span><strong>{selected.has_analysis === false ? '--' : selected.failure_risk.toFixed(2)}</strong><small>0-1 指标，非校准概率</small></div><div><span>当前功率</span><strong>{selected.power_kw !== 0 ? selected.power_kw.toLocaleString() : '--'}<em> kW</em></strong><small>{selected.source === 'DERIVED' ? 'CARE 派生' : selected.power_kw !== 0 ? '运行示例' : '未提供'}</small></div><div><span>风速</span><strong>{selected.wind_ms !== 0 ? selected.wind_ms : '--'}<em> m/s</em></strong><small>{selected.source === 'DERIVED' ? 'CARE 派生' : selected.wind_ms !== 0 ? '运行示例' : '未提供'}</small></div></div>
             <div className="info-section"><div className="section-title"><h3>{selected.trend_label || '传感器趋势'}</h3><span>{selected.trend_unit || 'CARE telemetry'}</span></div><Sparkline values={selected.trend} high={selected.warning_level === 'HIGH'} /></div>
-          <section className="ai-workbench" aria-label="实时AI故障检测"><div className="workbench-title"><h3><Activity size={15} /> 实时 AI 故障检测</h3><span className="simulated-tag">SIMULATED · 拖动即推理</span></div><div className="diagnostic-layout"><div className="diagnostic-controls">{diagnosticFields.map(field => <label className="diagnostic-slider" key={field.key}><span><b>{field.label}</b><em>{diagnosticParams[field.key].toFixed(field.step < 1 ? 1 : 0)} {field.unit}</em></span><input style={{ '--slider-color': sliderTint(field, diagnosticParams[field.key]) } as CSSProperties} type="range" min={field.min} max={field.max} step={field.step} value={diagnosticParams[field.key]} onChange={event => updateDiagnosticParam(field.key, Number(event.target.value))} /><small>安全范围 {field.normal[0]}–{field.normal[1]} {field.unit}</small></label>)}<button className="reset-diagnostic" onClick={() => setDiagnosticParams(defaultDiagnosticParams)}><RotateCcw size={14} /> 一键重置参数</button></div><div className="diagnostic-result"><div className="ai-status-line"><span className={`ai-pulse ${diagnostic.level.toLowerCase()}`} />AI 推理完成 <StatusBadge level={diagnostic.level} /></div><DiagnosticDiagram location={diagnostic.location} risk={diagnostic.risk} /><div className="diagnostic-summary"><strong>{diagnostic.location}</strong><span>置信度 {(diagnostic.risk * 100).toFixed(0)}% · 风险评分 {diagnostic.risk.toFixed(2)}</span></div><ConfidenceBars scores={diagnostic.scores} /></div></div><div className="diagnostic-history"><div><strong><History size={14} /> 最近检测</strong><span>{diagnosticHistory.length ? `${diagnosticHistory.length} 条` : '暂无记录'}</span></div>{diagnosticHistory.slice(0, 3).map(item => <span key={`${item.at}-${item.risk}`}>{item.at} · {item.location} · {(item.risk * 100).toFixed(0)}%</span>)}</div></section>
+          {selected.turbine_id === 'WT02' && careTelemetry ? <CareTelemetryPanel telemetry={careTelemetry} /> : <section className="ai-workbench" aria-label="实时AI故障检测"><div className="workbench-title"><h3><Activity size={15} /> 实时 AI 故障检测</h3><span className="simulated-tag">SIMULATED · 拖动即推理</span></div><div className="diagnostic-layout"><div className="diagnostic-controls">{diagnosticFields.map(field => <label className="diagnostic-slider" key={field.key}><span><b>{field.label}</b><em>{diagnosticParams[field.key].toFixed(field.step < 1 ? 1 : 0)} {field.unit}</em></span><input style={{ '--slider-color': sliderTint(field, diagnosticParams[field.key]) } as CSSProperties} type="range" min={field.min} max={field.max} step={field.step} value={diagnosticParams[field.key]} onChange={event => updateDiagnosticParam(field.key, Number(event.target.value))} /><small>安全范围 {field.normal[0]}–{field.normal[1]} {field.unit}</small></label>)}<button className="reset-diagnostic" onClick={() => setDiagnosticParams(defaultDiagnosticParams)}><RotateCcw size={14} /> 一键重置参数</button></div><div className="diagnostic-result"><div className="ai-status-line"><span className={`ai-pulse ${diagnostic.level.toLowerCase()}`} />AI 推理完成 <StatusBadge level={diagnostic.level} /></div><DiagnosticDiagram location={diagnostic.location} risk={diagnostic.risk} /><div className="diagnostic-summary"><strong>{diagnostic.location}</strong><span>置信度 {(diagnostic.risk * 100).toFixed(0)}% · 风险评分 {diagnostic.risk.toFixed(2)}</span></div><ConfidenceBars scores={diagnostic.scores} /></div></div><div className="diagnostic-history"><div><strong><History size={14} /> 最近检测</strong><span>{diagnosticHistory.length ? `${diagnosticHistory.length} 条` : '暂无记录'}</span></div>{diagnosticHistory.slice(0, 3).map(item => <span key={`${item.at}-${item.risk}`}>{item.at} · {item.location} · {(item.risk * 100).toFixed(0)}%</span>)}</div></section>}
           <div className="event-selector"><label htmlFor="wt02-event">WT02 故障案例基线</label><select id="wt02-event" value={faultEventId} onChange={event => { const id = event.target.value; setFaultEventId(id); setDiagnosticParams(eventDiagnosticPresets[id] || defaultDiagnosticParams); logAction(`载入故障案例基线：${id}`) }}>{wt02FaultEvents.map(item => <option key={item.id} value={item.id}>{item.id} · {item.name}</option>)}</select><small>预设案例仅用于载入初始传感器状态；拖动下方滑块后由实时演示推理重新计算。</small></div>
-          <div className="component-line"><div className="component-symbol"><Settings2 size={18} /></div><div><strong>{selected.component_label}</strong><span>{selected.component_id} · {selectedFault.name} · 映射待核验</span></div><ChevronDown size={17} /></div>
+          <div className="component-line"><div className="component-symbol"><Settings2 size={18} /></div><div><strong>{selected.component_label}</strong><span>{selected.component_id} · {careTelemetry ? 'CARE 遥测对象，未提供故障标签' : `${selectedFault.name} · 映射待核验`}</span></div><ChevronDown size={17} /></div>
             <button className="primary-action" onClick={openMaintenance}><Wrench size={17} /> 查看维护方案 <ArrowRight size={17} /></button>
           </> : <>
             <div className="decision-intro"><div className="decision-icon"><Wrench size={20} /></div><div><h3>维护决策</h3><p>{selected.turbine_id} · {selected.component_label}</p><small>先读风险信号，再核对窗口与人员，最后记录执行和复测</small></div></div>
