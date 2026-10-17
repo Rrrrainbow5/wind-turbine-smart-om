@@ -171,18 +171,20 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
     // meshes remain internal even when their geometry is sizable.
     const fallbackNacelleShell = !highlightedInternal && !category && Math.max(localSize.x, localSize.y, localSize.z) > 2.2
     const exterior = isCadExterior(object, category) || fallbackNacelleShell
-    // The upper nacelle cover is removed for the engineering cutaway; side/lower
-    // housings remain as a translucent reference so the real drivetrain stays readable.
+    // The CAD nacelle is exported as many small panels below a shared NACELLE
+    // assembly. Hiding only large meshes leaves those panels looking like a
+    // complete white shell, so cutaway mode removes the whole shell branch.
+    // Explicitly classified drivetrain parts keep their own category and remain.
     const isUpperNacelleCover = exterior && (
       (source.includes('gornje') && source.includes('kuci')) ||
       /upper nacelle|top nacelle|cover|lid|roof|poklopac|gornje kuci|盖板|罩/.test(nameChain)
     )
-    const isMainNacelleShell = isUpperNacelleCover || fallbackNacelleShell ||
-      (category === 'NACELLE' && Math.max(localSize.x, localSize.y, localSize.z) > 2.2) ||
+    const isMainNacelleShell = category === 'NACELLE' || isUpperNacelleCover || fallbackNacelleShell ||
       (source.startsWith('kuci') && Math.max(localSize.x, localSize.y, localSize.z) > 2.2)
     if (object.userData.engineeringOriginalVisible === undefined) object.userData.engineeringOriginalVisible = object.visible
-    // Keep the large white top cover out of the normal and cutaway views.
-    object.visible = isUpperNacelleCover ? false : (active && isMainNacelleShell ? false : Boolean(object.userData.engineeringOriginalVisible))
+    object.visible = active && isMainNacelleShell
+      ? false
+      : Boolean(object.userData.engineeringOriginalVisible)
     const materials = Array.isArray(object.material) ? object.material : [object.material]
     materials.forEach(material => {
       const stored = material.userData.engineeringOriginal as { color?: number; opacity: number; transparent: boolean; depthWrite: boolean; emissive?: number } | undefined
@@ -394,6 +396,26 @@ function setFaultPartState(model: THREE.Object3D | null, category: Turbine['faul
       material.depthWrite = true
     })
   })
+  // CAD exports do not use one naming convention. If the normalized category
+  // pass found nothing, use original source names as a conservative fallback
+  // so a mapped bearing/gear/generator is still visible to the user.
+  if (!targets.length) {
+    model.traverse(object => {
+      if (!(object instanceof THREE.Mesh)) return
+      const source = String(object.userData.sourceCadName || '').toLowerCase()
+      const bearing = source.includes('bearing') || source.includes('lezaj') || source.includes('le_aj') || source.includes('roller')
+      const gearbox = source.includes('gear') || source.includes('zupcan') || source.includes('planet') || source.includes('spur')
+      const generator = source.includes('generator') || source.includes('stator')
+      const drivetrain = source.includes('shaft') || source.includes('osovina') || source.includes('spojnica')
+      const matches = category === 'ROTOR_BEARING' ? bearing && !source.includes('kuci')
+        : category === 'GEARBOX_BEARING' || category === 'BEARING' ? bearing
+          : category === 'GEARBOX' ? gearbox
+            : category === 'GENERATOR' ? generator
+              : category === 'DRIVETRAIN' ? drivetrain : false
+      if (matches) targets.push(object)
+    })
+  }
+  if (!matched && targets.length) matched = targets.length
   // A separate unlit overlay keeps the fault unmistakable even when the
   // imported CAD material is white, metallic, or uses vertex colors.
   if (targets.length) {
