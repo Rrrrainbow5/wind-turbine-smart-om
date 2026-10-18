@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import { Activity, AlertTriangle, Anchor, ArrowRight, Check, ChevronDown, ClipboardList, Clock3, CloudSun, Database, Eye, Gauge, History, Layers3, MapPin, PackageCheck, Radio, RotateCcw, Search, Server, Settings2, ShieldCheck, UserRound, Wrench, X } from 'lucide-react'
 import WindScene from './WindScene'
 import DatasetPanel from './DatasetPanel'
+import FieldDataPanel from './FieldDataPanel'
 import type { BearingPart, SampleMapping } from './SampleAssociation'
 import { executeMaintenance, fetchRetests, fetchTurbines, optimizeMaintenance, replanMaintenance, type ApiMaintenancePlan, type ApiRetest } from './api'
 import { demoTurbines, getDemoPlans, warningText, wt02FaultEvents, type MaintenancePlan, type SourceKind, type Turbine } from './data'
@@ -440,6 +441,18 @@ export default function App() {
     setSelectedId(id); setView('overview'); setServiced(saved?.status === 'maintained'); setDiagnosticParams(saved?.params || defaultDiagnosticParams); setSelectedPlan('inspect'); setApiPlan(null); setMaintenanceRecordId(''); setRetests([]); setMaintenanceAttempts(0)
   }
 
+  const refreshFieldData = async (id?: string) => {
+    const data = await fetchTurbines()
+    setTurbines(data)
+    setSelectedId(id || selectedId)
+    setSampleMapping(null); setApiPlan(null)
+    if (id) {
+      setServiced(false); setMaintenanceRecordId(''); setRetests([])
+      setBeforeRetest(null); setAfterRetest(null); setRetestPhase('idle')
+    }
+    if (id) setView('signal')
+  }
+
   const logAction = (message: string) => {
     const time = new Date().toLocaleTimeString()
     setActivityLog(log => [`${time} · ${message}`, ...log].slice(0, 8))
@@ -499,8 +512,8 @@ export default function App() {
     try {
       setLoading(true); setError(''); setServiced(false)
       const result = replan && apiPlan
-        ? await replanMaintenance(selected.turbine_id, selected.component_id, !restricted, apiPlan.plan_id, personnelAvailable)
-        : await optimizeMaintenance(selected.turbine_id, selected.component_id, !restricted, personnelAvailable)
+        ? await replanMaintenance(selected.turbine_id, selected.component_id, !restricted, apiPlan.plan_id, personnelAvailable, selected.field_diagnosis)
+        : await optimizeMaintenance(selected.turbine_id, selected.component_id, !restricted, personnelAvailable, selected.field_diagnosis)
       setApiPlan(result)
       setSelectedPlan(result.recommended_action)
       logAction(replan ? '已根据工程条件重新规划维护方案' : '已生成维护方案')
@@ -562,6 +575,16 @@ export default function App() {
     setRetestPhase('retesting'); setRetestProgress(100)
   }
 
+  const refreshRetests = async () => {
+    if (!maintenanceRecordId) return
+    setRetestLoading(true); setError('')
+    try {
+      const rows = await fetchRetests(maintenanceRecordId)
+      setRetests(rows.filter(row => ['REAL', 'DERIVED', 'EXTERNAL_PUBLIC'].includes(row.data_origin)))
+    } catch (reason) { setError(reason instanceof Error ? reason.message : '复测查询失败') }
+    finally { setRetestLoading(false) }
+  }
+
   const executePlan = async () => {
     if (!selected) return
     setBeforeRetest(createRetestSnapshot(false)); setAfterRetest(null); setError('')
@@ -572,21 +595,17 @@ export default function App() {
         const record = await executeMaintenance(apiPlan.plan_id)
         setMaintenanceRecordId(record.record_id)
         setRetests([])
-        await runRetestProgress()
         setRetestLoading(true)
         let fetchedRetests: ApiRetest[] = []
-        try { fetchedRetests = await fetchRetests(record.record_id); setRetests(fetchedRetests) } catch (reason) {
+        try { fetchedRetests = await fetchRetests(record.record_id); setRetests(fetchedRetests.filter(row => ['REAL', 'DERIVED', 'EXTERNAL_PUBLIC'].includes(row.data_origin))) } catch (reason) {
           const message = reason instanceof Error ? reason.message : '复测结果尚未生成'
           if (!message.includes('404')) setError(message)
         } finally { setRetestLoading(false) }
-        if (!fetchedRetests.length) fetchedRetests = retests
-        const apiResult = fetchedRetests[0]
-        setAfterRetest(apiResult ? { location: apiResult.conclusion.includes('消除') ? '无异常' : selected.component_label, confidence: apiResult.conclusion.includes('消除') ? 0 : apiResult.failure_risk, risk: apiResult.failure_risk, health: apiResult.health_index, conclusion: apiResult.conclusion } : createRetestSnapshot(selectedPlan !== 'monitor'))
         if (selectedPlan === 'monitor' || decisionAction === 'CONTINUE_MONITORING') {
           setTurbineStates(current => current[selectedId] ? { ...current, [selectedId]: { ...current[selectedId], status: 'monitoring' } } : current)
         }
-        setDecisionFeedback(decisionAction === 'CONTINUE_MONITORING' ? '你选择了继续监测，当前未停机，故障风险将继续跟踪。' : `你选择了${decisionAction === 'SCHEDULE_MAINTENANCE' ? '预防性维护' : '现场检查'}，已进入复测流程。`)
-        setRetestPhase('result'); playConfirmSound(); logAction('维护完成，已生成复测结果')
+        setDecisionFeedback('已记录人工提交的维护执行信息，等待现场复测数据；当前故障状态不会自动清除。')
+        setRetestPhase('idle'); setServiced(false); logAction('维护执行已记录，待现场复测')
       } catch (reason) { setError(reason instanceof Error ? reason.message : '维护请求失败'); setRetestPhase('idle') }
       finally { setLoading(false) }
     } else {
@@ -693,7 +712,7 @@ export default function App() {
       </section>
 
       <aside className="inspector" aria-label="风机信息">
-        {mode === 'api' && <DatasetPanel expanded={view === 'signal'} parts={bearingParts.filter(part => turbines.some(t => t.turbine_id === part.turbineId))} onLocate={locateSample} />}
+        {mode === 'api' && <><FieldDataPanel turbine={selected} onRefresh={refreshFieldData} expanded={view === 'signal'} onLocate={() => { setSampleMapping(null); setEngineeringView(true) }} onMaintenance={openMaintenance} /><details className="dataset-panel"><summary>实验查询 / 原始波形分析（独立于现场状态）</summary><DatasetPanel parts={bearingParts.filter(part => turbines.some(t => t.turbine_id === part.turbineId))} onLocate={locateSample} /></details></>}
         <div className="fleet-summary"><div><span>机组总数</span><strong>{turbines.length.toString().padStart(2, '0')}</strong></div><div><span>高风险</span><strong className="danger-text">{highCount.toString().padStart(2, '0')}</strong></div><div><span>当前选择</span><strong>{selected?.turbine_id || '--'}</strong></div></div>
         {error && <div className="error-banner" role="status"><AlertTriangle size={16} /><span>{error}</span><button title="关闭提示" aria-label="关闭提示" onClick={() => setError('')}><X size={15} /></button></div>}
         {loading && <div className="loading-state" role="status">正在连接接口...</div>}
@@ -701,7 +720,7 @@ export default function App() {
         {selected && <>
           <div className="selector-row"><div><span className="section-kicker">设备状态</span><h2>{selected.turbine_id} <span>{selected.name}</span></h2></div>{persistedSelected?.status === 'monitoring' ? <span className="status-badge status-low">⚠ 故障未处理 · 继续监测中</span> : selected.has_analysis === false ? <span className="status-badge status-neutral">暂无分析结果</span> : <StatusBadge level={serviced ? 'NORMAL' : selected.warning_level} />}</div>
           <div className="turbine-tabs" data-guide-target="turbine-select" role="tablist" aria-label="选择风机">{turbines.map(t => <button role="tab" aria-selected={selectedId === t.turbine_id} className={selectedId === t.turbine_id ? 'selected' : ''} key={t.turbine_id} onClick={() => selectTurbine(t.turbine_id)}>{t.turbine_id}<i className={`level-${t.warning_level.toLowerCase()}`} /></button>)}</div>
-           {mode === 'api' && view === 'signal' ? <div className="api-boundary">在上方工作台选择或上传样本，指定机组与已识别轴承部件，再三维定位并展开维护评估。关联仅用于展示，不覆盖现场状态或创建工单。</div> : view === 'signal' && diagnosticRecord ? <SignalPanel turbine={selected} record={diagnosticRecord} onLocate={() => { setEngineeringView(true); setView('overview') }} onMaintenance={openMaintenance} /> : view === 'demo' ? <DemoPanel turbine={selected} params={diagnosticParams} diagnostic={diagnostic} displayLocation={displayLocation} history={diagnosticHistory} onParamChange={updateDiagnosticParam} onReset={() => setDiagnosticParams(defaultDiagnosticParams)} onLocate={() => setEngineeringView(true)} /> : view === 'overview' ? <>
+{mode === 'api' && view === 'signal' ? <div className="api-boundary">上方展示当前机组的实际诊断数据包。三维定位与维护方案沿用同一机组、部件和诊断记录；原始波形未诊断时不会生成故障结论。</div> : view === 'signal' && diagnosticRecord ? <SignalPanel turbine={selected} record={diagnosticRecord} onLocate={() => { setEngineeringView(true); setView('overview') }} onMaintenance={openMaintenance} /> : view === 'demo' ? <DemoPanel turbine={selected} params={diagnosticParams} diagnostic={diagnostic} displayLocation={displayLocation} history={diagnosticHistory} onParamChange={updateDiagnosticParam} onReset={() => setDiagnosticParams(defaultDiagnosticParams)} onLocate={() => setEngineeringView(true)} /> : view === 'overview' ? <>
             {persistedSelected?.status === 'monitoring' && activeFault && <div className="monitoring-status-tag" role="status">⚠ 故障未处理 · 继续监测中</div>}
             <div className="reading-primary"><div className="reading-label"><Gauge size={18} /> 健康指数 <span title="与信号诊断共享同一 diagnosis_id">ⓘ</span></div><div className="reading-number">{selected.has_analysis === false ? '--' : serviced ? '待复测' : selected.health_index.toFixed(1)}{selected.has_analysis !== false && !serviced && <small>/ 100</small>}</div><div className="meter"><span style={{ width: selected.has_analysis === false || serviced ? '0%' : `${selected.health_index}%` }} className={selected.health_index < 70 ? 'meter-risk' : selected.health_index < 85 ? 'meter-warning' : 'meter-normal'} /></div><p>{selected.has_analysis === false ? '后端尚无该部件的 AI 分析结果。' : serviced ? '维护执行已记录，设备健康状态应由复测数据确认。' : selected.warning_level === 'HIGH' ? '状态持续偏离正常区间，建议进入维护评估。' : '当前状态以信号诊断结果为准。'}</p><small className="record-link">诊断记录 {diagnosticRecord?.diagnosisId} · 样本 {diagnosticRecord?.sampleId}</small></div>
             <div className="metric-grid"><div><span>异常分数</span><strong>{selected.has_analysis === false ? '--' : selected.anomaly_score.toFixed(2)}</strong><small>模型输出</small></div><div><span>风险评分</span><strong>{selected.has_analysis === false ? '--' : selected.failure_risk.toFixed(2)}</strong><small>0-1 指标，非校准概率</small></div><div><span>当前功率</span><strong>{selected.power_kw !== 0 ? selected.power_kw.toLocaleString() : '--'}<em> kW</em></strong><small>{selected.power_kw !== 0 ? '运行记录' : '未提供'}</small></div><div><span>风速</span><strong>{selected.wind_ms !== 0 ? selected.wind_ms : '--'}<em> m/s</em></strong><small>{selected.wind_ms !== 0 ? '运行记录' : '未提供'}</small></div></div>
@@ -742,7 +761,8 @@ export default function App() {
             {serviced && <div className="success-message"><Check size={17} /><div><strong>维护复测已确认</strong><span>设备状态已恢复正常，故障标记已清除。</span></div></div>}
             <div className="log-panel"><div className="workbench-title"><h3>操作日志</h3><span>{activityLog.length} 条</span></div>{activityLog.length ? activityLog.map((item, i) => <div key={`${item}-${i}`}><Clock3 size={12} />{item}</div>) : <p>尚未进行工程操作</p>}</div>
             {mode === 'api' && (maintenanceRecordId || retestLoading) && <div className="retest-card"><div className="retest-head"><span>维护后复测</span><em>{retestLoading ? '查询中' : '复测记录'}</em></div>{retest ? <><div className="retest-values"><div><span>健康指数</span><strong>{retest.health_index.toFixed(1)}</strong></div><div><span>相对风险</span><strong>{retest.failure_risk.toFixed(3)}</strong></div></div><p>{retest.conclusion}</p><small>复测结果需结合现场检查确认。</small></> : <p>{retestLoading ? '正在查询复测记录...' : '待复测。当前没有后端复测结果。'}</p>}</div>}
-            <button className="secondary-action" onClick={() => { setView('overview'); setServiced(false) }}><RotateCcw size={16} /> 返回设备状态</button>
+            {mode === 'api' && maintenanceRecordId && <div><small>执行记录：{maintenanceRecordId} · 采集端通过 POST /api/retests 提交此记录的复测结果。</small><button className="secondary-action" disabled={retestLoading} onClick={() => void refreshRetests()}>同步现场复测结果</button></div>}
+            <button className="secondary-action" onClick={() => { setView('overview') }}><RotateCcw size={16} /> 返回设备状态</button>
           </>}
           <div className="data-footnote"><span>CARE 数据集</span><span>{selected.model_version} · {selected.updated_at}</span></div>
         </>}

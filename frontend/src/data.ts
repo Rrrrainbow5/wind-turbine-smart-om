@@ -25,6 +25,7 @@ export interface Turbine {
   fault_category?: 'GEARBOX_BEARING' | 'ROTOR_BEARING' | 'GEARBOX' | 'GENERATOR' | 'DRIVETRAIN' | 'BEARING'
   event_name?: string
   event_description?: string
+  field_diagnosis?: import('./api').FieldDiagnosis
 }
 
 export interface MaintenancePlan {
