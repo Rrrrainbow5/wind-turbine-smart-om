@@ -1,0 +1,50 @@
+{
+  "schema_version": "signal-analysis.v2",
+  "sample_id": "CARE-WT02-DEMO-20261018-001",
+  "processing_run_id": "run-care-wt02-demo-001",
+  "turbine_id": "WT02",
+  "component_id": "WT02_COMPONENT_01",
+  "event_id": "CARE-BEARING-DEMO",
+  "event_name": "转子轴承滚道损伤（公开数据演示）",
+  "fault_id": "BEARING_RACEWAY_DAMAGE",
+  "data_origin": "DERIVED",
+  "sampling_rate_hz": 1000,
+  "channels": [
+    {
+      "name": "bearing_temperature",
+      "unit": "degC",
+      "samples": [68.2, 68.4, 68.7, 69.1, 69.6, 70.0, 70.4, 70.9, 71.2, 71.6, 72.0, 72.3, 72.7, 73.0, 73.4, 73.8],
+      "source_reference": "CARE Wind Farm B / 83.csv / derived sensor_52_avg",
+      "sensor_location": "rotor bearing temperature channel (CARE aggregate)"
+    },
+    {
+      "name": "bearing_vibration_rms",
+      "unit": "g",
+      "samples": [0.18, 0.19, 0.21, 0.22, 0.24, 0.25, 0.27, 0.29, 0.31, 0.32, 0.34, 0.36, 0.38, 0.39, 0.41, 0.43],
+      "source_reference": "CARE Wind Farm B / 83.csv / derived vibration indicator",
+      "sensor_location": "rotor bearing vibration indicator"
+    }
+  ],
+  "operating_condition": {"wind_speed_ms": 10.8, "active_power_kw": 1480, "source": "CARE Wind Farm B"},
+  "preprocessing": [
+    {"name": "trend-window", "method": "16-point chronological window; no imputation"},
+    {"name": "physical-units", "method": "retain CARE aggregate units"}
+  ],
+  "time_features": {"temperature_mean_c": 70.91, "temperature_variance_c2": 3.17, "temperature_slope_c_per_sample": 0.37, "vibration_rms_mean_g": 0.30, "vibration_rms_slope_g_per_sample": 0.017},
+  "spectral_peaks": [],
+  "time_frequency_artifacts": [],
+  "embedding_2d": [],
+  "diagnosis": {
+    "model_version": "care-v6-offshore-demo-0.1",
+    "class_probabilities": {"BEARING_RACEWAY_DAMAGE": 0.86, "BEARING_LUBRICATION_OR_MISALIGNMENT": 0.09, "NORMAL": 0.05},
+    "predicted_class": "BEARING_RACEWAY_DAMAGE",
+    "uncertainty": 0.14,
+    "component_key": "rotor_bearing",
+    "mapping_status": "CANDIDATE",
+    "health_index": 58.0,
+    "anomaly_score": 0.82,
+    "failure_risk": 0.78,
+    "warning_level": "HIGH",
+    "rationale": "公开 CARE 聚合趋势演示：轴承温度和振动指标持续上升。该包用于验证系统工作流，不等同于现场原始波形或已校准生产推理。"
+  }
+}
