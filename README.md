@@ -99,3 +99,4 @@ npm run dev -- --host 127.0.0.1
 - [工程决策登记表](docs/engineering/decision-register.md)
 - [A 工程审查记录](docs/integration/a-review-log.md)
 - [A 状态与交接说明](docs/integration/a-status-and-handover-v0.1.md)
+- [v0.2 当前范围与答辩口径](docs/presentation/v0.2-current-scope-and-defense-notes.md)
