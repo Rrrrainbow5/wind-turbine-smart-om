@@ -34,7 +34,7 @@ type DiagnosticRecord = {
   stages: Array<{ key: string; label: string; status: 'available' | 'pending' | 'not-applicable'; detail: string }>
 }
 
-type CareTelemetrySummary = {
+export type CareTelemetrySummary = {
   timestamp: string
   active_power_kw: number
   wind_speed_ms: number
