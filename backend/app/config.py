@@ -16,4 +16,7 @@ def allowed_origins() -> list[str]:
     configured = os.getenv("WINDCARE_ALLOWED_ORIGINS")
     if configured:
         return [origin.strip() for origin in configured.split(",") if origin.strip()]
-    return ["http://localhost:5173", "http://127.0.0.1:5173"]
+    return [
+        "http://localhost:5173", "http://127.0.0.1:5173",
+        "https://rrrrainbow5.github.io",
+    ]

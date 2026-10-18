@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: windcare-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt -r requirements-ai.txt
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: WINDCARE_ALLOWED_ORIGINS
+        value: https://rrrrainbow5.github.io
+      - key: WINDCARE_DB_PATH
+        value: /tmp/windcare.db

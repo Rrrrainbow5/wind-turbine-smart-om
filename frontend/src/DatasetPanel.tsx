@@ -37,7 +37,7 @@ export default function DatasetPanel() {
   const selected = analysis?.channels[channel]
   return <section className="dataset-panel"><button className="secondary-action" onClick={() => setOpen(!open)} aria-expanded={open}>数据集接入 · 上传 / 实验查询</button>{open && <div>
     <h3>数据集工作台</h3><label>后端地址（本地开发可留空）<input placeholder="https://你的后端域名" value={base} onChange={e => { setBase(e.target.value); setReport(null); setAnalysis(null) }} /></label>
-    <p>默认通过 /api 连接后端。静态公网页面需要可访问的 FastAPI 服务。</p>
+    <p>默认自动连接数据服务，无需填写地址；仅调试其他服务时修改上方地址。</p>
     <button disabled={busy} onClick={() => run(async () => { setReport(null); setReport(await call<Report>('/api/datasets/experiments')); setSample(0) })}>加载 Paderborn 实验数据</button>
     <label className="dataset-upload">上传多通道 JSON（≤2 MB，每通道 16–4096 点）<input type="file" accept=".json,application/json" disabled={busy} onChange={e => { const file = e.target.files?.[0]; if (!file) return; void run(async () => { setAnalysis(null); if (file.size > 2 * 1024 * 1024) throw new Error('文件超过 2 MB，请先截取信号窗口'); const body = await file.text(); JSON.parse(body); setAnalysis(await call<Analysis>('/api/datasets/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body })); setChannel(0) }); e.target.value = '' }} /></label>
     <details><summary>上传格式与结果说明</summary><pre>{JSON.stringify({ sample_id: 'measurement-001', sampling_rate_hz: 64000, data_origin: 'EXTERNAL_PUBLIC', source_reference: '数据集名称 / 原始文件', channels: [{ name: 'vibration_1', unit: 'm/s²', samples: ['至少16个实际数值'] }] }, null, 2)}</pre><p>填写真实来源与通道单位。SCADA 聚合量不作为高频振动波形。新上传数据只计算信号特征；模型权重未部署时不生成故障结论。</p></details>
