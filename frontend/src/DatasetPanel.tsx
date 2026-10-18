@@ -14,8 +14,8 @@ function Plot({ values, axis, title, unit, xUnit }: { values: number[]; axis: nu
   return <figure><figcaption>{title} · {unit}</figcaption><svg viewBox="0 0 500 155" role="img" aria-label={title}><path d="M40 20V125H470" fill="none" stroke="#68818c" /><polyline points={points} fill="none" stroke="#45d4d0" strokeWidth="1" /><text x="0" y="24">{high.toPrecision(3)}</text><text x="0" y="125">{low.toPrecision(3)}</text><text x="40" y="147">{axis[0]?.toPrecision(3)}</text><text x="365" y="147">{axis.at(-1)?.toPrecision(3)} {xUnit}</text></svg></figure>
 }
 
-export default function DatasetPanel() {
-  const [open, setOpen] = useState(false)
+export default function DatasetPanel({ expanded = false }: { expanded?: boolean }) {
+  const [open, setOpen] = useState(expanded)
   const [base, setBase] = useState('')
   const [report, setReport] = useState<Report | null>(null)
   const [sample, setSample] = useState(0)

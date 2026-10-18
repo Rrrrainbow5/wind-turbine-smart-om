@@ -11,5 +11,10 @@
 .dataset-score { display:flex; gap:8px; align-items:center; font-size:12px; margin:8px 0 }
 .dataset-score meter { flex:1; min-width:40px }
 .dataset-error { color:#ff9c87 }
+.mode-api .ai-workbench,.mode-api .event-selector { display:none }
+.api-boundary { padding:16px; margin:12px 0; border:1px solid #315560; border-radius:8px; color:#bdd7df; line-height:1.7 }
+.dataset-panel button { padding:10px 14px; border:1px solid #39818b; border-radius:6px; background:#163e4b; color:#e0f6f8; cursor:pointer; font:inherit; font-size:13px }
+.dataset-panel button:disabled { opacity:.55; cursor:wait }
+.dataset-panel input::file-selector-button { padding:8px; background:#24515e; color:#e0f6f8; border:0; border-radius:4px; margin-right:8px }
 .dataset-statistics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px }
 .dataset-statistics span { font-size:11px; overflow-wrap:anywhere }.dataset-statistics b { display:block; font-size:15px }
