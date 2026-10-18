@@ -669,7 +669,7 @@ export default function App() {
       </section>
 
       <aside className="inspector" aria-label="风机信息">
-        <DatasetPanel />
+        {mode === 'api' && <DatasetPanel />}
         <div className="fleet-summary"><div><span>机组总数</span><strong>{turbines.length.toString().padStart(2, '0')}</strong></div><div><span>高风险</span><strong className="danger-text">{highCount.toString().padStart(2, '0')}</strong></div><div><span>当前选择</span><strong>{selected?.turbine_id || '--'}</strong></div></div>
         {error && <div className="error-banner" role="status"><AlertTriangle size={16} /><span>{error}</span><button title="关闭提示" aria-label="关闭提示" onClick={() => setError('')}><X size={15} /></button></div>}
         {loading && <div className="loading-state" role="status">正在连接接口...</div>}
