@@ -2,10 +2,11 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerE
 import { Activity, AlertTriangle, Anchor, ArrowRight, Check, ChevronDown, ClipboardList, Clock3, CloudSun, Database, Eye, Gauge, History, Layers3, MapPin, PackageCheck, Radio, RotateCcw, Search, Server, Settings2, ShieldCheck, UserRound, Wrench, X } from 'lucide-react'
 import WindScene from './WindScene'
 import { executeMaintenance, fetchRetests, fetchTurbines, optimizeMaintenance, replanMaintenance, type ApiMaintenancePlan, type ApiRetest } from './api'
-import { demoTurbines, getDemoPlans, warningText, wt02FaultEvents, type MaintenancePlan, type Turbine } from './data'
+import { demoTurbines, getDemoPlans, warningText, wt02FaultEvents, type MaintenancePlan, type SourceKind, type Turbine } from './data'
+import { paderbornExperiment } from './experiment'
 import './signal-blue.css'
 
-type Mode = 'demo' | 'api'
+type Mode = 'demo' | 'experiment' | 'api'
 type View = 'overview' | 'signal' | 'demo' | 'maintenance'
 type RetestPhase = 'idle' | 'executing' | 'retesting' | 'result'
 type RetestSnapshot = { location: string; confidence: number; risk: number; health: number; conclusion: string }
@@ -22,7 +23,7 @@ type TurbinePersistedState = {
 type DiagnosticRecord = {
   sampleId: string
   diagnosisId: string
-  source: 'REAL' | 'DERIVED' | 'SIMULATED' | 'ASSUMED' | 'REFERENCE'
+  source: SourceKind
   modelVersion: string
   turbineId: string
   component: string
@@ -74,22 +75,24 @@ function StatusBadge({ level }: { level: Turbine['warning_level'] }) {
 
 function SignalPanel({ turbine, record, onLocate, onMaintenance }: { turbine: Turbine; record: DiagnosticRecord; onLocate: () => void; onMaintenance: () => void }) {
   const severity = Math.max(.05, Math.min(.98, record.risk))
+  const isExperiment = record.source === 'EXTERNAL_PUBLIC'
   const features = record.source === 'SIMULATED' ? [
     ['均值', (.008 + severity * .024).toFixed(3), 'g'], ['标准差', (.08 + severity * .09).toFixed(3), 'g'],
     ['RMS', (.09 + severity * .1).toFixed(3), 'g'], ['峭度', (3.1 + severity * 2.5).toFixed(2), ''],
     ['峰峰值', (.42 + severity * .48).toFixed(2), 'g'], ['峰值因子', (2.6 + severity * 1.2).toFixed(2), ''],
   ] : [['均值', '--', ''], ['标准差', '--', ''], ['RMS', '--', ''], ['峭度', '--', ''], ['峰峰值', '--', ''], ['峰值因子', '--', '']]
   return <div className="signal-panel-blue" data-guide-target="signal-panel">
-    <div className="signal-panel-head"><div><span className="section-kicker">SIGNAL DIAGNOSTICS · v0.2</span><h2>信号诊断</h2><p>{turbine.turbine_id} · {record.component}</p></div><span className="signal-sample"><Database size={13} /> {record.sampleId}<small>{record.source} · {record.modelVersion}</small></span></div>
-    <div className="signal-boundary"><Radio size={14} /> 本页所有结果均引用当前样本；来源为 {record.source}。正式接口接入后，将由后端返回原始通道与每个处理阶段的结果。</div>
-    <div className="signal-provenance"><div><span>样本来源</span><strong>{record.source === 'SIMULATED' ? '演示参数样本' : 'CARE v6 · SCADA 聚合量'}</strong></div><div><span>诊断编号</span><strong>{record.diagnosisId}</strong></div><div><span>模型版本</span><strong>{record.modelVersion}</strong></div><small>CARE 聚合量不能直接代表高采样率实测波形；未接入原始波形时，频谱结果必须标记为待接入或仿真。</small></div>
+    <div className="signal-panel-head"><div><span className="section-kicker">SIGNAL DIAGNOSTICS · v0.2</span><h2>信号诊断</h2><p>{record.source === 'EXTERNAL_PUBLIC' ? record.turbineId : turbine.turbine_id} · {record.component}</p></div><span className="signal-sample"><Database size={13} /> {record.sampleId}<small>{record.source} · {record.modelVersion}</small></span></div>
+    <div className="signal-boundary"><Radio size={14} /> {isExperiment ? '本页引用 Paderborn 公开轴承数据的跨物理轴承留出评估记录，不是风场在线诊断。' : `本页所有结果均引用当前样本；来源为 ${record.source}。正式接口接入后，将由后端返回原始通道与每个处理阶段的结果。`}</div>
+    <div className="signal-provenance"><div><span>样本来源</span><strong>{record.source === 'SIMULATED' ? '演示参数样本' : isExperiment ? 'Paderborn Bearing Data Center' : 'CARE v6 · SCADA 聚合量'}</strong></div><div><span>诊断编号</span><strong>{record.diagnosisId}</strong></div><div><span>模型版本</span><strong>{record.modelVersion}</strong></div><small>{isExperiment ? `EXTERNAL_PUBLIC · 64 kHz 三通道波形 · SHA-256 ${paderbornExperiment.sourceHash.slice(0, 16)}…` : 'CARE 聚合量不能直接代表高采样率实测波形；未接入原始波形时，频谱结果必须标记为待接入或仿真。'}</small></div>
     <div className="signal-steps">{record.stages.map((stage, index) => <span key={stage.key} className={stage.status === 'available' ? 'active' : stage.status === 'pending' ? 'pending' : ''}>{String(index + 1).padStart(2, '0')} {stage.label}</span>).reduce<ReactNode[]>((items, item, index, all) => index < all.length - 1 ? [...items, item, <i key={`line-${index}`} />] : [...items, item], [])}</div>
-    <div className="signal-source-card"><div className="signal-card-title"><strong>当前样本输入</strong><span>sample_id 一一对应</span></div><div className="signal-source-grid"><div><span>风机 / 部件</span><strong>{record.turbineId} · {record.component}</strong></div><div><span>输入类型</span><strong>{record.source === 'SIMULATED' ? '仿真参数 / 演示信号' : 'SCADA 聚合趋势'}</strong></div><div><span>状态</span><strong>{record.source === 'SIMULATED' ? '演示链路' : '等待后端原始通道'}</strong></div><div><span>诊断结果</span><strong>风险 {record.risk.toFixed(2)} · 健康 {record.health.toFixed(1)}</strong></div></div>{record.source === 'SIMULATED' ? <div className="signal-wave-mini"><span />{Array.from({ length: 48 }, (_, i) => <i key={i} style={{ height: `${18 + ((i * 19 + Math.round(severity * 40)) % 65)}%` }} />)}</div> : <div className="signal-wave-empty">暂无高采样率原始波形<br /><small>CARE v6 聚合数据不能直接生成 FFT / STFT 实测频谱</small></div>}<small className="signal-caption">{record.source === 'SIMULATED' ? 'SIMULATED · 演示波形占位，不是 CARE 实测原始波形' : 'CARE 聚合趋势 · 原始通道待后端接入'}</small></div>
+    <div className="signal-source-card"><div className="signal-card-title"><strong>当前样本输入</strong><span>sample_id 一一对应</span></div><div className="signal-source-grid"><div><span>数据对象 / 部件</span><strong>{record.turbineId} · {record.component}</strong></div><div><span>输入类型</span><strong>{record.source === 'SIMULATED' ? '仿真参数 / 演示信号' : isExperiment ? '振动 + 两相电流原始波形' : 'SCADA 聚合趋势'}</strong></div><div><span>状态</span><strong>{record.source === 'SIMULATED' ? '演示链路' : isExperiment ? '留出集推理已完成' : '等待后端原始通道'}</strong></div><div><span>结果性质</span><strong>{isExperiment ? '实验分类分数，未校准' : `风险 ${record.risk.toFixed(2)} · 健康 ${record.health.toFixed(1)}`}</strong></div></div>{record.source === 'SIMULATED' ? <div className="signal-wave-mini"><span />{Array.from({ length: 48 }, (_, i) => <i key={i} style={{ height: `${18 + ((i * 19 + Math.round(severity * 40)) % 65)}%` }} />)}</div> : isExperiment ? <div className="signal-wave-empty">原始 MAT 波形未随网页发布<br /><small>本页展示其已登记、可追溯的留出评估结果</small></div> : <div className="signal-wave-empty">暂无高采样率原始波形<br /><small>CARE v6 聚合数据不能直接生成 FFT / STFT 实测频谱</small></div>}<small className="signal-caption">{record.source === 'SIMULATED' ? 'SIMULATED · 演示波形占位，不是 CARE 实测原始波形' : isExperiment ? 'EXTERNAL_PUBLIC · Paderborn 原始文件哈希已登记' : 'CARE 聚合趋势 · 原始通道待后端接入'}</small></div>
     <div className="signal-process-grid">{record.stages.slice(1, 3).map(stage => <div className="signal-process-card" key={stage.key}><span>{stage.key}</span><strong>{stage.label}</strong><small>{stage.detail}</small><b>{stage.status === 'available' ? '已完成' : '待接入'}</b></div>)}</div>
-    <div className="signal-method-card"><div className="signal-card-title"><strong>计算方法</strong><span>可追溯公式</span></div><code>RMS = √(1/N · Σxᵢ²)</code><code>峭度 = [1/N · Σ(xᵢ−μ)⁴] / σ⁴</code><code>robust-z = |x−median| / (1.4826 · MAD)</code><small>风险评分 = clip(robust-z / (2 · validation_p99), 0, 1)。该值用于相对排序，不是校准故障概率。</small></div>
+    <div className="signal-method-card"><div className="signal-card-title"><strong>计算方法</strong><span>可追溯方法链</span></div>{isExperiment ? <><code>工程统计与频带特征 → XGBoost</code><code>三通道原始窗口 → 1D-CNN</code><code>Hann STFT → 2D-CNN → MLP 门控融合</code><small>当前门控使用实验训练结果，分类分数未校准；完整处理参数和消融结果保存在模型评估报告中。</small></> : <><code>RMS = √(1/N · Σxᵢ²)</code><code>峭度 = [1/N · Σ(xᵢ−μ)⁴] / σ⁴</code><code>robust-z = |x−median| / (1.4826 · MAD)</code><small>风险评分 = clip(robust-z / (2 · validation_p99), 0, 1)。该值用于相对排序，不是校准故障概率。</small></>}</div>
     <div className="signal-standards"><span>参考规范</span><b>ISO 13373 状态监测</b><b>ISO 13374 数据处理</b><b>ISO 13379 诊断解释</b><b>GB/T 19873.1 振动监测</b><b>GB/T 22394.2 数据判读</b></div>
-    <div className="signal-feature-card"><div className="signal-card-title"><strong>计算特征</strong><span>{record.source === 'SIMULATED' ? '演示时域统计量' : '等待后端特征结果'}</span></div><div className="signal-feature-grid">{features.map(([name, value, unit]) => <div key={name}><span>{name}</span><strong>{value}<em>{unit}</em></strong></div>)}</div></div>
-    <div className="signal-result-card"><div className="signal-card-title"><strong>诊断结果</strong><span>{record.modelVersion}</span></div><div className="signal-result-line"><div><span>{record.turbineId} · {record.source} 结果</span><strong>{record.warningLevel === 'NORMAL' ? '当前信号处于可接受区间' : `${record.component}异常特征`}</strong></div><b>{Math.round((1 - record.risk) * 100)}%</b></div><p>风险评分 {record.risk.toFixed(2)}，健康指数 {record.health.toFixed(1)}。置信度展示需以后端模型校准结果为准，当前值仅表示样本结果的相对可信程度。</p><div className="signal-actions"><button onClick={onLocate}><Eye size={14} /> 三维定位部件</button><button onClick={onMaintenance}><Wrench size={14} /> 进入维护决策</button></div></div>
+    <div className="signal-feature-card"><div className="signal-card-title"><strong>计算特征</strong><span>{record.source === 'SIMULATED' ? '演示时域统计量' : isExperiment ? '评估报告登记，逐样本数值未随网页发布' : '等待后端特征结果'}</span></div><div className="signal-feature-grid">{features.map(([name, value, unit]) => <div key={name}><span>{name}</span><strong>{value}<em>{unit}</em></strong></div>)}</div></div>
+    {record.source === 'EXTERNAL_PUBLIC' && <div className="experiment-evidence"><div className="signal-card-title"><strong>留出集实验结果</strong><span>INFERRED_EXPERIMENTAL</span></div><p>真实标签：{paderbornExperiment.trueLabel} · 模型输出：{paderbornExperiment.predictedLabel}</p><ConfidenceBars scores={paderbornExperiment.probabilities} /><div className="experiment-gates">{Object.entries(paderbornExperiment.gateWeights).map(([name, value]) => <span key={name}>{name}<b>{(value * 100).toFixed(2)}%</b></span>)}</div><small>总体 Macro-F1 {paderbornExperiment.metrics.macroF1.toFixed(4)} · Accuracy {paderbornExperiment.metrics.accuracy.toFixed(4)}。该分数未校准，且模型门控明显偏向 STFT 分支。</small></div>}
+    <div className="signal-result-card"><div className="signal-card-title"><strong>诊断结果</strong><span>{record.modelVersion}</span></div><div className="signal-result-line"><div><span>{record.turbineId} · {record.source} 结果</span><strong>{record.warningLevel === 'NORMAL' ? '当前信号处于可接受区间' : `${record.component}异常特征`}</strong></div><b>{record.source === 'EXTERNAL_PUBLIC' ? `${(paderbornExperiment.confidence * 100).toFixed(1)}%` : `${Math.round((1 - record.risk) * 100)}%`}</b></div><p>{record.source === 'EXTERNAL_PUBLIC' ? `64 kHz 三通道、${paderbornExperiment.windowCount} 个 ${paderbornExperiment.windowSamples} 点窗口；这是跨物理轴承留出实验，不是风场在线诊断。` : `风险评分 ${record.risk.toFixed(2)}，健康指数 ${record.health.toFixed(1)}。置信度展示需以后端模型校准结果为准，当前值仅表示样本结果的相对可信程度。`}</p>{record.source !== 'EXTERNAL_PUBLIC' && <div className="signal-actions"><button onClick={onLocate}><Eye size={14} /> 三维定位部件</button><button onClick={onMaintenance}><Wrench size={14} /> 进入维护决策</button></div>}</div>
   </div>
 }
 
@@ -136,7 +139,26 @@ function faultLocation(category: Turbine['fault_category']) {
 }
 
 function buildDiagnosticRecord(turbine: Turbine, mode: Mode, location: string, eventId?: string): DiagnosticRecord {
-  const source = mode === 'api' || turbine.source === 'DERIVED' ? turbine.source : 'SIMULATED'
+  if (mode === 'experiment') return {
+    sampleId: paderbornExperiment.sampleId,
+    diagnosisId: paderbornExperiment.diagnosisId,
+    source: 'EXTERNAL_PUBLIC',
+    modelVersion: paderbornExperiment.modelVersion,
+    turbineId: 'PADERBORN-KA01',
+    component: '轴承外圈试验件（未映射至风机 CAD）',
+    risk: paderbornExperiment.confidence,
+    health: 0,
+    anomaly: paderbornExperiment.confidence,
+    warningLevel: 'HIGH',
+    stages: [
+      { key: '01', label: '输入', status: 'available', detail: 'Paderborn 三通道原始波形' },
+      { key: '02', label: '质检', status: 'available', detail: '哈希、时间轴和分组边界已核验' },
+      { key: '03', label: '预处理', status: 'available', detail: '去趋势和训练集缩放' },
+      { key: '04', label: '特征', status: 'available', detail: '工程特征、原始波形和 STFT' },
+      { key: '05', label: '推理', status: 'available', detail: '跨物理轴承留出实验结果' },
+    ],
+  }
+  const source = mode === 'api' ? turbine.source : 'SIMULATED'
   const suffix = eventId || turbine.event_id || 'baseline'
   return {
     sampleId: `${source}-${turbine.turbine_id}-${suffix}`,
@@ -388,7 +410,7 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (mode === 'demo') {
+    if (mode === 'demo' || mode === 'experiment') {
       setTurbines(demoTurbines); setSelectedId('WT02'); setError(''); setLoading(false); setApiPlan(null)
       setTurbineStates(current => {
         const next = { ...current }
@@ -397,25 +419,7 @@ export default function App() {
         })
         return next
       })
-      fetch('/telemetry/WT02_telemetry_summary.json').then(response => response.ok ? response.json() as Promise<CareTelemetrySummary> : Promise.reject(new Error('CARE遥测文件不可用'))).then(summary => {
-        setTurbines(current => current.map(turbine => turbine.turbine_id === 'WT02' ? {
-          ...turbine,
-          source: summary.data_origin,
-          model_version: 'CARE-v6-telemetry-evidence',
-          updated_at: summary.timestamp,
-          power_kw: summary.active_power_kw,
-          wind_ms: summary.wind_speed_ms,
-          trend: summary.trend.map(point => point.rotor_bearing_temperature_2_c),
-          trend_label: '转子轴承温度趋势',
-          trend_unit: '°C · CARE 10 min 聚合',
-          has_analysis: false,
-          failure_risk: 0,
-          anomaly_score: 0,
-          health_index: 0,
-          warning_level: 'NORMAL',
-        } : turbine))
-      }).catch(() => undefined)
-      setView('overview'); setServiced(false); setMaintenanceRecordId(''); setRetests([]); setMaintenanceAttempts(0)
+      setView(mode === 'experiment' ? 'signal' : 'overview'); setServiced(false); setMaintenanceRecordId(''); setRetests([]); setMaintenanceAttempts(0)
       return
     }
     let active = true
@@ -672,7 +676,7 @@ export default function App() {
     <header className="topbar">
       <div className="brand"><span className="brand-mark"><Activity size={20} strokeWidth={2.2} /></span><span><strong>WindCare</strong><small>风电装备智能运维</small></span></div>
       <nav className="top-nav" aria-label="主导航"><button className={view === 'overview' ? 'active' : ''} onClick={() => setView('overview')}>风场总览</button><button className={view === 'signal' ? 'active' : ''} onClick={() => selected && setView('signal')} disabled={!selected}>信号诊断</button><button className={view === 'demo' ? 'active' : ''} onClick={() => selected && setView('demo')} disabled={!selected}>参数演示</button><button className={view === 'maintenance' ? 'active' : ''} onClick={openMaintenance} disabled={!selected}>维护决策</button></nav>
-      <div className="top-actions"><div className="mode-switch" aria-label="数据模式"><button className={mode === 'demo' ? 'active' : ''} onClick={() => setMode('demo')}>演示</button><button className={mode === 'api' ? 'active' : ''} onClick={() => setMode('api')}>接口</button></div><button className={`utility-button ${engineeringView ? 'active' : ''}`} title="显示或关闭工程剖切视图" aria-label="工程剖切视图" aria-pressed={engineeringView} onClick={() => setEngineeringView(v => !v)}><Layers3 size={16} /><span>剖切视图</span></button><button className="utility-button" title="查看数据来源和证据边界" aria-label="数据来源说明" onClick={() => setShowSources(true)}><Database size={16} /><span>数据来源</span></button><button className="utility-button" title="查看操作引导" aria-label="查看引导" onClick={startGuide}><Activity size={16} /><span>查看引导</span></button></div>
+      <div className="top-actions"><div className="mode-switch" aria-label="数据模式"><button className={mode === 'demo' ? 'active' : ''} onClick={() => setMode('demo')}>演示</button><button className={mode === 'experiment' ? 'active' : ''} onClick={() => setMode('experiment')}>实验</button><button className={mode === 'api' ? 'active' : ''} onClick={() => setMode('api')}>接口</button></div><button className={`utility-button ${engineeringView ? 'active' : ''}`} title="显示或关闭工程剖切视图" aria-label="工程剖切视图" aria-pressed={engineeringView} onClick={() => setEngineeringView(v => !v)}><Layers3 size={16} /><span>剖切视图</span></button><button className="utility-button" title="查看数据来源和证据边界" aria-label="数据来源说明" onClick={() => setShowSources(true)}><Database size={16} /><span>数据来源</span></button><button className="utility-button" title="查看操作引导" aria-label="查看引导" onClick={startGuide}><Activity size={16} /><span>查看引导</span></button></div>
     </header>
 
     <main className={`workspace workspace-${view} ${view === 'signal' ? 'workspace-signal' : view === 'demo' ? 'workspace-demo' : ''}`}>
@@ -680,7 +684,7 @@ export default function App() {
       {guide.active && !guideMinimized && <div className={`guide-coach guide-coach-v2 ${guide.step === 4 ? 'guide-plan-step' : ''}`} style={guideBubbleStyle} role="dialog" aria-live="polite"><div className="guide-drag-handle" onPointerDown={startGuideDrag} onPointerMove={moveGuideDrag} onPointerUp={stopGuideDrag} onPointerCancel={stopGuideDrag}><strong>{guideCopy[guide.step - 1][0]}</strong><span>拖动此处移动</span></div><button className="guide-minimize" aria-label="最小化引导" title="最小化" onClick={() => setGuideMinimized(true)}>—</button><p>{guideCopy[guide.step - 1][1]}</p><div className="guide-actions">{guide.step === 2 && <button className="guide-next" onClick={advanceGuide}>查看结果，下一步</button>}{guide.step === 3 && <button className="guide-next" onClick={advanceGuide}>进入参数演示</button>}{guide.step === 4 && <button className="guide-next" onClick={closeGuide}>完成引导</button>}<button onClick={closeGuide}>跳过引导</button><button onClick={closeGuide}>关闭</button></div></div>}
       {guide.active && guideMinimized && <button className="guide-pill" onClick={() => setGuideMinimized(false)}>💡 引导进行中</button>}
       <section className="scene-panel" aria-label="风电场三维场景">
-        <div className="scene-heading"><div><div className="eyebrow"><MapPin size={13} /> 风电场数字场景 <span className="source-tag">{mode === 'demo' ? '演示数据' : '接口数据'}</span></div><h1>风场运行总览</h1><p>选择风机，查看状态与维护决策</p></div><div className="scene-weather"><CloudSun size={19} /><span>实时天气 <small>{weatherStatus}</small></span><b>{weather.wind.toFixed(1)} m/s · 浪 {weather.wave.toFixed(1)} m · 能见度 {weather.visibility.toFixed(1)} km</b></div></div>
+        <div className="scene-heading"><div><div className="eyebrow"><MapPin size={13} /> 风电场数字场景 <span className="source-tag">{mode === 'demo' ? '演示数据' : mode === 'experiment' ? 'Paderborn 实验数据' : '接口数据'}</span></div><h1>风场运行总览</h1><p>选择风机，查看状态与维护决策</p></div><div className="scene-weather"><CloudSun size={19} /><span>实时天气 <small>{weatherStatus}</small></span><b>{weather.wind.toFixed(1)} m/s · 浪 {weather.wave.toFixed(1)} m · 能见度 {weather.visibility.toFixed(1)} km</b></div></div>
         <WindScene turbines={turbines.map(t => t.turbine_id === selected?.turbine_id ? selected : t)} selectedId={selectedId} onSelect={selectTurbine} serviced={serviced} engineeringView={engineeringView} diagnosticFaultCategory={activeCategory} onOpenEngineering={() => setEngineeringView(true)} />
          {engineeringView && selected?.event_id && <div className="engineering-caption"><span className="engineering-caption-dot" />CARE v6 · {selected.event_name} <strong>{publicComponentLabel(selected.component_label)}</strong><small>项目 CAD 工程模型</small></div>}
          <div className="scene-bottom"><div className="scene-legend"><span><i className="legend-normal" />正常</span><span><i className="legend-low" />关注</span><span><i className="legend-high" />高风险</span></div></div>
@@ -737,7 +741,7 @@ export default function App() {
             {mode === 'api' && (maintenanceRecordId || retestLoading) && <div className="retest-card"><div className="retest-head"><span>维护后复测</span><em>{retest?.data_origin || (retestLoading ? '查询中' : '待复测')}</em></div>{retest ? <><div className="retest-values"><div><span>健康指数</span><strong>{retest.health_index.toFixed(1)}</strong></div><div><span>相对风险</span><strong>{retest.failure_risk.toFixed(3)}</strong></div></div><p>{retest.conclusion}</p><small>复测来源：{retest.data_origin} · 不代表真实维护效果</small></> : <p>{retestLoading ? '正在查询复测记录...' : '待复测。当前没有后端复测结果。'}</p>}</div>}
             <button className="secondary-action" onClick={() => { setView('overview'); setServiced(false) }}><RotateCcw size={16} /> 返回设备状态</button>
           </>}
-          <div className="data-footnote"><span>{mode === 'demo' ? 'SIMULATED · 演示样例' : `${selected.source} · API`}</span><span>{selected.model_version} · {selected.updated_at}</span></div>
+          <div className="data-footnote"><span>{mode === 'demo' ? 'SIMULATED · 演示样例' : mode === 'experiment' ? 'EXTERNAL_PUBLIC · 留出集实验' : `${selected.source} · API`}</span><span>{mode === 'experiment' ? paderbornExperiment.modelVersion : `${selected.model_version} · ${selected.updated_at}`}</span></div>
         </>}
       </aside>
     </main>

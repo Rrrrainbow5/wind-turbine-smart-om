@@ -1,5 +1,5 @@
 export type WarningLevel = 'NORMAL' | 'LOW' | 'MEDIUM' | 'HIGH'
-export type SourceKind = 'REAL' | 'DERIVED' | 'SIMULATED' | 'ASSUMED' | 'REFERENCE'
+export type SourceKind = 'REAL' | 'DERIVED' | 'SIMULATED' | 'ASSUMED' | 'REFERENCE' | 'EXTERNAL_PUBLIC'
 
 export interface Turbine {
   turbine_id: string
