@@ -72,14 +72,17 @@ interface ApiMaintenanceRecord {
 const locations: [number, number][] = [[-11, -5], [-3, 1], [6, -5], [13, 2]]
 const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers)
   headers.set('Accept', 'application/json')
   if (init?.body) headers.set('Content-Type', 'application/json')
-  const response = await fetch(`${apiBase}${path}`, { ...init, headers })
+  const response = await fetch(`${apiBase}${path}`, { ...init, headers, signal: init?.signal || AbortSignal.timeout(20000) })
+  if (!response.headers.get('content-type')?.includes('application/json')) {
+    throw new Error(`接口未到达 FastAPI（HTTP ${response.status}）。请启动后端；公网需配置 VITE_API_BASE_URL，GitHub Pages 不能运行后端。`)
+  }
   if (!response.ok) {
     const detail = await response.text()
-    throw new Error(`接口返回 ${response.status}${detail ? `：${detail}` : ''}`)
+    throw new Error(`接口返回 ${response.status}${detail ? `：${detail.slice(0, 1000)}` : ''}`)
   }
   return response.json() as Promise<T>
 }
