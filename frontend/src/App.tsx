@@ -319,12 +319,6 @@ export default function App() {
   const selectedFault = wt02FaultEvents.find(event => event.id === faultEventId) || wt02FaultEvents[0]
   const activeCategory = mode === 'api' ? selectedBase?.fault_category : selectedBase?.turbine_id === 'WT02' ? selectedFault.category : (selectedBase?.fault_category || selectedFault.category)
   const activeMapping = mode === 'api' && sampleMapping?.part.turbineId === selectedId ? sampleMapping : null
-  const sceneTurbines = turbines.map(t => {
-    const base = t.turbine_id === selected?.turbine_id ? selected : t
-    if (!activeMapping || t.turbine_id !== activeMapping.part.turbineId) return base
-    const warning_level: Turbine['warning_level'] = activeMapping.evidence.kind === 'signal' ? 'LOW' : activeMapping.evidence.prediction === 'healthy' ? 'NORMAL' : 'HIGH'
-    return { ...base, warning_level, fault_category: activeMapping.part.category }
-  })
   const displayLocation = faultLocation(activeCategory)
   const eventRisk: Record<string, [number, number, Turbine['warning_level']]> = { 'B-53': [.76, 63.2, 'HIGH'], 'A-51': [.82, 58.4, 'HIGH'], 'A-0': [.61, 69.8, 'MEDIUM'], 'C-67': [.48, 76.2, 'MEDIUM'], 'C-81': [.71, 66.5, 'HIGH'] }
   const [eventFailureRisk, eventHealth] = eventRisk[faultEventId] || eventRisk['B-53']
@@ -344,6 +338,12 @@ export default function App() {
     : selectedInitial && persistedSelected?.fault
       ? { ...selectedInitial, failure_risk: persistedSelected.fault.risk, health_index: caseAppliesToSelected ? Math.min(healthCeiling, Math.max(0, 100 - persistedSelected.fault.risk * 42)) : healthCeiling, warning_level: persistedSelected.fault.risk >= .72 ? 'HIGH' as Turbine['warning_level'] : persistedSelected.fault.risk >= .42 ? 'MEDIUM' as Turbine['warning_level'] : 'LOW' as Turbine['warning_level'], anomaly_score: persistedSelected.fault.risk }
       : selectedInitial
+  const sceneTurbines = turbines.map(t => {
+    const base = t.turbine_id === selected?.turbine_id ? selected : t
+    if (!activeMapping || t.turbine_id !== activeMapping.part.turbineId) return base
+    const warning_level: Turbine['warning_level'] = activeMapping.evidence.kind === 'signal' ? 'LOW' : activeMapping.evidence.prediction === 'healthy' ? 'NORMAL' : 'HIGH'
+    return { ...base, warning_level, fault_category: activeMapping.part.category }
+  })
   const diagnosticRecord = useMemo(() => selected ? buildDiagnosticRecord(selected, mode, displayLocation, selected.turbine_id === 'WT02' ? faultEventId : undefined) : null, [selected, mode, displayLocation, faultEventId])
   const plans = useMemo(() => {
     const sourcePlans = mode === 'api' ? (apiPlan ? mapApiPlans(apiPlan) : [emptyApiPlan]) : getDemoPlans(weatherRestricted)
