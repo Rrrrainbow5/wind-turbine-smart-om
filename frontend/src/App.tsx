@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { Activity, AlertTriangle, Anchor, ArrowRight, Check, ChevronDown, ClipboardList, Clock3, CloudSun, Database, Eye, Gauge, History, Layers3, MapPin, PackageCheck, Radio, RotateCcw, Search, Server, Settings2, ShieldCheck, UserRound, Wrench, X } from 'lucide-react'
 import WindScene from './WindScene'
 import DatasetPanel from './DatasetPanel'
+import type { BearingPart, SampleMapping } from './SampleAssociation'
 import { executeMaintenance, fetchRetests, fetchTurbines, optimizeMaintenance, replanMaintenance, type ApiMaintenancePlan, type ApiRetest } from './api'
 import { demoTurbines, getDemoPlans, warningText, wt02FaultEvents, type MaintenancePlan, type SourceKind, type Turbine } from './data'
 import './signal-blue.css'
@@ -251,6 +252,21 @@ export default function App() {
   const [guideMinimized, setGuideMinimized] = useState(false)
   const guideDragRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null)
   const [engineeringView, setEngineeringView] = useState(false)
+  const [bearingParts, setBearingParts] = useState<BearingPart[]>([])
+  const [sampleMapping, setSampleMapping] = useState<SampleMapping | null>(null)
+  const registerBearingParts = useCallback((parts: BearingPart[]) => {
+    setBearingParts(current => {
+      const merged = new Map(current.map(part => [`${part.turbineId}:${part.category}`, part]))
+      parts.forEach(part => merged.set(`${part.turbineId}:${part.category}`, part))
+      const next = [...merged.values()]
+      return JSON.stringify(current) === JSON.stringify(next) ? current : next
+    })
+  }, [])
+  const locateSample = useCallback((mapping: SampleMapping | null) => {
+    setSampleMapping(mapping)
+    if (mapping) { setSelectedId(mapping.part.turbineId); setEngineeringView(true) }
+  }, [])
+  useEffect(() => { setSampleMapping(null) }, [mode])
   const [apiPlan, setApiPlan] = useState<ApiMaintenancePlan | null>(null)
   const [maintenanceRecordId, setMaintenanceRecordId] = useState('')
   const [retests, setRetests] = useState<ApiRetest[]>([])
@@ -302,6 +318,13 @@ export default function App() {
   const selectedBase = turbines.find(t => t.turbine_id === selectedId) || turbines[0]
   const selectedFault = wt02FaultEvents.find(event => event.id === faultEventId) || wt02FaultEvents[0]
   const activeCategory = mode === 'api' ? selectedBase?.fault_category : selectedBase?.turbine_id === 'WT02' ? selectedFault.category : (selectedBase?.fault_category || selectedFault.category)
+  const activeMapping = mode === 'api' && sampleMapping?.part.turbineId === selectedId ? sampleMapping : null
+  const sceneTurbines = turbines.map(t => {
+    const base = t.turbine_id === selected?.turbine_id ? selected : t
+    if (!activeMapping || t.turbine_id !== activeMapping.part.turbineId) return base
+    const warning_level: Turbine['warning_level'] = activeMapping.evidence.kind === 'signal' ? 'LOW' : activeMapping.evidence.prediction === 'healthy' ? 'NORMAL' : 'HIGH'
+    return { ...base, warning_level, fault_category: activeMapping.part.category }
+  })
   const displayLocation = faultLocation(activeCategory)
   const eventRisk: Record<string, [number, number, Turbine['warning_level']]> = { 'B-53': [.76, 63.2, 'HIGH'], 'A-51': [.82, 58.4, 'HIGH'], 'A-0': [.61, 69.8, 'MEDIUM'], 'C-67': [.48, 76.2, 'MEDIUM'], 'C-81': [.71, 66.5, 'HIGH'] }
   const [eventFailureRisk, eventHealth] = eventRisk[faultEventId] || eventRisk['B-53']
@@ -412,6 +435,7 @@ export default function App() {
   }, [mode])
 
   const selectTurbine = (id: string) => {
+    setSampleMapping(null)
     const saved = mode === 'demo' ? turbineStates[id] : undefined
     setSelectedId(id); setView('overview'); setServiced(saved?.status === 'maintained'); setDiagnosticParams(saved?.params || defaultDiagnosticParams); setSelectedPlan('inspect'); setApiPlan(null); setMaintenanceRecordId(''); setRetests([]); setMaintenanceAttempts(0)
   }
@@ -663,13 +687,13 @@ export default function App() {
       {guide.active && guideMinimized && <button className="guide-pill" onClick={() => setGuideMinimized(false)}>💡 引导进行中</button>}
       <section className="scene-panel" aria-label="风电场三维场景">
         <div className="scene-heading"><div><div className="eyebrow"><MapPin size={13} /> 风电场数字场景</div><h1>风场运行总览</h1><p>选择风机，查看状态与维护决策</p></div><div className="scene-weather"><CloudSun size={19} /><span>演示天气 <small>{weatherStatus}</small></span><b>{weather.wind.toFixed(1)} m/s · 浪 {weather.wave.toFixed(1)} m · 能见度 {weather.visibility.toFixed(1)} km</b></div></div>
-        <WindScene turbines={turbines.map(t => t.turbine_id === selected?.turbine_id ? selected : t)} selectedId={selectedId} onSelect={selectTurbine} serviced={serviced} engineeringView={engineeringView} diagnosticFaultCategory={activeCategory} onOpenEngineering={() => setEngineeringView(true)} />
-         {engineeringView && selected?.event_id && <div className="engineering-caption"><span className="engineering-caption-dot" />CARE v6 · {selected.event_name} <strong>{publicComponentLabel(selected.component_label)}</strong><small>项目 CAD 工程模型</small></div>}
+        <WindScene turbines={sceneTurbines} selectedId={selectedId} onSelect={selectTurbine} serviced={activeMapping ? false : serviced} engineeringView={engineeringView} diagnosticFaultCategory={activeMapping?.part.category || activeCategory} onBearingParts={registerBearingParts} onOpenEngineering={() => setEngineeringView(true)} />
+         {engineeringView && activeMapping ? <div className="engineering-caption">{activeMapping.evidence.kind === 'signal' ? '采集位置关联' : '实验预测映射'}<strong>{activeMapping.part.turbineId} · {activeMapping.part.label}</strong><small>{activeMapping.evidence.sampleId} · 非现场诊断</small></div> : engineeringView && selected?.event_id && <div className="engineering-caption"><span className="engineering-caption-dot" />CARE v6 · {selected.event_name} <strong>{publicComponentLabel(selected.component_label)}</strong><small>项目 CAD 工程模型</small></div>}
          <div className="scene-bottom"><div className="scene-legend"><span><i className="legend-normal" />正常</span><span><i className="legend-low" />关注</span><span><i className="legend-high" />高风险</span></div></div>
       </section>
 
       <aside className="inspector" aria-label="风机信息">
-        {mode === 'api' && <DatasetPanel key={view === 'signal' ? 'signal' : 'overview'} expanded={view === 'signal'} />}
+        {mode === 'api' && <DatasetPanel expanded={view === 'signal'} parts={bearingParts.filter(part => turbines.some(t => t.turbine_id === part.turbineId))} onLocate={locateSample} />}
         <div className="fleet-summary"><div><span>机组总数</span><strong>{turbines.length.toString().padStart(2, '0')}</strong></div><div><span>高风险</span><strong className="danger-text">{highCount.toString().padStart(2, '0')}</strong></div><div><span>当前选择</span><strong>{selected?.turbine_id || '--'}</strong></div></div>
         {error && <div className="error-banner" role="status"><AlertTriangle size={16} /><span>{error}</span><button title="关闭提示" aria-label="关闭提示" onClick={() => setError('')}><X size={15} /></button></div>}
         {loading && <div className="loading-state" role="status">正在连接接口...</div>}
@@ -677,7 +701,7 @@ export default function App() {
         {selected && <>
           <div className="selector-row"><div><span className="section-kicker">设备状态</span><h2>{selected.turbine_id} <span>{selected.name}</span></h2></div>{persistedSelected?.status === 'monitoring' ? <span className="status-badge status-low">⚠ 故障未处理 · 继续监测中</span> : selected.has_analysis === false ? <span className="status-badge status-neutral">暂无分析结果</span> : <StatusBadge level={serviced ? 'NORMAL' : selected.warning_level} />}</div>
           <div className="turbine-tabs" data-guide-target="turbine-select" role="tablist" aria-label="选择风机">{turbines.map(t => <button role="tab" aria-selected={selectedId === t.turbine_id} className={selectedId === t.turbine_id ? 'selected' : ''} key={t.turbine_id} onClick={() => selectTurbine(t.turbine_id)}>{t.turbine_id}<i className={`level-${t.warning_level.toLowerCase()}`} /></button>)}</div>
-           {mode === 'api' && view === 'signal' ? <div className="api-boundary">上传信号与实验评估在上方工作台独立分析；未关联到现场机组，不覆盖机组状态或生成维护工单。</div> : view === 'signal' && diagnosticRecord ? <SignalPanel turbine={selected} record={diagnosticRecord} onLocate={() => { setEngineeringView(true); setView('overview') }} onMaintenance={openMaintenance} /> : view === 'demo' ? <DemoPanel turbine={selected} params={diagnosticParams} diagnostic={diagnostic} displayLocation={displayLocation} history={diagnosticHistory} onParamChange={updateDiagnosticParam} onReset={() => setDiagnosticParams(defaultDiagnosticParams)} onLocate={() => setEngineeringView(true)} /> : view === 'overview' ? <>
+           {mode === 'api' && view === 'signal' ? <div className="api-boundary">在上方工作台选择或上传样本，指定机组与已识别轴承部件，再三维定位并展开维护评估。关联仅用于展示，不覆盖现场状态或创建工单。</div> : view === 'signal' && diagnosticRecord ? <SignalPanel turbine={selected} record={diagnosticRecord} onLocate={() => { setEngineeringView(true); setView('overview') }} onMaintenance={openMaintenance} /> : view === 'demo' ? <DemoPanel turbine={selected} params={diagnosticParams} diagnostic={diagnostic} displayLocation={displayLocation} history={diagnosticHistory} onParamChange={updateDiagnosticParam} onReset={() => setDiagnosticParams(defaultDiagnosticParams)} onLocate={() => setEngineeringView(true)} /> : view === 'overview' ? <>
             {persistedSelected?.status === 'monitoring' && activeFault && <div className="monitoring-status-tag" role="status">⚠ 故障未处理 · 继续监测中</div>}
             <div className="reading-primary"><div className="reading-label"><Gauge size={18} /> 健康指数 <span title="与信号诊断共享同一 diagnosis_id">ⓘ</span></div><div className="reading-number">{selected.has_analysis === false ? '--' : serviced ? '待复测' : selected.health_index.toFixed(1)}{selected.has_analysis !== false && !serviced && <small>/ 100</small>}</div><div className="meter"><span style={{ width: selected.has_analysis === false || serviced ? '0%' : `${selected.health_index}%` }} className={selected.health_index < 70 ? 'meter-risk' : selected.health_index < 85 ? 'meter-warning' : 'meter-normal'} /></div><p>{selected.has_analysis === false ? '后端尚无该部件的 AI 分析结果。' : serviced ? '维护执行已记录，设备健康状态应由复测数据确认。' : selected.warning_level === 'HIGH' ? '状态持续偏离正常区间，建议进入维护评估。' : '当前状态以信号诊断结果为准。'}</p><small className="record-link">诊断记录 {diagnosticRecord?.diagnosisId} · 样本 {diagnosticRecord?.sampleId}</small></div>
             <div className="metric-grid"><div><span>异常分数</span><strong>{selected.has_analysis === false ? '--' : selected.anomaly_score.toFixed(2)}</strong><small>模型输出</small></div><div><span>风险评分</span><strong>{selected.has_analysis === false ? '--' : selected.failure_risk.toFixed(2)}</strong><small>0-1 指标，非校准概率</small></div><div><span>当前功率</span><strong>{selected.power_kw !== 0 ? selected.power_kw.toLocaleString() : '--'}<em> kW</em></strong><small>{selected.power_kw !== 0 ? '运行记录' : '未提供'}</small></div><div><span>风速</span><strong>{selected.wind_ms !== 0 ? selected.wind_ms : '--'}<em> m/s</em></strong><small>{selected.wind_ms !== 0 ? '运行记录' : '未提供'}</small></div></div>

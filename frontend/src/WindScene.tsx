@@ -5,6 +5,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import type { Turbine } from './data'
+import type { BearingPart } from './SampleAssociation'
 
 interface Props {
   turbines: Turbine[]
@@ -14,6 +15,7 @@ interface Props {
   engineeringView: boolean
   onOpenEngineering: () => void
   diagnosticFaultCategory?: Turbine['fault_category']
+  onBearingParts?: (parts: BearingPart[]) => void
 }
 
 const colors = { NORMAL: 0x75a79b, LOW: 0xe4af55, MEDIUM: 0xd47d43, HIGH: 0xd9584e }
@@ -402,9 +404,10 @@ function makeLabel(text: string, color: string) {
   return sprite
 }
 
-export default function WindScene({ turbines, selectedId, onSelect, serviced, engineeringView, onOpenEngineering, diagnosticFaultCategory }: Props) {
+export default function WindScene({ turbines, selectedId, onSelect, serviced, engineeringView, onOpenEngineering, diagnosticFaultCategory, onBearingParts }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const onSelectRef = useRef(onSelect)
+  const onBearingPartsRef = useRef(onBearingParts)
   const onOpenEngineeringRef = useRef(onOpenEngineering)
   const objectsRef = useRef<Map<string, TurbineSceneObject>>(new Map())
   const sceneRef = useRef<THREE.Scene | null>(null)
@@ -425,6 +428,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
   })
 
   useEffect(() => { onSelectRef.current = onSelect }, [onSelect])
+  useEffect(() => { onBearingPartsRef.current = onBearingParts }, [onBearingParts])
   useEffect(() => { onOpenEngineeringRef.current = onOpenEngineering }, [onOpenEngineering])
   useEffect(() => {
     selectedIdRef.current = selectedId
@@ -747,6 +751,16 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
           cadBlades.forEach(blade => cadRotor!.attach(blade))
         }
         const cadLabels = makeCadLabels(imported)
+        const bearingCounts = new Map<BearingPart['category'], number>()
+        imported.traverse(node => {
+          const category = node.userData.componentCategory
+          if (category !== 'ROTOR_BEARING' && category !== 'GEARBOX_BEARING') return
+          let hasGeometry = false
+          node.traverse(child => { if (child instanceof THREE.Mesh) hasGeometry = true })
+          if (hasGeometry) bearingCounts.set(category, (bearingCounts.get(category) || 0) + 1)
+        })
+        onBearingPartsRef.current?.([...bearingCounts].map(([category, count]) => ({ turbineId: id, category, count,
+          label: category === 'ROTOR_BEARING' ? '转子主轴轴承组' : '传动链轴承组' })))
         imported.add(cadLabels)
         object.root.add(imported)
         object.exterior.visible = false
