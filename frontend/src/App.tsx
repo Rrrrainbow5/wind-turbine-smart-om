@@ -34,6 +34,17 @@ type DiagnosticRecord = {
   stages: Array<{ key: string; label: string; status: 'available' | 'pending' | 'not-applicable'; detail: string }>
 }
 
+export type CareTelemetrySummary = {
+  timestamp: string
+  active_power_kw: number
+  wind_speed_ms: number
+  bearing_temperature_c: number
+  trend: Array<{ rotor_bearing_temperature_2_c: number }>
+  data_origin: 'DERIVED'
+  source_dataset: string
+  source_file: string
+}
+
 function publicComponentLabel(label: string) {
   return label.replace(/\s*[（(]映射待核验[）)]/g, '').trim()
 }
@@ -153,7 +164,7 @@ function buildDiagnosticRecord(turbine: Turbine, mode: Mode, location: string, e
     sampleId: `${source}-${turbine.turbine_id}-${suffix}`,
     diagnosisId: `DX-${turbine.turbine_id}-${suffix}`,
     source,
-    modelVersion: mode === 'api' ? turbine.model_version : 'demo-rule-v0.2',
+    modelVersion: source === 'DERIVED' ? 'CARE-v6-telemetry-evidence' : mode === 'api' ? turbine.model_version : 'demo-rule-v0.2',
     turbineId: turbine.turbine_id,
     component: publicComponentLabel(turbine.component_label || location),
     risk: turbine.failure_risk,
@@ -161,7 +172,7 @@ function buildDiagnosticRecord(turbine: Turbine, mode: Mode, location: string, e
     anomaly: turbine.anomaly_score,
     warningLevel: turbine.warning_level,
     stages: [
-      { key: '01', label: '输入', status: 'available', detail: source === 'SIMULATED' ? '演示样本已生成' : '接口样本已登记' },
+      { key: '01', label: '输入', status: 'available', detail: source === 'SIMULATED' ? '演示样本已生成' : source === 'DERIVED' ? 'CARE 聚合样本已登记' : '接口样本已登记' },
       { key: '02', label: '质检', status: source === 'SIMULATED' ? 'available' : 'pending', detail: source === 'SIMULATED' ? '长度和参数检查通过' : '等待后端返回质检结果' },
       { key: '03', label: '预处理', status: source === 'SIMULATED' ? 'available' : 'pending', detail: source === 'SIMULATED' ? '去趋势、滤波、归一化' : '等待后端返回处理结果' },
       { key: '04', label: '特征', status: source === 'SIMULATED' ? 'available' : 'pending', detail: source === 'SIMULATED' ? '时域特征演示' : '等待原始通道和特征结果' },
@@ -316,7 +327,7 @@ export default function App() {
   const displayLocation = faultLocation(activeCategory)
   const eventRisk: Record<string, [number, number, Turbine['warning_level']]> = { 'B-53': [.76, 63.2, 'HIGH'], 'A-51': [.82, 58.4, 'HIGH'], 'A-0': [.61, 69.8, 'MEDIUM'], 'C-67': [.48, 76.2, 'MEDIUM'], 'C-81': [.71, 66.5, 'HIGH'] }
   const [eventFailureRisk, eventHealth] = eventRisk[faultEventId] || eventRisk['B-53']
-  const caseAppliesToSelected = selectedBase?.turbine_id === 'WT02'
+  const caseAppliesToSelected = selectedBase?.turbine_id === 'WT02' && selectedBase.source === 'SIMULATED'
   const linkedRisk = caseAppliesToSelected ? Math.max(eventFailureRisk, diagnostic.risk) : Math.min(diagnostic.risk, selectedBase?.failure_risk ?? 0)
   const linkedWarning: Turbine['warning_level'] = linkedRisk >= .72 ? 'HIGH' : linkedRisk >= .42 ? 'MEDIUM' : linkedRisk >= .2 ? 'LOW' : 'NORMAL'
   const linkedHealth = caseAppliesToSelected ? Math.min(eventHealth, Math.max(0, 100 - linkedRisk * 42)) : Math.max(selectedBase?.health_index ?? 92, 100 - linkedRisk * 42)
