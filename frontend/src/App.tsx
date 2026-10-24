@@ -493,7 +493,12 @@ export default function App() {
       setGuideBubbleStyle({})
       return
     }
-    const targets = Array.from(document.querySelectorAll(`[data-guide-target="${targetName}"]`)) as HTMLElement[]
+    const selector = guide.step === 3
+      ? '[data-guide-target="plan-cards"], .workbench-block, .constraint-row, .plan-title, .decision-explanation, [data-guide-target="execute-plan"]'
+      : guide.step === 4
+        ? '[data-guide-target="slider-panel"], .demo-event-selector'
+        : `[data-guide-target="${targetName}"]`
+    const targets = Array.from(document.querySelectorAll(selector)) as HTMLElement[]
     if (!targets.length) return
       targets[0].scrollIntoView({ behavior: 'smooth', block: 'center' })
       const timer = window.setTimeout(() => {
