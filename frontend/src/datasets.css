@@ -26,3 +26,8 @@
 .dataset-panel input::file-selector-button { padding:8px; background:#24515e; color:#e0f6f8; border:0; border-radius:4px; margin-right:8px }
 .dataset-statistics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px }
 .dataset-statistics span { font-size:11px; overflow-wrap:anywhere }.dataset-statistics b { display:block; font-size:15px }
+.dataset-event-reference { margin:12px 0; padding:12px; border:1px solid #3f7883; border-left:3px solid #45d4d0; background:#102f3b; border-radius:6px; line-height:1.55 }
+.dataset-event-reference h4 { margin:0 0 6px; color:#e4ffff }
+.dataset-event-reference p { margin:4px 0; font-size:12px }
+.dataset-event-reference strong { display:block; margin-top:7px; color:#baf3d7 }
+.dataset-event-reference small { display:block; margin-top:7px; color:#9fbfc7 }
