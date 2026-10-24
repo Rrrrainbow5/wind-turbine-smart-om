@@ -191,3 +191,4 @@ body{background:#07141d}
 .signal-standards{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:0 0 10px}.signal-standards span{color:#78a8b0;font-size:9px;margin-right:3px}.signal-standards b{padding:4px 6px;border:1px solid #315f69;background:#102c36;color:#b9dfe1;border-radius:2px;font-size:8px;font-weight:500}
 @media(max-width:700px){.signal-provenance{grid-template-columns:1fr 1fr}.signal-provenance div:nth-child(3){grid-column:1/-1}}
 .guide-target-highlight{position:relative!important;z-index:10000!important;outline:4px solid #ffe27a!important;outline-offset:4px;box-shadow:0 0 0 7px rgba(255,226,122,.42),0 0 28px rgba(255,226,122,.95)!important;filter:brightness(1.22)}
+.guide-overlay{z-index:5!important}.workspace{position:relative;z-index:6}
