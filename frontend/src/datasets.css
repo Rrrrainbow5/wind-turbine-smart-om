@@ -1,0 +1,28 @@
+.dataset-panel { margin:16px 0; padding:14px; border:1px solid #315560; border-radius:8px; background:#0c202b; color:#d9eef2 }
+.dataset-panel label { display:block; margin:12px 0 }
+.dataset-panel input,.dataset-panel select { display:block; width:100%; max-width:100%; margin-top:6px; padding:8px; background:#142f3c; color:#e7f4f6; border:1px solid #436473; border-radius:4px }
+.dataset-panel p,.dataset-panel small { font-size:12px; line-height:1.6; overflow-wrap:anywhere }
+.dataset-panel pre,.dataset-panel code { white-space:pre-wrap; overflow-wrap:anywhere; font-size:11px }
+.dataset-panel article { border-top:1px solid #365662; margin-top:14px; padding-top:12px }
+.dataset-panel figure { margin:12px 0; padding:8px; background:#102733 }
+.dataset-panel figcaption { font-size:12px; margin-bottom:6px }
+.dataset-panel svg { width:100%; display:block }
+.dataset-panel svg text { fill:#bdd7df; font-size:10px }
+.dataset-score { display:flex; gap:8px; align-items:center; font-size:12px; margin:8px 0 }
+.dataset-score meter { flex:1; min-width:40px }
+.dataset-error { color:#ff9c87 }
+.mode-api .ai-workbench,.mode-api .event-selector { display:none }
+.api-boundary { padding:16px; margin:12px 0; border:1px solid #315560; border-radius:8px; color:#bdd7df; line-height:1.7 }
+.dataset-panel button { padding:10px 14px; border:1px solid #39818b; border-radius:6px; background:#163e4b; color:#e0f6f8; cursor:pointer; font:inherit; font-size:13px }
+.dataset-panel button:disabled { opacity:.55; cursor:wait }
+.sample-association { padding:14px; border:1px solid #3a6978; border-radius:8px; background:#102b37 }
+.sample-association h4 { margin:0 0 10px }
+.sample-association button { margin:6px 8px 6px 0 }
+.sample-review { margin-top:14px; padding:12px; border-left:3px solid #43b9bc }
+.dataset-panel .sample-review label { display:flex; gap:10px; align-items:flex-start; line-height:1.6; font-size:13px }
+.dataset-panel .sample-review input[type=checkbox] { display:inline-block; width:16px; height:16px; flex:0 0 16px; margin:3px 0 0; accent-color:#43b9bc }
+.sample-review details { margin:12px 0; padding:10px; background:#173440; border-radius:5px }
+.sample-review summary { cursor:pointer; font-size:13px }
+.dataset-panel input::file-selector-button { padding:8px; background:#24515e; color:#e0f6f8; border:0; border-radius:4px; margin-right:8px }
+.dataset-statistics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px }
+.dataset-statistics span { font-size:11px; overflow-wrap:anywhere }.dataset-statistics b { display:block; font-size:15px }

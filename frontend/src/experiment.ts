@@ -1,0 +1,15 @@
+export const paderbornExperiment = {
+  sampleId: 'paderborn-n15-m07-f10-ka01-r01-9bcbe610566a',
+  diagnosisId: 'OOF-PADERBORN-KA01-R01-FOLD-2',
+  modelVersion: 'xgb-cnn1d-stftcnn-gate-v0.2-experimental',
+  sourceHash: '9bcbe610566aa4476d012928b62aaff60b720cd4c42216104c52319ba958369d',
+  trueLabel: '轴承外圈损伤',
+  predictedLabel: '轴承外圈损伤',
+  confidence: 0.9995269775390625,
+  probabilities: { '轴承内圈损伤': 0.0001676671381574124, '轴承外圈损伤': 0.9995269775390625, '健康轴承': 0.00030534237157553434 },
+  gateWeights: { '工程特征 / XGBoost': 0.005317782051861286, '原始波形 / 1D-CNN': 0.00019440322648733854, 'STFT / 2D-CNN': 0.9944878220558167 },
+  metrics: { macroF1: 0.27923976608187134, accuracy: 0.34782608695652173 },
+  samplingRateHz: 64000,
+  windowSamples: 4096,
+  windowCount: 8,
+} as const

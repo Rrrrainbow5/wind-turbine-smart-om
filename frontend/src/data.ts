@@ -1,5 +1,5 @@
 export type WarningLevel = 'NORMAL' | 'LOW' | 'MEDIUM' | 'HIGH'
-export type SourceKind = 'REAL' | 'DERIVED' | 'SIMULATED' | 'ASSUMED' | 'REFERENCE'
+export type SourceKind = 'REAL' | 'DERIVED' | 'SIMULATED' | 'ASSUMED' | 'REFERENCE' | 'EXTERNAL_PUBLIC'
 
 export interface Turbine {
   turbine_id: string
@@ -27,6 +27,7 @@ export interface Turbine {
   fault_category?: 'GEARBOX_BEARING' | 'ROTOR_BEARING' | 'GEARBOX' | 'GENERATOR' | 'DRIVETRAIN' | 'BEARING'
   event_name?: string
   event_description?: string
+  field_diagnosis?: import('./api').FieldDiagnosis
 }
 
 export interface MaintenancePlan {
