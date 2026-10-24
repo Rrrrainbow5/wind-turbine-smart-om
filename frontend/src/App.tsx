@@ -197,6 +197,10 @@ const actionText = {
 
 const priorityText = { LOW: '低', MEDIUM: '中', HIGH: '高' }
 
+function planIdForAction(action: string) {
+  return action === 'CONTINUE_MONITORING' ? 'monitor' : action === 'SCHEDULE_MAINTENANCE' ? 'service' : 'inspect'
+}
+
 function mapApiPlans(result: ApiMaintenancePlan): MaintenancePlan[] {
   return result.candidates.map(candidate => ({
     id: candidate.action,
@@ -464,7 +468,7 @@ export default function App() {
         ? await replanMaintenance(selected.turbine_id, selected.component_id, !restricted, apiPlan.plan_id, personnelAvailable)
         : await optimizeMaintenance(selected.turbine_id, selected.component_id, !restricted, personnelAvailable)
       setApiPlan(result)
-      setSelectedPlan(result.recommended_action)
+      setSelectedPlan(planIdForAction(result.recommended_action))
       logAction(replan ? '已根据工程条件重新规划维护方案' : '已生成维护方案')
     } catch (reason) {
       setApiPlan(null)
@@ -703,10 +707,10 @@ export default function App() {
             </div></div>
             <div className="constraint-summary">约束：人员<span className={personnelAvailable ? 'available' : 'unavailable'}>{personnelAvailable ? '✓' : '✗'}</span> 备件<span className={spareAvailable ? 'available' : 'unavailable'}>{spareAvailable ? '✓' : '✗'}</span> 天气<span className={!weatherRestricted ? 'available' : 'unavailable'}>{!weatherRestricted ? '✓' : '✗'}</span> 停机<span className={shutdownAllowed ? 'available' : 'unavailable'}>{shutdownAllowed ? '✓' : '✗'}</span> 吊装<span className={liftingAvailable ? 'available' : 'unavailable'}>{liftingAvailable ? '✓' : '✗'}</span></div>
             <div className="constraint-row"><div><CloudSun size={17} /><span>天气窗口 {weatherStatus}<small>{weatherClosed ? weatherReason : '当前窗口可用于评估，状态每 6 秒刷新'}</small></span></div><strong className={`weather-state ${weatherClosed ? 'closed' : weatherStatus.includes('即将') ? 'warning' : 'open'}`}>{weather.wind.toFixed(1)} m/s · 浪高 {weather.wave.toFixed(1)} m · 能见度 {weather.visibility.toFixed(1)} km</strong></div>
-            <div className="section-title plan-title"><h3>可选方案</h3><span>{mode === 'demo' ? '规则演示 / 假设参数' : apiPlan ? `后端决策 · ${apiPlan.priority}` : '等待后端决策'}</span></div>
-            <div className="plans" data-guide-target="plan-cards">{plans.map((p: MaintenancePlan, index) => { const metrics = planMetrics(p); return <details key={p.id} className={`plan-option ${plan.id === p.id ? 'selected' : ''} ${p.available === false ? 'locked' : ''}`} open={plan.id === p.id && p.available !== false} title={p.available === false ? p.action : undefined}><summary onClick={event => { event.preventDefault(); selectPlanCard(p) }}><span className="plan-radio">{plan.id === p.id && <span />}</span><span className="plan-copy"><strong>{String.fromCharCode(65 + index)} · {p.title}{p.recommended && <em>⭐ 推荐</em>}</strong><small><Clock3 size={13} /> {metrics.timing} · 恶化风险 {metrics.risk}</small><span>停机 {metrics.downtime} · 成本 {metrics.cost} · 发电损失 {metrics.loss}</span></span><ChevronDown size={15} /></summary><div className="plan-details"><p>{p.action}</p><small><ShieldCheck size={13} /> 安全提示：执行前确认人员、备件、天气窗口与停机许可。</small></div></details> })}</div>
+            <div className="section-title plan-title"><h3>维护方案可执行性</h3><span>{mode === 'demo' ? '规则演示 / 假设参数' : apiPlan ? `后端决策 · ${apiPlan.priority}` : '等待后端决策'}</span></div>
+            <div className="plans" data-guide-target="plan-cards">{plans.map((p: MaintenancePlan, index) => { const metrics = planMetrics(p); const unavailable = p.available === false; return <details key={p.id} className={`plan-option ${plan.id === p.id ? 'selected' : ''} ${unavailable ? 'locked' : ''}`} open={plan.id === p.id && !unavailable} title={unavailable ? p.action : undefined}><summary aria-disabled={unavailable} onClick={event => { event.preventDefault(); selectPlanCard(p) }}><span className="plan-radio">{plan.id === p.id && <span />}</span><span className="plan-copy"><strong>{String.fromCharCode(65 + index)} · {p.title}{p.recommended && <em>⭐ 推荐</em>}{unavailable && <em> · 当前不可执行</em>}</strong><small><Clock3 size={13} /> {metrics.timing} · 恶化风险 {metrics.risk}</small><span>停机 {metrics.downtime} · 成本 {metrics.cost} · 发电损失 {metrics.loss}</span></span><ChevronDown size={15} /></summary><div className="plan-details"><p>{p.action}</p><small><ShieldCheck size={13} /> 这些约束只影响方案能否执行，不影响维护后复测判定。</small></div></details> })}</div>
             {guide.active && guide.step === 4 && <button className="guide-complete guide-plan-confirm" disabled={!guideDecisionChanged} onClick={confirmGuidePlan}>确认选择，下一步</button>}
-            <div className="decision-explanation"><strong>推荐方案说明</strong><span>{plan?.recommended ? `推荐 ${plan.title}：当前风险 ${(selected.failure_risk * 100).toFixed(0)}%，结合${conditionSummary}，选择该方案可在控制停机的同时降低故障恶化风险。` : '当前推荐方案受工程约束影响，系统已根据可用人员、备件和窗口动态调整。'}</span></div>
+            <div className="decision-explanation"><strong>推荐方案说明</strong><span>{plan?.recommended ? `推荐 ${plan.title}：当前风险 ${(selected.failure_risk * 100).toFixed(0)}%，结合${conditionSummary}，选择该方案可在控制停机的同时降低故障恶化风险。` : '当前推荐方案受工程约束影响，系统已根据可用人员、备件和窗口动态调整。'}</span><small>人员、备件、天气、停机和吊装条件只决定方案能否执行；维护效果以复测数据为准。</small></div>
             {decisionFeedback && <div className="decision-feedback"><strong>决策反馈</strong><span>{decisionFeedback}</span></div>}
             <div className="plan-facts"><div><span>预计停机</span><strong>{plan.downtime}</strong></div><div><span>资源成本</span><strong>{plan.cost}</strong></div><div><span>风险水平</span><strong>{plan.risk}</strong></div></div>
             {retestPhase === 'executing' && <div className="retest-progress-card"><strong>维护执行中，预计停机 {selectedPlan === 'service' ? '6' : '2'} 小时</strong><div className="retest-progress-track"><span style={{ width: `${retestProgress}%` }} /></div><small>{Math.round(retestProgress)}% · 请保持页面打开</small></div>}
