@@ -502,7 +502,7 @@ export default function App() {
       return () => {
         window.clearTimeout(timer)
       }
-  }, [guide.active, guide.step])
+  }, [guide.active, guide.step, view])
 
   const loadApiPlan = async (restricted: boolean, replan: boolean) => {
     if (!selected) return
