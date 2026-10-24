@@ -52,7 +52,7 @@ pytest
 
 ## C 三维数字孪生前端
 
-前端位于 [`frontend/`](frontend/)，默认案例为 CARE Version 6、Wind Farm A、Event 51（`Gearbox bearings damaged`）。当前显示版本为海上风场无人机巡检场景，8 台风机使用项目提供的 SolidWorks/STEP 工程装配转换模型 `frontend/public/assets/wind-turbine-engineering.glb`。模型包含真实 CAD 层级，并支持机舱透明、轴承/齿轮/发电机等零件高亮。模型与环境素材说明见 [`frontend/public/assets/ATTRIBUTION.md`](frontend/public/assets/ATTRIBUTION.md)。陆上山地版本备份不在仓库内，位于本机 `D:\工创赛\backups\wind-turbine-smart-om_frontend_onshore_2026-09-24`。
+前端位于 [`frontend/`](frontend/)。当前默认演示案例为 CARE Version 6、Wind Farm B、Event 53（`Rotor Bearing 2 - Damage`）；Wind Farm A、Event 51（`Gearbox bearings damaged`）保留为 A 端可追溯证据案例，见 [`docs/data/care-event-51-evidence.md`](docs/data/care-event-51-evidence.md)。当前显示版本为海上风场无人机巡检场景，8 台风机使用项目提供的 SolidWorks/STEP 工程装配转换模型 `frontend/public/assets/wind-turbine-engineering.glb`。模型包含真实 CAD 层级，并支持机舱透明、轴承/齿轮/发电机等零件高亮；CARE 事件与 CAD 物理零件映射未核验时，页面保持 `UNVERIFIED`。模型与环境素材说明见 [`frontend/public/assets/ATTRIBUTION.md`](frontend/public/assets/ATTRIBUTION.md)。陆上山地版本备份不在仓库内，位于本机 `D:\工创赛\backups\wind-turbine-smart-om_frontend_onshore_2026-09-24`。
 
 ```powershell
 cd frontend
@@ -99,3 +99,4 @@ npm run dev -- --host 127.0.0.1
 - [工程决策登记表](docs/engineering/decision-register.md)
 - [A 工程审查记录](docs/integration/a-review-log.md)
 - [A 状态与交接说明](docs/integration/a-status-and-handover-v0.1.md)
+- [v0.2 当前范围与答辩口径](docs/presentation/v0.2-current-scope-and-defense-notes.md)

@@ -19,6 +19,8 @@ export interface Turbine {
   trend_unit?: string
   source: SourceKind
   model_version: string
+  sample_id?: string
+  diagnosis_id?: string
   event_id?: number
   mapping_status?: string
   has_analysis?: boolean
