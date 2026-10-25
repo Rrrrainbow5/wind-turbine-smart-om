@@ -45,7 +45,7 @@ export const wt02FaultEvents = [
   { id: 'A-51', name: '齿轮箱轴承损坏', description: 'Gearbox bearings damaged', component: '齿轮箱轴承', category: 'GEARBOX_BEARING' as const },
   { id: 'A-0', name: '发电机轴承故障', description: 'Generator bearing failure', component: '发电机总成', category: 'GENERATOR' as const },
   { id: 'C-67', name: '齿轮传动异常', description: 'Gear transmission anomaly', component: '齿轮传动件', category: 'GEARBOX' as const },
-  { id: 'C-81', name: '主轴/联轴器异常', description: 'Main shaft or coupling anomaly', component: '主轴/联轴器', category: 'DRIVETRAIN' as const },
+  { id: 'C-81', name: '齿轮箱传动异常', description: 'Gearbox drivetrain anomaly', component: '齿轮箱传动件', category: 'GEARBOX' as const },
 ]
 
 export const demoTurbines: Turbine[] = [
