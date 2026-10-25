@@ -299,6 +299,7 @@ export default function App() {
   useEffect(() => {
     if (previousFaultEventId.current !== faultEventId) {
       previousFaultEventId.current = faultEventId
+      setServiced(false)
       setEngineeringView(true)
     }
   }, [faultEventId])
@@ -346,9 +347,9 @@ export default function App() {
   // the WT02-only baseline.
   const selectedInitial = selectedBase ? { ...selectedBase, failure_risk: linkedRisk, health_index: linkedHealth, warning_level: caseAppliesToSelected ? linkedWarning : selectedBase.warning_level, anomaly_score: linkedRisk, ...(faultForSelected ? { event_id: Number(faultForSelected.id.split('-')[1]), event_name: faultForSelected.name, event_description: faultForSelected.description, component_label: faultForSelected.component, fault_category: faultForSelected.category } : {}) } : selectedBase
   const persistedSelected = mode === 'demo' && selectedBase ? turbineStates[selectedBase.turbine_id] : undefined
-  const selected = mode === 'api' ? selectedBase : selectedInitial && persistedSelected?.status === 'maintained'
+  const selected = mode === 'api' ? selectedBase : selectedInitial && !caseAppliesToSelected && persistedSelected?.status === 'maintained'
     ? { ...selectedInitial, failure_risk: 0, health_index: 92, warning_level: 'NORMAL' as Turbine['warning_level'], anomaly_score: 0 }
-    : selectedInitial && persistedSelected?.fault
+    : selectedInitial && !caseAppliesToSelected && persistedSelected?.fault
       ? { ...selectedInitial, failure_risk: persistedSelected.fault.risk, health_index: caseAppliesToSelected ? Math.min(healthCeiling, Math.max(0, 100 - persistedSelected.fault.risk * 42)) : healthCeiling, warning_level: persistedSelected.fault.risk >= .72 ? 'HIGH' as Turbine['warning_level'] : persistedSelected.fault.risk >= .42 ? 'MEDIUM' as Turbine['warning_level'] : 'LOW' as Turbine['warning_level'], anomaly_score: persistedSelected.fault.risk }
       : selectedInitial
   const sceneTurbines = turbines.map(t => {
