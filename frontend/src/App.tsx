@@ -480,6 +480,11 @@ export default function App() {
     if (guide.active && guide.step >= 5) setGuide(state => ({ ...state, step: 4 }))
   }, [guide.active, guide.step, guideInitialTurbine, selectedId, view])
 
+  // Selecting a demo fault must be visible in the 3D scene immediately.
+  useEffect(() => {
+    if (mode === 'demo' && view === 'demo') setEngineeringView(true)
+  }, [faultEventId, mode, view])
+
   // Slider changes only reveal the completion button. They never advance the guide.
 
   useEffect(() => {
