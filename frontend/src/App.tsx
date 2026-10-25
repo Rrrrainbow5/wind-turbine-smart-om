@@ -336,7 +336,10 @@ export default function App() {
   const displayLocation = faultLocation(activeCategory)
   const eventRisk: Record<string, [number, number, Turbine['warning_level']]> = { 'B-53': [.76, 63.2, 'HIGH'], 'A-51': [.82, 58.4, 'HIGH'], 'A-0': [.61, 69.8, 'MEDIUM'], 'C-67': [.48, 76.2, 'MEDIUM'], 'C-81': [.71, 66.5, 'HIGH'] }
   const [eventFailureRisk, eventHealth] = eventRisk[faultEventId] || eventRisk['B-53']
-  const caseAppliesToSelected = mode === 'demo' && selectedBase?.turbine_id === 'WT02' && selectedBase.source === 'SIMULATED'
+  // In demo mode WT02 is the selectable case host even though its baseline
+  // telemetry is marked DERIVED. The selected case must override that
+  // baseline so the status and CAD highlight stay in sync.
+  const caseAppliesToSelected = mode === 'demo' && selectedBase?.turbine_id === 'WT02'
   const linkedRisk = caseAppliesToSelected ? Math.max(eventFailureRisk, diagnostic.risk) : Math.min(diagnostic.risk, selectedBase?.failure_risk ?? 0)
   const linkedWarning: Turbine['warning_level'] = linkedRisk >= .72 ? 'HIGH' : linkedRisk >= .42 ? 'MEDIUM' : linkedRisk >= .2 ? 'LOW' : 'NORMAL'
   const linkedHealth = caseAppliesToSelected ? Math.min(eventHealth, Math.max(0, 100 - linkedRisk * 42)) : Math.max(selectedBase?.health_index ?? 92, 100 - linkedRisk * 42)
