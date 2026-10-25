@@ -340,7 +340,11 @@ export default function App() {
   // telemetry is marked DERIVED. The selected case must override that
   // baseline so the status and CAD highlight stay in sync.
   const caseAppliesToSelected = mode === 'demo' && selectedBase?.turbine_id === 'WT02'
-  const linkedRisk = caseAppliesToSelected ? Math.max(eventFailureRisk, diagnostic.risk) : Math.min(diagnostic.risk, selectedBase?.failure_risk ?? 0)
+  // Keep the selected case as the starting point, while allowing live sensor
+  // sliders to move the diagnosis instead of being masked by a max() clamp.
+  const linkedRisk = caseAppliesToSelected
+    ? Math.min(1, Math.max(0, eventFailureRisk * .55 + diagnostic.risk * .45))
+    : Math.min(diagnostic.risk, selectedBase?.failure_risk ?? 0)
   const linkedWarning: Turbine['warning_level'] = linkedRisk >= .72 ? 'HIGH' : linkedRisk >= .42 ? 'MEDIUM' : linkedRisk >= .2 ? 'LOW' : 'NORMAL'
   const linkedHealth = caseAppliesToSelected ? Math.min(eventHealth, Math.max(0, 100 - linkedRisk * 42)) : Math.max(selectedBase?.health_index ?? 92, 100 - linkedRisk * 42)
   const healthCeiling = caseAppliesToSelected ? eventHealth : (selectedBase?.health_index ?? 92)
