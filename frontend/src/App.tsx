@@ -137,6 +137,13 @@ function faultLocation(category: Turbine['fault_category']) {
   return category === 'GEARBOX' || category === 'GEARBOX_BEARING' ? '齿轮箱' : category === 'GENERATOR' ? '发电机' : category === 'ROTOR_BEARING' || category === 'BEARING' ? '主轴/轴承' : '主轴/联轴器'
 }
 
+function inferenceCategory(location: string): Turbine['fault_category'] {
+  if (location === '齿轮箱') return 'GEARBOX'
+  if (location === '发电机') return 'GENERATOR'
+  if (location === '主轴/轴承') return 'ROTOR_BEARING'
+  return 'DRIVETRAIN'
+}
+
 function buildDiagnosticRecord(turbine: Turbine, mode: Mode, location: string, eventId?: string): DiagnosticRecord {
   const source = mode === 'api' ? turbine.source : 'SIMULATED'
   const suffix = eventId || turbine.event_id || 'baseline'
@@ -331,7 +338,11 @@ export default function App() {
 
   const selectedBase = turbines.find(t => t.turbine_id === selectedId) || turbines[0]
   const selectedFault = wt02FaultEvents.find(event => event.id === faultEventId) || wt02FaultEvents[0]
-  const activeCategory = mode === 'api' ? selectedBase?.fault_category : selectedBase?.turbine_id === 'WT02' ? selectedFault.category : (selectedBase?.fault_category || selectedFault.category)
+  const activeCategory = mode === 'api'
+    ? selectedBase?.fault_category
+    : selectedBase?.turbine_id === 'WT02'
+      ? (diagnostic.risk >= .2 ? inferenceCategory(diagnostic.location) : selectedFault.category)
+      : (selectedBase?.fault_category || selectedFault.category)
   const activeMapping = mode === 'api' && sampleMapping?.part.turbineId === selectedId ? sampleMapping : null
   const displayLocation = faultLocation(activeCategory)
   const eventRisk: Record<string, [number, number, Turbine['warning_level']]> = { 'B-53': [.76, 63.2, 'HIGH'], 'A-51': [.82, 58.4, 'HIGH'], 'A-0': [.61, 69.8, 'MEDIUM'], 'C-67': [.48, 76.2, 'MEDIUM'], 'C-81': [.71, 66.5, 'HIGH'] }
