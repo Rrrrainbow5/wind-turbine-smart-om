@@ -300,7 +300,6 @@ export default function App() {
     if (previousFaultEventId.current !== faultEventId) {
       previousFaultEventId.current = faultEventId
       setEngineeringView(true)
-      setView('overview')
     }
   }, [faultEventId])
 
