@@ -293,6 +293,17 @@ export default function App() {
   const [diagnosticHistory, setDiagnosticHistory] = useState<Array<{ at: string; location: string; risk: number }>>([])
   const diagnostic = useMemo(() => diagnosticInference(diagnosticParams), [diagnosticParams])
 
+  // Selecting a preset must be visible in the twin, regardless of which
+  // selector rendered it (demo page or overview panel).
+  const previousFaultEventId = useRef(faultEventId)
+  useEffect(() => {
+    if (previousFaultEventId.current !== faultEventId) {
+      previousFaultEventId.current = faultEventId
+      setEngineeringView(true)
+      setView('overview')
+    }
+  }, [faultEventId])
+
   useEffect(() => {
     try {
       const saved = localStorage.getItem('windcare.turbineStates.v3')
