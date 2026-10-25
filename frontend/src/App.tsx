@@ -297,6 +297,7 @@ export default function App() {
   const [decisionAction, setDecisionAction] = useState('SCHEDULE_INSPECTION')
   const [activityLog, setActivityLog] = useState<string[]>([])
   const [diagnosticParams, setDiagnosticParams] = useState<DiagnosticParams>(defaultDiagnosticParams)
+  const [diagnosticTouched, setDiagnosticTouched] = useState(false)
   const [diagnosticHistory, setDiagnosticHistory] = useState<Array<{ at: string; location: string; risk: number }>>([])
   const diagnostic = useMemo(() => diagnosticInference(diagnosticParams), [diagnosticParams])
 
@@ -307,6 +308,7 @@ export default function App() {
     if (previousFaultEventId.current !== faultEventId) {
       previousFaultEventId.current = faultEventId
       setServiced(false)
+      setDiagnosticTouched(false)
       setEngineeringView(true)
     }
   }, [faultEventId])
@@ -341,7 +343,7 @@ export default function App() {
   const activeCategory = mode === 'api'
     ? selectedBase?.fault_category
     : selectedBase?.turbine_id === 'WT02'
-      ? (diagnostic.risk >= .2 ? inferenceCategory(diagnostic.location) : selectedFault.category)
+      ? (diagnosticTouched && diagnostic.risk >= .2 ? inferenceCategory(diagnostic.location) : selectedFault.category)
       : (selectedBase?.fault_category || selectedFault.category)
   const activeMapping = mode === 'api' && sampleMapping?.part.turbineId === selectedId ? sampleMapping : null
   const displayLocation = faultLocation(activeCategory)
@@ -431,6 +433,7 @@ export default function App() {
 
   const updateDiagnosticParam = (key: keyof DiagnosticParams, value: number) => {
     const next = { ...diagnosticParams, [key]: value }
+    setDiagnosticTouched(true)
     setDiagnosticParams(next)
     const nextDiagnostic = diagnosticInference(next)
     setTurbineStates(current => {
