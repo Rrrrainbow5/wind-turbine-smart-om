@@ -17,6 +17,7 @@ from backend.app.config import allowed_origins, database_path
 from backend.app.database import Database
 from backend.app.diagnosis import create_diagnosis_router
 from backend.app.datasets import router as datasets_router
+from backend.app.care import router as care_router
 from backend.app.maintenance import decide_maintenance
 from backend.app.schemas import (
     AIResult,
@@ -85,6 +86,7 @@ def create_app(db_path: Path | None = None) -> FastAPI:
 
     app.include_router(create_diagnosis_router(database))
     app.include_router(datasets_router)
+    app.include_router(care_router)
 
     @app.get("/health")
     def health() -> dict[str, str]:

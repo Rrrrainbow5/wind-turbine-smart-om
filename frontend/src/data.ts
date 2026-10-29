@@ -1,3 +1,5 @@
+import { careCases, type CareCase } from './care'
+
 export type WarningLevel = 'NORMAL' | 'LOW' | 'MEDIUM' | 'HIGH'
 export type SourceKind = 'REAL' | 'DERIVED' | 'SIMULATED' | 'ASSUMED' | 'REFERENCE' | 'EXTERNAL_PUBLIC'
 
@@ -22,7 +24,8 @@ export interface Turbine {
   event_id?: number
   mapping_status?: string
   has_analysis?: boolean
-  fault_category?: 'GEARBOX_BEARING' | 'ROTOR_BEARING' | 'GEARBOX' | 'GENERATOR' | 'DRIVETRAIN' | 'BEARING'
+  fault_category?: 'GEARBOX_BEARING' | 'ROTOR_BEARING' | 'GEARBOX' | 'GENERATOR' | 'DRIVETRAIN' | 'BEARING' | 'HYDRAULIC' | 'TRANSFORMER'
+  care_case?: CareCase
   event_name?: string
   event_description?: string
   field_diagnosis?: import('./api').FieldDiagnosis
@@ -40,13 +43,10 @@ export interface MaintenancePlan {
   available?: boolean
 }
 
-export const wt02FaultEvents = [
-  { id: 'B-53', name: '转子轴承 2损伤', description: 'Rotor Bearing 2 - Damage', component: '转子轴承 2', category: 'ROTOR_BEARING' as const },
-  { id: 'A-51', name: '齿轮箱轴承损坏', description: 'Gearbox bearings damaged', component: '齿轮箱轴承', category: 'GEARBOX_BEARING' as const },
-  { id: 'A-0', name: '发电机轴承故障', description: 'Generator bearing failure', component: '发电机总成', category: 'GENERATOR' as const },
-  { id: 'C-67', name: '齿轮传动异常', description: 'Gear transmission anomaly', component: '齿轮传动件', category: 'GEARBOX' as const },
-  { id: 'C-81', name: '主轴/联轴器异常', description: 'Main shaft or coupling anomaly', component: '主轴/联轴器', category: 'DRIVETRAIN' as const },
-]
+export const wt02FaultEvents = careCases.map(sample => ({
+  id: sample.id, name: sample.name, description: sample.description,
+  component: sample.name, category: sample.category || undefined,
+}))
 
 export const demoTurbines: Turbine[] = [
   { turbine_id: 'WT01', name: '一号机组', position: [-11, -5], warning_level: 'NORMAL', health_index: 92.4, anomaly_score: .12, failure_risk: .08, power_kw: 1940, wind_ms: 9.3, component_id: 'WT01_COMPONENT_01', component_label: '关键状态对象 01', updated_at: '演示时刻 09:00', trend: [87, 88, 90, 89, 91, 90, 92, 92], source: 'SIMULATED', model_version: 'demo-0.1' },

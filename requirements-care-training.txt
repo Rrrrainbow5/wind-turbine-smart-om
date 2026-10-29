@@ -1,0 +1,2 @@
+-r requirements-ai.txt
+scikit-learn==1.7.2

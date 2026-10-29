@@ -6,6 +6,7 @@ import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import type { Turbine } from './data'
 import type { BearingPart } from './SampleAssociation'
+import { effectiveCadCategory, isCadFastener, isCadFastenerName, isHydraulicAssemblyName } from './cadMapping'
 
 interface Props {
   turbines: Turbine[]
@@ -52,6 +53,8 @@ type CadPart = { id: string; label: string; category: string }
 
 function identifyCadPart(sourceName: string, turbineId: string): CadPart | null {
   const name = sourceName.toLowerCase()
+  if (isCadFastenerName(name)) return null
+  if (isHydraulicAssemblyName(name)) return { id: `${turbineId}_HYDRAULIC`, label: '液压制动总成', category: 'HYDRAULIC' }
   if (name.includes('lopat') || name.includes('blade')) return { id: `${turbineId}_ROTOR_BLADE`, label: '风轮叶片', category: 'ROTOR' }
   if (/^wt02_blade_\d+/.test(name)) return { id: `${turbineId}_ROTOR_BLADE`, label: '风轮叶片', category: 'ROTOR' }
   // This CAD uses Serbian/Croatian transliterations such as le_aj (lezaj)
@@ -71,7 +74,7 @@ function identifyCadPart(sourceName: string, turbineId: string): CadPart | null 
   return null
 }
 
-function bindCadPartNames(root: THREE.Object3D, turbineId: string) {
+export function bindCadPartNames(root: THREE.Object3D, turbineId: string) {
   const counters = new Map<string, number>()
   root.traverse(object => {
     const sourceName = object.name
@@ -91,13 +94,14 @@ function bindCadPartNames(root: THREE.Object3D, turbineId: string) {
   })
 }
 
-function makeRealGearboxBearingGroup(root: THREE.Object3D, turbineId: string) {
+export function makeRealGearboxBearingGroup(root: THREE.Object3D, turbineId: string) {
   const group = new THREE.Group()
   group.name = `${turbineId}_REAL_GEARBOX_BEARINGS`
   const targets: THREE.Mesh[] = []
   root.traverse(object => {
     const source = String(object.userData.sourceCadName || '').toLowerCase()
-    if (!(object instanceof THREE.Mesh) || (!source.includes('bearing') && !source.includes('le瀉j'))) return
+    if (!(object instanceof THREE.Mesh) || (!source.includes('bearing') && !source.includes('le_aj'))) return
+    if (isCadFastener(object, root) || effectiveCadCategory(object, root) === 'HYDRAULIC') return
     const ancestry: string[] = []
     let parent = object.parent
     while (parent && parent !== root) {
@@ -128,19 +132,7 @@ const engineeringColors: Record<string, number> = {
   BEARING: 0x9eafb4,
   DRIVETRAIN: 0xb7c5c8,
   ROTOR: 0x80939a,
-}
-
-function effectiveCadCategory(object: THREE.Object3D, root: THREE.Object3D) {
-  if (object === root) return ''
-  // Imported CAD files often put the category on a named parent and leave
-  // the actual mesh untagged. Walk up the hierarchy so the visible mesh
-  // inherits the engineering part classification.
-  let current: THREE.Object3D | null = object
-  while (current && current !== root) {
-    if (current.userData.componentCategory) return String(current.userData.componentCategory)
-    current = current.parent
-  }
-  return ''
+  HYDRAULIC: 0xa2b7b1,
 }
 
 function isCadExterior(object: THREE.Object3D, category: string) {
@@ -158,7 +150,7 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
   model.traverse(object => {
     if (!(object instanceof THREE.Mesh)) return
     const category = effectiveCadCategory(object, model)
-    const highlightedInternal = ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN'].includes(category)
+    const highlightedInternal = ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN', 'HYDRAULIC'].includes(category)
     const source = String(object.userData.sourceCadName || '').toLowerCase()
     // Fade only outer panels, not the NACELLE parent and its mechanical children.
     const outerPanel = /^kuci_te [12]\.step/i.test(source)
@@ -284,7 +276,7 @@ function makeGear(name: string, radius: number, material: THREE.Material) {
   return gear
 }
 
-function setFaultPartState(model: THREE.Object3D | null, category: Turbine['fault_category'], level: Turbine['warning_level']) {
+export function setFaultPartState(model: THREE.Object3D | null, category: Turbine['fault_category'], level: Turbine['warning_level']) {
   if (!model) return
   const oldOverlay = model.getObjectByName('FAULT_HIGHLIGHT_OVERLAY')
   if (oldOverlay) {
@@ -300,7 +292,21 @@ function setFaultPartState(model: THREE.Object3D | null, category: Turbine['faul
     })
     oldOverlay.removeFromParent()
   }
-  if (!category || level === 'NORMAL') { model.userData.faultHighlightMatched = false; return }
+  if (!category || level === 'NORMAL') {
+    model.traverse(object => {
+      if (!(object instanceof THREE.Mesh)) return
+      const materials = Array.isArray(object.material) ? object.material : [object.material]
+      materials.forEach(material => {
+        const standard = material as THREE.MeshStandardMaterial
+        if (engineeringColors[effectiveCadCategory(object, model)] !== undefined && standard.color) standard.color.setHex(0xe8eeed)
+        if (standard.emissive) standard.emissive.setHex(0x071a20)
+        standard.emissiveIntensity = .08
+      })
+    })
+    model.userData.faultHighlightMatched = false
+    model.userData.faultHighlightCount = 0
+    return
+  }
   const color = level === 'HIGH' || level === 'MEDIUM' ? 0xff1712 : 0xffd43b
   const glow = level === 'HIGH' || level === 'MEDIUM' ? 0xff0500 : 0xffc400
   let matched = 0
@@ -330,7 +336,7 @@ function setFaultPartState(model: THREE.Object3D | null, category: Turbine['faul
     // Match main-shaft bearings; independent engineering verification is still required.
     const rotorBearingName = /roller.*le.?_?aj|le.?_?aj.*glavno|glavno.*vratilo.*le.?_?aj/.test(sourceName)
     const categoryMatches = actualCategory === category || (category === 'ROTOR_BEARING' && rotorBearingName) || (category === 'BEARING' && (actualCategory === 'GEARBOX_BEARING' || actualCategory === 'ROTOR_BEARING'))
-    if (!categoryMatches || isAuxiliaryDrive(object)) return
+    if (!categoryMatches || isAuxiliaryDrive(object) || isCadFastener(object, model)) return
     matched += 1
     targets.push(object)
     const materials = Array.isArray(object.material) ? object.material : [object.material]
@@ -349,7 +355,8 @@ function setFaultPartState(model: THREE.Object3D | null, category: Turbine['faul
   // so a mapped bearing/gear/generator is still visible to the user.
   if (!targets.length) {
     model.traverse(object => {
-      if (!(object instanceof THREE.Mesh) || isAuxiliaryDrive(object)) return
+      if (!(object instanceof THREE.Mesh) || isAuxiliaryDrive(object) || isCadFastener(object, model)) return
+      if (effectiveCadCategory(object, model) === 'HYDRAULIC' && category !== 'HYDRAULIC') return
       const source = String(object.userData.sourceCadName || '').toLowerCase()
       const bearing = source.includes('bearing') || source.includes('lezaj') || source.includes('le_aj') || source.includes('roller')
       const gearbox = source.includes('gear') || source.includes('zupcan') || source.includes('planet') || source.includes('spur')
@@ -375,6 +382,7 @@ function setFaultPartState(model: THREE.Object3D | null, category: Turbine['faul
     targets.forEach(target => {
       const copy = target.clone(false)
       copy.name = `${target.name}_FAULT_HIGHLIGHT`
+      copy.userData.componentCategory = effectiveCadCategory(target, model)
       copy.material = overlayMaterial
       copy.renderOrder = 20
       const relativeMatrix = inverseModelMatrix.clone().multiply(target.matrixWorld)
@@ -384,6 +392,7 @@ function setFaultPartState(model: THREE.Object3D | null, category: Turbine['faul
     model.add(overlay)
   }
   model.userData.faultHighlightMatched = matched > 0
+  model.userData.faultHighlightCount = targets.length
 }
 
 function makeLabel(text: string, color: string) {
@@ -777,6 +786,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
         setEngineeringCadView(imported, engineeringActive)
         const turbine = turbines.find(item => item.turbine_id === id)
         if (engineeringActive && turbine) setFaultPartState(imported, diagnosticFaultCategory || turbine.fault_category, turbine.warning_level)
+        if (engineeringActive && containerRef.current) containerRef.current.dataset.highlightCount = String(imported.userData.faultHighlightCount || 0)
         // Do not show fixed component callouts; the selected event and its
         // red geometry are the only fault annotation.
         cadLabels.visible = false
@@ -948,12 +958,13 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       // Keep the procedural rotor visible until the CAD model has loaded.
       // The CAD load is asynchronous and may be slower on GitHub Pages.
       object.blades.visible = !object.cadModel
-      object.beacon.visible = !(engineeringView && id === selectedId)
+      object.beacon.visible = !(engineeringView && id === selectedId) || turbine.fault_category === 'TRANSFORMER'
       object.engineering.visible = false
       const engineeringActive = engineeringView && id === selectedId
       if (!engineeringActive) setFaultPartState(object.cadModel, undefined, 'NORMAL')
       setEngineeringCadView(object.cadModel, engineeringActive)
       if (engineeringActive) setFaultPartState(object.cadModel, diagnosticFaultCategory || turbine.fault_category, turbine.warning_level)
+      if (id === selectedId && containerRef.current) containerRef.current.dataset.highlightCount = String(object.cadModel?.userData.faultHighlightCount || 0)
       // Component labels are intentionally hidden: a fixed "主轴/齿轮传动"
       // label suggests every event belongs to those parts and obscures the
       // actual highlighted fault geometry.

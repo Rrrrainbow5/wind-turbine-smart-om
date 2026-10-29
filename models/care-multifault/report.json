@@ -1,0 +1,485 @@
+{
+  "model_version": "care-scada-rf-v1",
+  "method": "6h SCADA median/std/endpoint delta + RandomForest",
+  "sklearn_version": "1.7.2",
+  "config": {
+    "n_estimators": 240,
+    "max_depth": 12,
+    "min_samples_leaf": 2,
+    "max_features": "sqrt",
+    "random_state": 20261029,
+    "n_jobs": 4
+  },
+  "windows": 963,
+  "features": 120,
+  "assets": [
+    0,
+    10,
+    11,
+    13,
+    21
+  ],
+  "events": 22,
+  "classes": {
+    "healthy": {
+      "name": "正常运行",
+      "category": null
+    },
+    "generator_bearing": {
+      "name": "发电机轴承故障",
+      "category": "GENERATOR"
+    },
+    "gearbox": {
+      "name": "齿轮箱故障",
+      "category": "GEARBOX"
+    },
+    "hydraulic": {
+      "name": "液压系统故障",
+      "category": "HYDRAULIC"
+    },
+    "gearbox_bearing": {
+      "name": "齿轮箱轴承损坏",
+      "category": "GEARBOX_BEARING"
+    },
+    "transformer": {
+      "name": "变压器故障",
+      "category": "TRANSFORMER"
+    }
+  },
+  "sources": [
+    {
+      "event_id": 0,
+      "asset": 0,
+      "label": "generator_bearing",
+      "sha256": "f0a8365b2b60845b9ad78cf4deb167a2da500abef66199a55c381e8fff2bb26b",
+      "file": "0.csv"
+    },
+    {
+      "event_id": 3,
+      "asset": 10,
+      "label": "healthy",
+      "sha256": "af3e8a8b9907183edecb763f60b1a5a79bb437228cbaa158be0a6dde24e93910",
+      "file": "3.csv"
+    },
+    {
+      "event_id": 10,
+      "asset": 10,
+      "label": "gearbox",
+      "sha256": "16a5bdaaf9afb5ce9b02e456c60e8ed7a6b6943c5e517d4866d7eedf31568914",
+      "file": "10.csv"
+    },
+    {
+      "event_id": 13,
+      "asset": 21,
+      "label": "healthy",
+      "sha256": "fb3c996efd634e0422d95876a28dc6c777470a07816cc5f5894a3d18ccc32dbd",
+      "file": "13.csv"
+    },
+    {
+      "event_id": 14,
+      "asset": 13,
+      "label": "healthy",
+      "sha256": "93bee35d6a6fa0b6d01961cd0980a53561184da36a80118b964750294be0f6ce",
+      "file": "14.csv"
+    },
+    {
+      "event_id": 17,
+      "asset": 10,
+      "label": "healthy",
+      "sha256": "54237f22c32ff0b5dcedb8d3eb5dc452424baad2cdc4d599ca3215605eab6c8f",
+      "file": "17.csv"
+    },
+    {
+      "event_id": 22,
+      "asset": 21,
+      "label": "hydraulic",
+      "sha256": "06b0745cc1b5ed3ec9bd0e34a81b1074bc23c4f76f854c8b395ea625237a76a3",
+      "file": "22.csv"
+    },
+    {
+      "event_id": 24,
+      "asset": 0,
+      "label": "healthy",
+      "sha256": "310c27badde12582045627ae22a29d79d642b58f1379e2676bd3f21f46ac697e",
+      "file": "24.csv"
+    },
+    {
+      "event_id": 25,
+      "asset": 11,
+      "label": "healthy",
+      "sha256": "f09afa3bfea796bb2bb52058830981554734a2a2b6085e3415f20d67b91defc6",
+      "file": "25.csv"
+    },
+    {
+      "event_id": 26,
+      "asset": 0,
+      "label": "hydraulic",
+      "sha256": "6bf52430a8102d198c9bea3986e4bf81a120f7e86c8acc859ca1b606a3f08d35",
+      "file": "26.csv"
+    },
+    {
+      "event_id": 38,
+      "asset": 13,
+      "label": "healthy",
+      "sha256": "085324d3dffe3fa12d37a2d95b71d439d8ba7085839dca644192b2b4ee360775",
+      "file": "38.csv"
+    },
+    {
+      "event_id": 40,
+      "asset": 10,
+      "label": "generator_bearing",
+      "sha256": "59a051d79baac85548922248013e1136407514d8bd7a2f374670865e6a6cf2ef",
+      "file": "40.csv"
+    },
+    {
+      "event_id": 42,
+      "asset": 10,
+      "label": "hydraulic",
+      "sha256": "22af8df47d9d9844f15506980847ed27dca3b8148167073ee6e85e6faada5b4a",
+      "file": "42.csv"
+    },
+    {
+      "event_id": 45,
+      "asset": 13,
+      "label": "hydraulic",
+      "sha256": "cc51aeabe485286e2fee4df23f39caf77c19ce5fdc34f1e16b01097209f4aa1b",
+      "file": "45.csv"
+    },
+    {
+      "event_id": 51,
+      "asset": 21,
+      "label": "gearbox_bearing",
+      "sha256": "cc4eaa53400424e1044f68379da070215d311d92f940b7050affbf2f289d0ebc",
+      "file": "51.csv"
+    },
+    {
+      "event_id": 68,
+      "asset": 11,
+      "label": "transformer",
+      "sha256": "ab1db0f9a261c525572e09067def2c2876b2002335ec9d5c9c268246573bbcc3",
+      "file": "68.csv"
+    },
+    {
+      "event_id": 69,
+      "asset": 11,
+      "label": "healthy",
+      "sha256": "fa66f3fc0e9af250cbc23b409a78b3d76e5b9a8526a0f138ee5efaf7b9508d9b",
+      "file": "69.csv"
+    },
+    {
+      "event_id": 71,
+      "asset": 0,
+      "label": "healthy",
+      "sha256": "540b1b258c234ef898b087af4626aa46a86f08dc539f30836c2417f95a83533e",
+      "file": "71.csv"
+    },
+    {
+      "event_id": 72,
+      "asset": 21,
+      "label": "gearbox",
+      "sha256": "18964bc4ff606b77e7313427df81080d5651dfd6a9dd619be7657947ab42600f",
+      "file": "72.csv"
+    },
+    {
+      "event_id": 73,
+      "asset": 0,
+      "label": "hydraulic",
+      "sha256": "d6071fe582077dd0ee1900597548497e17344f61c2ab4a784ecdd57529881db0",
+      "file": "73.csv"
+    },
+    {
+      "event_id": 84,
+      "asset": 13,
+      "label": "hydraulic",
+      "sha256": "ac88e2141ec5c87c38bb3cee2c0fc084310b238f59464f1d9380cca0537c025a",
+      "file": "84.csv"
+    },
+    {
+      "event_id": 92,
+      "asset": 11,
+      "label": "healthy",
+      "sha256": "a979ae914688dd4f4f5f3e3abd0d3ea2d607343363bca39292ad8e2de1c0a01d",
+      "file": "92.csv"
+    }
+  ],
+  "class_support": {
+    "gearbox": {
+      "windows": 25,
+      "assets": [
+        10
+      ],
+      "events": [
+        10
+      ]
+    },
+    "gearbox_bearing": {
+      "windows": 16,
+      "assets": [
+        21
+      ],
+      "events": [
+        51
+      ]
+    },
+    "generator_bearing": {
+      "windows": 170,
+      "assets": [
+        0,
+        10
+      ],
+      "events": [
+        0,
+        40
+      ]
+    },
+    "healthy": {
+      "windows": 543,
+      "assets": [
+        0,
+        10,
+        11,
+        13,
+        21
+      ],
+      "events": [
+        3,
+        13,
+        14,
+        17,
+        24,
+        25,
+        38,
+        69,
+        71,
+        92
+      ]
+    },
+    "hydraulic": {
+      "windows": 155,
+      "assets": [
+        0,
+        10,
+        13,
+        21
+      ],
+      "events": [
+        22,
+        26,
+        42,
+        45,
+        73,
+        84
+      ]
+    },
+    "transformer": {
+      "windows": 54,
+      "assets": [
+        11
+      ],
+      "events": [
+        68
+      ]
+    }
+  },
+  "excluded": {
+    "overlapping_labels": 2018,
+    "incomplete_windows": 69,
+    "missing_signals": 0
+  },
+  "folds": [
+    {
+      "test_assets": [
+        0
+      ],
+      "train_assets": [
+        10,
+        11,
+        13,
+        21
+      ],
+      "missing_train_classes": [],
+      "test_windows": 216
+    },
+    {
+      "test_assets": [
+        10
+      ],
+      "train_assets": [
+        0,
+        11,
+        13,
+        21
+      ],
+      "missing_train_classes": [
+        "gearbox"
+      ],
+      "test_windows": 303
+    },
+    {
+      "test_assets": [
+        11
+      ],
+      "train_assets": [
+        0,
+        10,
+        13,
+        21
+      ],
+      "missing_train_classes": [
+        "transformer"
+      ],
+      "test_windows": 195
+    },
+    {
+      "test_assets": [
+        13
+      ],
+      "train_assets": [
+        0,
+        10,
+        11,
+        21
+      ],
+      "missing_train_classes": [],
+      "test_windows": 126
+    },
+    {
+      "test_assets": [
+        21
+      ],
+      "train_assets": [
+        0,
+        10,
+        11,
+        13
+      ],
+      "missing_train_classes": [
+        "gearbox_bearing"
+      ],
+      "test_windows": 123
+    }
+  ],
+  "evaluation": {
+    "protocol": "leave one physical asset out; train-only imputation; no parameter search",
+    "accuracy": 0.4683281412253375,
+    "macro_f1": 0.12645398800217336,
+    "per_class": {
+      "gearbox": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 25.0
+      },
+      "gearbox_bearing": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 16.0
+      },
+      "generator_bearing": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 170.0
+      },
+      "healthy": {
+        "precision": 0.574607329842932,
+        "recall": 0.8084714548802947,
+        "f1-score": 0.6717674062739097,
+        "support": 543.0
+      },
+      "hydraulic": {
+        "precision": 0.09917355371900827,
+        "recall": 0.07741935483870968,
+        "f1-score": 0.08695652173913043,
+        "support": 155.0
+      },
+      "transformer": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 54.0
+      },
+      "accuracy": 0.4683281412253375,
+      "macro avg": {
+        "precision": 0.11229681392699004,
+        "recall": 0.14764846828650072,
+        "f1-score": 0.12645398800217336,
+        "support": 963.0
+      },
+      "weighted avg": {
+        "precision": 0.33996228549445306,
+        "recall": 0.4683281412253375,
+        "f1-score": 0.39278085407715285,
+        "support": 963.0
+      }
+    },
+    "confusion_labels": [
+      "gearbox",
+      "gearbox_bearing",
+      "generator_bearing",
+      "healthy",
+      "hydraulic",
+      "transformer"
+    ],
+    "confusion_matrix": [
+      [
+        0,
+        0,
+        1,
+        18,
+        6,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        16,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        155,
+        7,
+        8
+      ],
+      [
+        0,
+        2,
+        42,
+        439,
+        60,
+        0
+      ],
+      [
+        0,
+        1,
+        13,
+        126,
+        12,
+        3
+      ],
+      [
+        0,
+        0,
+        8,
+        10,
+        36,
+        0
+      ]
+    ]
+  },
+  "model_sha256": "8ea5e819c9cc517243f1684f176f55146f5f4b3ec6b40cb380c61cfdd87c1605",
+  "limits": [
+    "Historical labeled interval classification, not early warning or remaining life estimation.",
+    "Transformer and gearbox-bearing each have only one independent asset/event; no validated generalization.",
+    "Final model replay includes its training samples; held-out predictions are shown separately.",
+    "Farm A only; no claim of transfer to other farms, turbine types or live field units.",
+    "Anomaly score = 1 - normal class score; health display = 100 * normal score; not calibrated risk.",
+    "Conflicting same-asset event intervals are excluded from both labels."
+  ]
+}

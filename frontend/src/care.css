@@ -1,0 +1,50 @@
+.care-selector{display:grid;gap:8px;padding:14px 0;border-bottom:1px solid #31525a}
+.demo-input-tabs{display:flex;gap:4px;border-bottom:1px solid #31525a;padding:12px 0}
+.demo-input-tabs button{display:flex;align-items:center;justify-content:center;gap:7px;flex:1;min-height:38px;border:1px solid transparent;border-radius:4px;background:transparent;color:#a9c8cb;font:inherit;font-size:13px;cursor:pointer}
+.demo-input-tabs button[aria-selected=true]{background:#224944;color:#e4fff6;border-color:#568b7b}
+.demo-input-tabs button:focus-visible{outline:2px solid #e3b761;outline-offset:2px}
+.demo-case-panel{min-width:0}
+.care-selector label{font-size:13px;font-weight:600;color:#d6edef}
+.care-selector select{width:100%;min-width:0;min-height:38px;border:1px solid #49757b;border-radius:4px;background:#102f38;color:#edf7f7;padding:7px 10px;font:inherit;font-size:12px}
+.care-results{padding:16px 0;border-bottom:1px solid #31525a;min-width:0;letter-spacing:0}
+.care-title{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:13px;color:#e1f1f1}
+.care-title>span{margin-left:auto;font-size:10px;color:#edc77c}
+.care-comparison{margin:14px 0;display:grid;gap:10px}
+.care-comparison>div{display:flex;gap:12px;justify-content:space-between;align-items:baseline}
+.care-comparison dt{font-size:11px;color:#9ec4cb;flex-shrink:0}
+.care-comparison dd{margin:0;color:#ebf5f5;font-size:13px;text-align:right;overflow-wrap:anywhere}
+.care-provenance{font-size:11px;color:#99bbc1;line-height:1.7;overflow-wrap:anywhere}
+.care-limitation{font-size:11px;line-height:1.6;color:#efc778;border-left:2px solid #c79841;padding-left:8px}
+.care-scores{display:grid;gap:8px;margin:15px 0}
+.care-scores>div{display:grid;grid-template-columns:minmax(100px,1fr) minmax(30px,1fr) 44px;align-items:center;gap:8px;font-size:11px;color:#bdd8dc}
+.care-scores meter{width:100%;height:8px;accent-color:#48c2a6}
+.care-scores b{font-variant-numeric:tabular-nums;text-align:right;font-size:11px;font-weight:500}
+.care-recompute{display:flex;align-items:center;gap:7px;padding:8px 10px;border:1px solid #5b858c;border-radius:4px;background:transparent;color:#d6ecee;cursor:pointer;margin-top:12px}
+.care-recompute:disabled{opacity:.6;cursor:wait}
+.care-spin{animation:care-spin 1s linear infinite}
+@keyframes care-spin{to{transform:rotate(360deg)}}
+.care-method{border-top:1px solid #31525a;margin-top:16px;padding-top:12px}
+.care-method h3{font-size:13px;color:#e5f4f4;margin:0 0 10px}
+.care-method p{font-size:12px;line-height:1.7;color:#a2c4ca}
+.care-measurements{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0}
+.care-measurements span{display:block;font-size:11px;color:#9ec1c8}
+.care-measurements strong{display:block;margin-top:5px;color:#e0f1f3;font-size:15px}
+.care-measurements small{font-size:10px;font-weight:400}
+.care-trace{font-size:10px;line-height:1.6;color:#96bcc5;overflow-wrap:anywhere}
+.care-trace summary{cursor:pointer;padding:10px 0}
+@media(max-width:480px){.care-comparison>div{flex-wrap:wrap;gap:3px}.care-comparison dd{text-align:left}.care-scores>div{grid-template-columns:104px minmax(24px,1fr) 42px}}
+@media(min-width:1101px){.workspace{grid-template-columns:minmax(0,1fr) minmax(400px,32vw)}.workspace-demo{grid-template-columns:minmax(0,1fr) minmax(440px,36vw)}.workspace-signal{grid-template-columns:minmax(0,1fr) minmax(480px,38vw)}}
+@media(max-width:700px){
+  .topbar{position:relative;height:100px;display:grid;grid-template-columns:minmax(0,1fr);gap:6px;padding:9px 13px;z-index:7}
+  .brand{min-width:0;gap:9px}
+  .brand strong{font-size:15px;letter-spacing:0}
+  .brand small{letter-spacing:0}
+  .top-actions{margin:0;justify-content:flex-end;position:absolute;top:57px;right:13px;gap:4px}
+  .top-nav{top:100px;gap:4px;padding:0 10px;background:#081923;border-color:#285764;overflow-x:auto;white-space:nowrap}
+  .top-nav button{flex:1;flex-shrink:0;padding:8px;font-size:11px}
+  .workspace,.workspace-signal{min-width:0}
+  .scene-weather{display:none!important}
+  .scene-bottom{bottom:64px}
+  .camera-presets{left:14px;right:14px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+  .camera-presets button{min-width:0;justify-content:center;padding:5px 3px;white-space:nowrap}
+}
