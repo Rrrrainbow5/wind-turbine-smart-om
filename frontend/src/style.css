@@ -191,6 +191,15 @@ body{background:#07141d}
 .signal-standards{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:0 0 10px}.signal-standards span{color:#78a8b0;font-size:9px;margin-right:3px}.signal-standards b{padding:4px 6px;border:1px solid #315f69;background:#102c36;color:#b9dfe1;border-radius:2px;font-size:8px;font-weight:500}
 @media(max-width:700px){.signal-provenance{grid-template-columns:1fr 1fr}.signal-provenance div:nth-child(3){grid-column:1/-1}}
 
+/* Defense layout: give the diagnostic inspector enough width to read without browser zoom. */
+@media(min-width:1101px){
+  .workspace-signal{grid-template-columns:minmax(0,1.08fr) minmax(560px,.92fr)}
+  .workspace-demo{grid-template-columns:minmax(0,1.05fr) minmax(560px,.95fr)}
+  .workspace-signal .inspector,.workspace-demo .inspector{padding-left:32px;padding-right:32px}
+  .workspace-signal .signal-panel-blue{max-width:680px;margin-left:auto;margin-right:auto}
+  .workspace-demo .demo-panel{max-width:680px;margin-left:auto;margin-right:auto}
+}
+
 /* Readability defaults for live demonstrations and projected defense screens. */
 .app-shell .top-nav button{font-size:14px}
 .app-shell .section-kicker,.app-shell .scene-heading p,.app-shell .scene-weather span,.app-shell .scene-weather small{font-size:12px}
