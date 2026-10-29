@@ -191,6 +191,13 @@ body{background:#07141d}
 .signal-standards{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:0 0 10px}.signal-standards span{color:#78a8b0;font-size:9px;margin-right:3px}.signal-standards b{padding:4px 6px;border:1px solid #315f69;background:#102c36;color:#b9dfe1;border-radius:2px;font-size:8px;font-weight:500}
 @media(max-width:700px){.signal-provenance{grid-template-columns:1fr 1fr}.signal-provenance div:nth-child(3){grid-column:1/-1}}
 
+/* Make the demo boundary explicit without changing the existing data flow. */
+.app-shell .ai-workbench .workbench-title h3{font-size:0}
+.app-shell .ai-workbench .workbench-title h3:after{content:'独立参数规则演示';font-size:15px}
+.app-shell .ai-workbench .workbench-title .simulated-tag{font-size:0}
+.app-shell .ai-workbench .workbench-title .simulated-tag:after{content:'SIMULATED · 不属于八台风机实测诊断';font-size:11px}
+.app-shell .ai-workbench:before{content:'八台风机显示 CARE 聚合状态；本区域仅用于观察参数变化，不代表八台风机已有真实高频诊断。接口上传数据请切换到“接口”模式。';display:block;margin:-4px 0 12px;padding:9px 10px;border-left:3px solid #d4a85a;background:#16333b;color:#e8cb8d;font-size:12px;line-height:1.5}
+
 /* Defense layout: give the diagnostic inspector enough width to read without browser zoom. */
 @media(min-width:1101px){
   .workspace-signal{grid-template-columns:minmax(0,1.08fr) minmax(560px,.92fr)}
