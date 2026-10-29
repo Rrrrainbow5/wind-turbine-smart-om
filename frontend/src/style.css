@@ -185,6 +185,14 @@ body{background:#07141d}
 @media(max-width:1100px){.workspace-demo{grid-template-columns:minmax(0,1fr) 430px}}
 @media(max-width:700px){.workspace-demo{display:block}.demo-panel{padding:16px 0}.demo-panel .diagnostic-layout{grid-template-columns:1fr}.demo-panel-head{display:block}.demo-panel-head .simulated-tag{display:block;text-align:left;margin-top:7px}}
 
+/* Desktop cockpit balance: give the operator panel enough room for values,
+   charts, and labels while preserving a usable digital-twin canvas. */
+@media(min-width:1101px){
+  .workspace{grid-template-columns:minmax(640px,1fr) minmax(460px,32vw)}
+  .workspace-demo{grid-template-columns:minmax(640px,1fr) minmax(540px,36vw)}
+  .workspace-signal{grid-template-columns:minmax(640px,1fr) minmax(560px,38vw)}
+}
+
 
 /* Signal provenance and formula cards */
 .signal-method-card{display:grid;gap:6px;margin:0 0 10px;padding:11px;border:1px solid #285b66;background:#0a222c;border-radius:3px}.signal-method-card code{display:block;padding:5px 7px;background:#071b24;color:#9ee9e8;font:10px Consolas,monospace;overflow:auto}.signal-method-card small{color:#8db5bb;font-size:9px;line-height:1.5}
