@@ -190,3 +190,28 @@ body{background:#07141d}
 .signal-method-card{display:grid;gap:6px;margin:0 0 10px;padding:11px;border:1px solid #285b66;background:#0a222c;border-radius:3px}.signal-method-card code{display:block;padding:5px 7px;background:#071b24;color:#9ee9e8;font:10px Consolas,monospace;overflow:auto}.signal-method-card small{color:#8db5bb;font-size:9px;line-height:1.5}
 .signal-standards{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:0 0 10px}.signal-standards span{color:#78a8b0;font-size:9px;margin-right:3px}.signal-standards b{padding:4px 6px;border:1px solid #315f69;background:#102c36;color:#b9dfe1;border-radius:2px;font-size:8px;font-weight:500}
 @media(max-width:700px){.signal-provenance{grid-template-columns:1fr 1fr}.signal-provenance div:nth-child(3){grid-column:1/-1}}
+
+/* Readability defaults for live demonstrations and projected defense screens. */
+.app-shell .top-nav button{font-size:14px}
+.app-shell .section-kicker,.app-shell .scene-heading p,.app-shell .scene-weather span,.app-shell .scene-weather small{font-size:12px}
+.app-shell .scene-legend,.app-shell .scene-hint{font-size:12px}
+.app-shell .selector-row h2{font-size:23px}
+.app-shell .status-badge{font-size:12px}
+.app-shell .reading-label{font-size:14px}
+.app-shell .reading-number{font-size:44px}
+.app-shell .reading-primary p{font-size:12px}
+.app-shell .metric-grid span{font-size:11px}
+.app-shell .metric-grid strong{font-size:22px}
+.app-shell .metric-grid small{font-size:10px}
+.app-shell .section-title h3,.app-shell .workbench-title h3{font-size:15px}
+.app-shell .section-title span,.app-shell .workbench-title>span{font-size:11px}
+.app-shell .primary-action{font-size:14px}
+.app-shell .secondary-action{font-size:13px}
+.app-shell .diagnostic-slider>span{font-size:14px}
+.app-shell .diagnostic-slider small,.app-shell .diagnostic-history{font-size:11px}
+.app-shell .ai-status-line{font-size:13px}
+.app-shell .diagnostic-summary{font-size:13px}
+.app-shell .diagnostic-summary strong{font-size:17px}
+.app-shell .confidence-row{font-size:12px}
+.app-shell .history-clear{border:1px solid #4c8088;background:#123541;color:#dffaff;border-radius:3px;padding:2px 7px;font-size:11px}
+.app-shell .history-clear:disabled{opacity:.45}

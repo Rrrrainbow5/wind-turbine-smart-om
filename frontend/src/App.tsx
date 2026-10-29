@@ -169,7 +169,7 @@ function sliderTint(field: typeof diagnosticFields[number], value: number) {
 }
 
 function DemoPanel({
-  turbine, params, diagnostic, displayLocation, history, onParamChange, onReset, onLocate,
+  turbine, params, diagnostic, displayLocation, history, onParamChange, onReset, onClearHistory, onLocate,
 }: {
   turbine: Turbine
   params: DiagnosticParams
@@ -178,9 +178,10 @@ function DemoPanel({
   history: Array<{ at: string; location: string; risk: number }>
   onParamChange: (key: keyof DiagnosticParams, value: number) => void
   onReset: () => void
+  onClearHistory: () => void
   onLocate: () => void
 }) {
-  return <section className="demo-panel" data-guide-target="slider-panel" aria-label="参数演示"><div className="demo-panel-head"><div><span className="section-kicker">参数演示</span><h2>参数驱动的故障演示</h2><p>{turbine.turbine_id} · 交互分析场景</p></div><span className="simulated-tag">拖动即推理</span></div><div className="demo-boundary"><Radio size={14} /> 下面的滑块用于观察参数变化对诊断结果的影响，完整信号处理过程请进入“信号诊断”。</div><div className="diagnostic-layout"><div className="diagnostic-controls">{diagnosticFields.map(field => <label className="diagnostic-slider" key={field.key}><span><b>{field.label}</b><em>{params[field.key].toFixed(field.step < 1 ? 1 : 0)} {field.unit}</em></span><input style={{ '--slider-color': sliderTint(field, params[field.key]) } as CSSProperties} type="range" min={field.min} max={field.max} step={field.step} value={params[field.key]} onChange={event => onParamChange(field.key, Number(event.target.value))} /><small>安全范围 {field.normal[0]}–{field.normal[1]} {field.unit}</small></label>)}<button className="reset-diagnostic" onClick={onReset}><RotateCcw size={14} /> 一键重置参数</button></div><div className="diagnostic-result"><div className="ai-status-line"><span className={`ai-pulse ${diagnostic.level.toLowerCase()}`} />规则演示推理 <StatusBadge level={diagnostic.level} /></div><DiagnosticDiagram location={displayLocation} risk={diagnostic.risk} /><div className="diagnostic-summary"><strong>{displayLocation}</strong><span>演示置信度 {(diagnostic.risk * 100).toFixed(0)}% · 风险评分 {diagnostic.risk.toFixed(2)}</span><button className="locate-fault" onClick={onLocate}><Eye size={13} /> 在三维中定位</button></div><ConfidenceBars scores={diagnostic.scores} /></div></div><div className="diagnostic-history"><div><strong><History size={14} /> 最近演示</strong><span>{history.length ? `${history.length} 条` : '暂无记录'}</span></div>{history.slice(0, 3).map(item => <span key={`${item.at}-${item.risk}`}>{item.at} · {item.location} · {(item.risk * 100).toFixed(0)}%</span>)}</div></section>
+  return <section className="demo-panel" data-guide-target="slider-panel" aria-label="参数演示"><div className="demo-panel-head"><div><span className="section-kicker">参数演示</span><h2>参数驱动的故障演示</h2><p>{turbine.turbine_id} · 交互分析场景</p></div><span className="simulated-tag">拖动即推理</span></div><div className="demo-boundary"><Radio size={14} /> 下面的滑块用于观察参数变化对诊断结果的影响，完整信号处理过程请进入“信号诊断”。</div><div className="diagnostic-layout"><div className="diagnostic-controls">{diagnosticFields.map(field => <label className="diagnostic-slider" key={field.key}><span><b>{field.label}</b><em>{params[field.key].toFixed(field.step < 1 ? 1 : 0)} {field.unit}</em></span><input style={{ '--slider-color': sliderTint(field, params[field.key]) } as CSSProperties} type="range" min={field.min} max={field.max} step={field.step} value={params[field.key]} onChange={event => onParamChange(field.key, Number(event.target.value))} /><small>安全范围 {field.normal[0]}–{field.normal[1]} {field.unit}</small></label>)}<button className="reset-diagnostic" onClick={onReset}><RotateCcw size={14} /> 一键重置参数</button></div><div className="diagnostic-result"><div className="ai-status-line"><span className={`ai-pulse ${diagnostic.level.toLowerCase()}`} />规则演示推理 <StatusBadge level={diagnostic.level} /></div><DiagnosticDiagram location={displayLocation} risk={diagnostic.risk} /><div className="diagnostic-summary"><strong>{displayLocation}</strong><span>演示置信度 {(diagnostic.risk * 100).toFixed(0)}% · 风险评分 {diagnostic.risk.toFixed(2)}</span><button className="locate-fault" onClick={onLocate}><Eye size={13} /> 在三维中定位</button></div><ConfidenceBars scores={diagnostic.scores} /></div></div><div className="diagnostic-history"><div><strong><History size={14} /> 本次演示记录</strong><span>{history.length ? `${history.length} 条` : '暂无记录'} <button className="history-clear" onClick={onClearHistory} disabled={!history.length}>清空</button></span></div>{history.slice(0, 3).map(item => <span key={`${item.at}-${item.risk}`}>{item.at} · {item.location} · {(item.risk * 100).toFixed(0)}%</span>)}</div></section>
 }
 
 function playTone(frequency: number, duration: number, delay = 0, type: OscillatorType = 'sine') {
@@ -422,6 +423,7 @@ export default function App() {
         return next
       })
       setView('overview'); setServiced(false); setMaintenanceRecordId(''); setRetests([]); setMaintenanceAttempts(0)
+      setDiagnosticHistory([])
       return
     }
     let active = true
@@ -438,14 +440,14 @@ export default function App() {
   const selectTurbine = (id: string) => {
     setSampleMapping(null)
     const saved = mode === 'demo' ? turbineStates[id] : undefined
-    setSelectedId(id); setView('overview'); setServiced(saved?.status === 'maintained'); setDiagnosticParams(saved?.params || defaultDiagnosticParams); setSelectedPlan('inspect'); setApiPlan(null); setMaintenanceRecordId(''); setRetests([]); setMaintenanceAttempts(0)
+    setSelectedId(id); setView('overview'); setServiced(saved?.status === 'maintained'); setDiagnosticParams(saved?.params || defaultDiagnosticParams); setDiagnosticHistory([]); setSelectedPlan('inspect'); setApiPlan(null); setMaintenanceRecordId(''); setRetests([]); setMaintenanceAttempts(0)
   }
 
   const refreshFieldData = async (id?: string) => {
     const data = await fetchTurbines()
     setTurbines(data)
     setSelectedId(id || selectedId)
-    setSampleMapping(null); setApiPlan(null)
+    setSampleMapping(null); setApiPlan(null); setDiagnosticHistory([])
     if (id) {
       setServiced(false); setMaintenanceRecordId(''); setRetests([])
       setBeforeRetest(null); setAfterRetest(null); setRetestPhase('idle')
@@ -720,7 +722,7 @@ export default function App() {
         {selected && <>
           <div className="selector-row"><div><span className="section-kicker">设备状态</span><h2>{selected.turbine_id} <span>{selected.name}</span></h2></div>{persistedSelected?.status === 'monitoring' ? <span className="status-badge status-low">⚠ 故障未处理 · 继续监测中</span> : selected.has_analysis === false ? <span className="status-badge status-neutral">暂无分析结果</span> : <StatusBadge level={serviced ? 'NORMAL' : selected.warning_level} />}</div>
           <div className="turbine-tabs" data-guide-target="turbine-select" role="tablist" aria-label="选择风机">{turbines.map(t => <button role="tab" aria-selected={selectedId === t.turbine_id} className={selectedId === t.turbine_id ? 'selected' : ''} key={t.turbine_id} onClick={() => selectTurbine(t.turbine_id)}>{t.turbine_id}<i className={`level-${t.warning_level.toLowerCase()}`} /></button>)}</div>
-{mode === 'api' && view === 'signal' ? <div className="api-boundary">上方展示当前机组的实际诊断数据包。三维定位与维护方案沿用同一机组、部件和诊断记录；原始波形未诊断时不会生成故障结论。</div> : view === 'signal' && diagnosticRecord ? <SignalPanel turbine={selected} record={diagnosticRecord} onLocate={() => { setEngineeringView(true); setView('overview') }} onMaintenance={openMaintenance} /> : view === 'demo' ? <DemoPanel turbine={selected} params={diagnosticParams} diagnostic={diagnostic} displayLocation={displayLocation} history={diagnosticHistory} onParamChange={updateDiagnosticParam} onReset={() => setDiagnosticParams(defaultDiagnosticParams)} onLocate={() => setEngineeringView(true)} /> : view === 'overview' ? <>
+{mode === 'api' && view === 'signal' ? <div className="api-boundary">上方展示当前机组的实际诊断数据包。三维定位与维护方案沿用同一机组、部件和诊断记录；原始波形未诊断时不会生成故障结论。</div> : view === 'signal' && diagnosticRecord ? <SignalPanel turbine={selected} record={diagnosticRecord} onLocate={() => { setEngineeringView(true); setView('overview') }} onMaintenance={openMaintenance} /> : view === 'demo' ? <DemoPanel turbine={selected} params={diagnosticParams} diagnostic={diagnostic} displayLocation={displayLocation} history={diagnosticHistory} onParamChange={updateDiagnosticParam} onReset={() => setDiagnosticParams(defaultDiagnosticParams)} onClearHistory={() => setDiagnosticHistory([])} onLocate={() => setEngineeringView(true)} /> : view === 'overview' ? <>
             {persistedSelected?.status === 'monitoring' && activeFault && <div className="monitoring-status-tag" role="status">⚠ 故障未处理 · 继续监测中</div>}
             <div className="reading-primary"><div className="reading-label"><Gauge size={18} /> 健康指数 <span title="与信号诊断共享同一 diagnosis_id">ⓘ</span></div><div className="reading-number">{selected.has_analysis === false ? '--' : serviced ? '待复测' : selected.health_index.toFixed(1)}{selected.has_analysis !== false && !serviced && <small>/ 100</small>}</div><div className="meter"><span style={{ width: selected.has_analysis === false || serviced ? '0%' : `${selected.health_index}%` }} className={selected.health_index < 70 ? 'meter-risk' : selected.health_index < 85 ? 'meter-warning' : 'meter-normal'} /></div><p>{selected.has_analysis === false ? '后端尚无该部件的 AI 分析结果。' : serviced ? '维护执行已记录，设备健康状态应由复测数据确认。' : selected.warning_level === 'HIGH' ? '状态持续偏离正常区间，建议进入维护评估。' : '当前状态以信号诊断结果为准。'}</p><small className="record-link">诊断记录 {diagnosticRecord?.diagnosisId} · 样本 {diagnosticRecord?.sampleId}</small></div>
             <div className="metric-grid"><div><span>异常分数</span><strong>{selected.has_analysis === false ? '--' : selected.anomaly_score.toFixed(2)}</strong><small>模型输出</small></div><div><span>风险评分</span><strong>{selected.has_analysis === false ? '--' : selected.failure_risk.toFixed(2)}</strong><small>0-1 指标，非校准概率</small></div><div><span>当前功率</span><strong>{selected.power_kw !== 0 ? selected.power_kw.toLocaleString() : '--'}<em> kW</em></strong><small>{selected.power_kw !== 0 ? '运行记录' : '未提供'}</small></div><div><span>风速</span><strong>{selected.wind_ms !== 0 ? selected.wind_ms : '--'}<em> m/s</em></strong><small>{selected.wind_ms !== 0 ? '运行记录' : '未提供'}</small></div></div>
