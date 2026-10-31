@@ -79,6 +79,7 @@ function StatusBadge({ level }: { level: Turbine['warning_level'] }) {
 
 function SignalPanel({ turbine, record, onLocate, onMaintenance }: { turbine: Turbine; record: DiagnosticRecord; onLocate: () => void; onMaintenance: () => void }) {
   if (turbine.care_case) return <div className="signal-panel-blue" data-guide-target="signal-panel">
+    <div className={`fault-callout ${turbine.warning_level === 'NORMAL' || turbine.event_name?.includes('正常') ? 'normal' : ''}`} role="status"><div><span>当前诊断故障</span><strong>{turbine.event_name || '暂无明确故障'}</strong></div><div><span>疑似部件</span><b>{turbine.component_label || '待定位'}</b></div><em>{turbine.warning_level === 'NORMAL' || turbine.event_name?.includes('正常') ? '当前信号处于正常区间' : '已与当前机组和诊断样本关联'}</em></div>
     <CarePanel key={turbine.care_case.sample_id} sample={turbine.care_case} turbineId={turbine.turbine_id} expanded />
     <div className="info-section"><div className="section-title"><h3>{turbine.trend_label}</h3><span>{turbine.trend_unit}</span></div><Sparkline values={turbine.trend} level={turbine.warning_level} /></div>
     <div className="signal-actions"><button onClick={onLocate}><Eye size={14} /> 查看三维状态</button><button onClick={onMaintenance}><Wrench size={14} /> 维护决策</button></div>
