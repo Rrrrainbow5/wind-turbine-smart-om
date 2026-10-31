@@ -31,6 +31,7 @@
 .care-spin{animation:care-spin 1s linear infinite}
 @keyframes care-spin{to{transform:rotate(360deg)}}
 .care-method{border-top:1px solid #31525a;margin-top:16px;padding-top:12px}
+.care-step-data{margin:12px 0 18px;padding:11px 12px;border:1px solid #285764;background:#0a2530;border-radius:3px}.care-step-data h4{margin:0 0 4px;color:#dceff0;font-size:12px}.care-step-data .care-measurements{margin:10px 0 12px}
 .care-method h3{font-size:13px;color:#e5f4f4;margin:0 0 10px}
 .care-method p{font-size:12px;line-height:1.7;color:#a2c4ca}
 .care-measurements{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0}
