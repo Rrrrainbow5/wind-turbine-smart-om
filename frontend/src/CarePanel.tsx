@@ -59,6 +59,7 @@ export default function CarePanel({ sample, turbineId, expanded = false }: { sam
     {expanded && <>
       <div className="care-method"><h3>计算方法 · SCADA 多故障模型</h3><p>36 条连续十分钟记录 → 6 小时窗口 → 连续传感器中位数、标准差、首尾变化 → 随机森林分类。</p><p>传感器缺失值由训练折中位数填充；按原始风机整体留出验证。</p><p>{careArtifact.training_windows} 个训练窗口 · {Object.keys(careArtifact.classes).length} 类状态 · 跨风机 Macro F1 {(careArtifact.evaluation.macro_f1 * 100).toFixed(1)}%</p></div>
       <div className="care-measurements">{measurements.map(([label, value, unit]) => <div key={label}><span>{label}</span><strong>{value.toFixed(1)} <small>{unit}</small></strong></div>)}</div>
+    <div className="care-waveform" aria-label="CARE 采样趋势波形"><div><strong>采样趋势波形</strong><small>36 个十分钟 SCADA 窗口 · 非高频振动原始波形</small></div><svg viewBox="0 0 360 80" preserveAspectRatio="none"><polyline points={sample.trend.map((value, index) => `${(index / Math.max(sample.trend.length - 1, 1)) * 360},${72 - ((value - Math.min(...sample.trend)) / Math.max(Math.max(...sample.trend) - Math.min(...sample.trend), 1)) * 58}`).join(' ')} /></svg></div>
       <details className="care-trace"><summary>样本和模型溯源</summary><p>风场 A · 原始机组 {sample.source_asset} · 事件 {sample.event_id}</p><p>{sample.start} 至 {sample.end} · {sample.row_count} 条记录</p><p>映射至演示风机，非该机组现场诊断。</p><p>{sample.sample_id}</p><p>{careArtifact.model_version}</p><p>模型 SHA256<br />{careArtifact.model_sha256}</p><p>源文件 SHA256<br />{sample.source_sha256}</p></details>
     </>}
   </section>

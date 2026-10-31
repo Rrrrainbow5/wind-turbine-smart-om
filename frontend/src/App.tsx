@@ -748,7 +748,8 @@ export default function App() {
       </section>
 
       <aside className={`inspector ${guide.active ? `guide-focus-step-${guide.step}` : ''}`} aria-label="风机信息">
-        {mode === 'api' && <><FieldDataPanel turbine={selected} onRefresh={refreshFieldData} expanded={view === 'signal'} onLocate={() => { setSampleMapping(null); setEngineeringView(true) }} onMaintenance={openMaintenance} /><details className="dataset-panel"><summary>实验查询 / 原始波形分析（独立于现场状态）</summary><DatasetPanel parts={bearingParts.filter(part => turbines.some(t => t.turbine_id === part.turbineId))} onLocate={locateSample} /></details></>}
+        {mode === 'api' && view !== 'signal' && <><FieldDataPanel turbine={selected} onRefresh={refreshFieldData} onLocate={() => { setSampleMapping(null); setEngineeringView(true) }} onMaintenance={openMaintenance} /><details className="dataset-panel"><summary>实验查询 / 原始波形分析（独立于现场状态）</summary><DatasetPanel parts={bearingParts.filter(part => turbines.some(t => t.turbine_id === part.turbineId))} onLocate={locateSample} /></details></>}
+        {mode === 'api' && view === 'signal' && <DatasetPanel parts={bearingParts.filter(part => turbines.some(t => t.turbine_id === part.turbineId))} onLocate={locateSample} expanded />}
         <div className="fleet-summary"><div><span>机组总数</span><strong>{sceneTurbines.length.toString().padStart(2, '0')}</strong></div><div><span>高风险</span><strong className="danger-text">{highCount.toString().padStart(2, '0')}</strong></div><div><span>当前选择</span><strong>{selected?.turbine_id || '--'}</strong></div></div>
         {error && <div className="error-banner" role="status"><AlertTriangle size={16} /><span>{error}</span><button title="关闭提示" aria-label="关闭提示" onClick={() => setError('')}><X size={15} /></button></div>}
         {loading && <div className="loading-state" role="status">正在连接接口...</div>}
