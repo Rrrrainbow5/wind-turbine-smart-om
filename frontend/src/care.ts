@@ -35,7 +35,7 @@ export function applyCareCase(turbine: Turbine, id: string): Turbine {
     component_id: `${turbine.turbine_id}_${sample.prediction.toUpperCase()}`,
     fault_category: predicted.category as Turbine['fault_category'] || undefined,
     failure_risk: risk, anomaly_score: risk, health_index: 100 * sample.probabilities.healthy,
-    warning_level: risk >= .72 ? 'HIGH' : risk >= .42 ? 'MEDIUM' : risk >= .2 ? 'LOW' : 'NORMAL',
+    warning_level: sample.prediction === 'healthy' ? 'NORMAL' : risk >= .72 ? 'HIGH' : risk >= .42 ? 'MEDIUM' : risk >= .2 ? 'LOW' : 'NORMAL',
     has_analysis: true, mapping_status: sample.prediction === 'transformer' ? 'UNMAPPED' : 'CATEGORY_ONLY',
     power_kw: sample.telemetry.power_30_avg, wind_ms: sample.telemetry.wind_speed_3_avg,
     trend: sample.trend, trend_label: `${sample.trend_label} · 同一样本 6 小时`, trend_unit: sample.trend_unit,
