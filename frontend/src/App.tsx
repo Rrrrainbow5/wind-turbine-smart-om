@@ -261,7 +261,6 @@ export default function App() {
   const [guideInitialTurbine, setGuideInitialTurbine] = useState('')
   const [guideOverviewSelected, setGuideOverviewSelected] = useState(false)
   const [guideOverviewTrend, setGuideOverviewTrend] = useState(false)
-  const [guidePlanClicked, setGuidePlanClicked] = useState(false)
   const [guideBubbleStyle, setGuideBubbleStyle] = useState<CSSProperties>({})
   const [guideMinimized, setGuideMinimized] = useState(false)
   const guideDragRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null)
@@ -504,7 +503,6 @@ export default function App() {
     if (guide.active && guide.step === 2 && view !== 'signal') setView('signal')
     if (guide.active && guide.step === 3 && view !== 'maintenance') setView('maintenance')
     if (guide.active && guide.step === 4 && view !== 'demo') setView('demo')
-    if (guide.active && guide.step >= 5) setGuide(state => ({ ...state, step: 4 }))
   }, [guide.active, guide.step, guideInitialTurbine, selectedId, view])
 
   // Selecting a demo fault must be visible in the 3D scene immediately.
@@ -525,7 +523,7 @@ export default function App() {
 
   useEffect(() => {
     const targetName = guide.step === 1 ? guideOverviewTrend ? 'overview-trend' : guideOverviewSelected ? 'overview-status' : 'turbine-select'
-      : guide.step === 2 ? 'signal-panel'
+      : guide.step === 2 ? 'signal-header'
             : guide.step === 3 ? 'plan-cards'
               : guide.step === 4 ? 'slider-panel'
             : guide.step === 5 ? 'slider-panel' : ''
@@ -547,7 +545,11 @@ export default function App() {
         : `[data-guide-target="${targetName}"]`
     const targets = Array.from(document.querySelectorAll(selector)) as HTMLElement[]
     if (!targets.length) return
-      targets[0].scrollIntoView({ behavior: 'smooth', block: 'center' })
+      if (guide.step === 2) {
+        document.querySelector('.inspector')?.scrollTo({ top: 0, behavior: 'auto' })
+      } else {
+        targets[0].scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
       const timer = window.setTimeout(() => {
         targets.forEach(target => target.classList.add('guide-target-highlight'))
       }, 150)
@@ -580,17 +582,12 @@ export default function App() {
   const openMaintenance = () => {
     if (!activeFault) return
     setView('maintenance')
-    if (guide.active && guide.step === 3) {
-      setGuidePlanClicked(false)
-      setGuide(state => ({ ...state, step: 4 }))
-    }
     logAction('进入维护决策工作台')
     if (mode === 'api') void loadApiPlan(weatherRestricted, false)
   }
 
   const chooseAction = (action: string) => {
     setDecisionAction(action)
-    if (guide.active && guide.step === 4) setGuidePlanClicked(true)
     setSelectedPlan(action === 'CONTINUE_MONITORING' ? 'monitor' : action === 'SCHEDULE_MAINTENANCE' ? 'service' : 'inspect')
     logAction(`选择策略：${action === 'CONTINUE_MONITORING' ? '继续监测' : action === 'SCHEDULE_MAINTENANCE' ? '预防性维护' : '现场检查'}`)
   }
@@ -709,7 +706,6 @@ export default function App() {
     setGuideInitialTurbine(selectedId)
     setGuideOverviewSelected(false)
     setGuideOverviewTrend(false)
-    setGuidePlanClicked(false)
     setGuideMinimized(false)
     // Default placement follows the requested scene-center position: just
     // left of the inspector, clear of the scene title and right panel.
@@ -721,20 +717,13 @@ export default function App() {
     setGuide({ active: false, step: 0 })
     setGuideOverviewSelected(false)
     setGuideOverviewTrend(false)
-    setGuidePlanClicked(false)
     setGuideMinimized(false)
     localStorage.setItem('guideCompleted', 'true')
   }
-  // A card click is the meaningful user action. The selected plan may equal the
-  // initially recommended value, so comparing values alone can leave the button inert.
-  const guideDecisionChanged = guide.active && guide.step === 4 && guidePlanClicked && Boolean(decisionAction)
   const advanceGuide = () => {
     if (guide.active && guide.step === 1 && guideOverviewTrend) setGuide(state => ({ ...state, step: 2 }))
     else if (guide.active && guide.step === 2) setGuide(state => ({ ...state, step: 3 }))
     else if (guide.active && guide.step === 3) setGuide(state => ({ ...state, step: 4 }))
-  }
-  const confirmGuidePlan = () => {
-    if (guide.active && guide.step === 4 && guideDecisionChanged) setGuide(state => ({ ...state, step: 5 }))
   }
   const startGuideDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
     if ((event.target as HTMLElement).closest('button')) return
@@ -781,7 +770,7 @@ export default function App() {
         {selected && <>
            {view !== 'signal' && <><div className="selector-row"><div><span className="section-kicker">设备状态</span><h2>{selected.turbine_id} <span>{selected.name}</span></h2></div>{persistedSelected?.status === 'monitoring' ? <span className="status-badge status-low">⚠ 故障未处理 · 继续监测中</span> : selected.has_analysis === false ? <span className="status-badge status-neutral">暂无分析结果</span> : <StatusBadge level={serviced ? 'NORMAL' : selected.warning_level} />}</div><div className="turbine-tabs" data-guide-target="turbine-select" role="tablist" aria-label="选择风机">{sceneTurbines.map(t => <button role="tab" aria-selected={selectedId === t.turbine_id} className={selectedId === t.turbine_id ? 'selected' : ''} key={t.turbine_id} onClick={() => selectTurbine(t.turbine_id)}>{t.turbine_id}<i className={`level-${t.warning_level.toLowerCase()}`} /></button>)}</div></>}
            {view === 'overview' && <div className={`fault-callout ${selected.warning_level === 'NORMAL' || selected.event_name?.includes('正常') || selected.component_label?.includes('正常') || (selected.failure_risk < 0.5 && selected.anomaly_score < 0.5) ? 'normal' : ''}`} data-guide-target="overview-status" role="status"><div><span>当前诊断故障</span><strong>{selected.event_name || selected.component_label || '暂无明确故障'}</strong></div><div><span>疑似部件</span><b>{publicComponentLabel(selected.component_label)}</b></div><em>{selected.event_name?.includes('正常') || selected.component_label?.includes('正常') || (selected.failure_risk < 0.5 && selected.anomaly_score < 0.5) ? '当前信号处于正常区间' : selected.event_name ? '已与当前机组和诊断样本关联' : '当前信号处于正常区间'}</em></div>}
-           {view === 'signal' && <div className="signal-machine-switch"><div><span>信号诊断对象</span><strong>{selected.turbine_id} · {selected.name}</strong></div><div className="turbine-tabs signal-machine-tabs" role="tablist" aria-label="选择信号诊断风机">{sceneTurbines.map(t => <button role="tab" aria-selected={selectedId === t.turbine_id} key={t.turbine_id} className={selectedId === t.turbine_id ? 'selected' : ''} onClick={() => selectTurbine(t.turbine_id)}>{t.turbine_id}<i className={`level-${t.warning_level.toLowerCase()}`} /></button>)}</div></div>}
+           {view === 'signal' && <div className="signal-machine-switch" data-guide-target="signal-header"><div><span>信号诊断对象</span><strong>{selected.turbine_id} · {selected.name}</strong></div><div className="turbine-tabs signal-machine-tabs" role="tablist" aria-label="选择信号诊断风机">{sceneTurbines.map(t => <button role="tab" aria-selected={selectedId === t.turbine_id} key={t.turbine_id} className={selectedId === t.turbine_id ? 'selected' : ''} onClick={() => selectTurbine(t.turbine_id)}>{t.turbine_id}<i className={`level-${t.warning_level.toLowerCase()}`} /></button>)}</div></div>}
           {mode === 'demo' && view === 'demo' && <div className="demo-input-tabs" role="tablist" aria-label="演示来源"><button role="tab" aria-selected={demoInput === 'cases'} onClick={() => { setDemoInput('cases'); setFaultEventId(faultEventId) }}><Database size={14} />经典案例</button><button role="tab" aria-selected={demoInput === 'parameters'} onClick={() => setDemoInput('parameters')}><Settings2 size={14} />参数调节</button></div>}
 {mode === 'api' && view === 'signal' ? <div className="api-boundary">上方展示当前机组的实际诊断数据包。三维定位与维护方案沿用同一机组、部件和诊断记录；原始波形未诊断时不会生成故障结论。</div> : view === 'signal' && diagnosticRecord ? <SignalPanel turbine={selected} record={diagnosticRecord} onLocate={() => setEngineeringView(true)} onMaintenance={openMaintenance} /> : view === 'demo' ? demoInput === 'cases' ? <section className="demo-case-panel" aria-label="经典案例"><CareSelector value={faultEventId} turbineId={selectedId} onChange={setFaultEventId} />{selected.care_case && <CarePanel key={selected.care_case.sample_id} sample={selected.care_case} turbineId={selected.turbine_id} expanded />}<div className="info-section"><div className="section-title"><h3>{selected.trend_label}</h3><span>{selected.trend_unit}</span></div><Sparkline values={selected.trend} level={selected.warning_level} /></div></section> : <DemoPanel turbine={selected} params={diagnosticParams} diagnostic={diagnostic} displayLocation={faultLocation(inferenceCategory(diagnostic.location))} history={diagnosticHistory} onParamChange={updateDiagnosticParam} onReset={() => { setDiagnosticParams(defaultDiagnosticParams); setDiagnosticTouched(true) }} onLocate={() => { setDiagnosticTouched(true); setEngineeringView(true) }} /> : view === 'overview' ? <>
             {persistedSelected?.status === 'monitoring' && activeFault && <div className="monitoring-status-tag" role="status">⚠ 故障未处理 · 继续监测中</div>}
@@ -812,7 +801,6 @@ export default function App() {
             <div className="constraint-row"><div><CloudSun size={17} /><span>天气窗口 {weatherStatus}<small>{weatherClosed ? weatherReason : '当前窗口可用于评估，状态每 6 秒刷新'}</small></span></div><strong className={`weather-state ${weatherClosed ? 'closed' : weatherStatus.includes('即将') ? 'warning' : 'open'}`}>{weather.wind.toFixed(1)} m/s · 浪高 {weather.wave.toFixed(1)} m · 能见度 {weather.visibility.toFixed(1)} km</strong></div>
             <div className="section-title plan-title"><h3>可选方案</h3><span>{mode === 'demo' ? '规则演示 / 假设参数' : apiPlan ? `后端决策 · ${apiPlan.priority}` : '等待后端决策'}</span></div>
             <div className="plans" data-guide-target="plan-cards">{plans.map((p: MaintenancePlan, index) => { const metrics = planMetrics(p); return <details key={p.id} className={`plan-option ${plan.id === p.id ? 'selected' : ''} ${p.available === false ? 'locked' : ''}`} open={plan.id === p.id && p.available !== false} title={p.available === false ? p.action : undefined}><summary onClick={event => { event.preventDefault(); selectPlanCard(p) }}><span className="plan-radio">{plan.id === p.id && <span />}</span><span className="plan-copy"><strong>{String.fromCharCode(65 + index)} · {p.title}{p.recommended && <em>⭐ 推荐</em>}</strong><small><Clock3 size={13} /> {metrics.timing} · 恶化风险 {metrics.risk}</small><span>停机 {metrics.downtime} · 成本 {metrics.cost} · 发电损失 {metrics.loss}</span></span><ChevronDown size={15} /></summary><div className="plan-details"><p>{p.action}</p><small><ShieldCheck size={13} /> 安全提示：执行前确认人员、备件、天气窗口与停机许可。</small></div></details> })}</div>
-            {guide.active && guide.step === 4 && <button className="guide-complete guide-plan-confirm" disabled={!guideDecisionChanged} onClick={confirmGuidePlan}>确认选择，下一步</button>}
             <div className="decision-explanation"><strong>推荐方案说明</strong><span>{plan?.recommended ? `推荐 ${plan.title}：当前风险 ${(selected.failure_risk * 100).toFixed(0)}%，结合${conditionSummary}，选择该方案可在控制停机的同时降低故障恶化风险。` : '当前推荐方案受工程约束影响，系统已根据可用人员、备件和窗口动态调整。'}</span></div>
             {decisionFeedback && <div className="decision-feedback"><strong>决策反馈</strong><span>{decisionFeedback}</span></div>}
             <div className="plan-facts"><div><span>预计停机</span><strong>{plan.downtime}</strong></div><div><span>资源成本</span><strong>{plan.cost}</strong></div><div><span>风险水平</span><strong>{plan.risk}</strong></div></div>
