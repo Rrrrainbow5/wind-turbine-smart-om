@@ -397,10 +397,18 @@ export default function App() {
   useEffect(() => {
     setWeatherRestricted(weatherClosed)
   }, [weatherClosed])
-  const createRetestSnapshot = (improved: boolean): RetestSnapshot => {
+  const createRetestSnapshot = (improved: boolean, baseline = false): RetestSnapshot => {
     const monitoring = selectedPlan === 'monitor' || decisionAction === 'CONTINUE_MONITORING'
     const baseHealth = selected.health_index
     const baseRisk = selected.failure_risk
+    const isNormal = selected.warning_level === 'NORMAL' || selected.care_case?.prediction === 'healthy'
+    if (baseline || isNormal) return {
+      location: isNormal ? '正常运行' : selected.component_label,
+      confidence: isNormal ? 0 : baseRisk,
+      risk: baseRisk,
+      health: baseHealth,
+      conclusion: isNormal ? '当前模型预测正常，无需故障修复' : '维护前诊断基线',
+    }
     const risk = monitoring ? Math.min(.99, Math.max(baseRisk + .25, baseRisk * 1.8)) : improved ? .06 : Math.max(.12, baseRisk - .12)
     const health = monitoring ? Math.max(28, baseHealth - 14.8) : improved ? Math.max(86, Math.min(96, baseHealth + 27)) : Math.min(82, baseHealth + 8)
     return {
@@ -412,7 +420,7 @@ export default function App() {
     }
   }
 
-  const retestPassed = (snapshot: RetestSnapshot) => snapshot.confidence === 0 && snapshot.risk < .1 && snapshot.health > 85
+  const retestPassed = (snapshot: RetestSnapshot) => snapshot.location === '正常运行' || (snapshot.confidence === 0 && snapshot.risk < .1 && snapshot.health > 85)
 
   const updateDiagnosticParam = (key: keyof DiagnosticParams, value: number) => {
     const next = { ...diagnosticParams, [key]: value }
@@ -626,7 +634,7 @@ export default function App() {
 
   const executePlan = async () => {
     if (!selected) return
-    setBeforeRetest(createRetestSnapshot(false)); setAfterRetest(null); setError('')
+    setBeforeRetest(createRetestSnapshot(false, true)); setAfterRetest(null); setError('')
     if (mode === 'api') {
       if (!apiPlan) { setError('尚未生成可执行的维护方案。'); return }
       try {
@@ -742,7 +750,7 @@ export default function App() {
 
     <main className={`workspace workspace-${view} ${view === 'signal' ? 'workspace-signal' : view === 'demo' ? 'workspace-demo' : ''}`}>
       {guide.active && <div className="guide-overlay" aria-hidden="true" />}
-{guide.active && !guideMinimized && <div className={`guide-coach guide-coach-v2 ${guide.step === 4 ? 'guide-plan-step' : ''}`} style={guideBubbleStyle} role="dialog" aria-live="polite"><div className="guide-drag-handle" onPointerDown={startGuideDrag} onPointerMove={moveGuideDrag} onPointerUp={stopGuideDrag} onPointerCancel={stopGuideDrag}><strong>{guideRetestResult ? '第 3 步：查看执行与复测结果' : guideCopy[guide.step - 1][0]}</strong><span>拖动此处移动</span></div><button className="guide-minimize" aria-label="最小化引导" title="最小化" onClick={() => setGuideMinimized(true)}>—</button><p>{guideRetestResult ? retestPassed(afterRetest) ? '模拟方案已执行。对比右侧高亮区域的故障、风险和健康指数；复测通过后点击“确认修复完成”，记录维护闭环。' : '模拟方案已执行并完成复测。右侧高亮区域显示复测未达标，故障尚未消除，不能直接确认修复。请点击“修复未达标，需二次维护”，返回方案选择。' : guideCopy[guide.step - 1][1]}</p><div className="guide-actions">{guide.step === 2 && <button className="guide-next" onClick={advanceGuide}>查看结果，下一步</button>}{guide.step === 3 && <button className="guide-next" onClick={advanceGuide}>进入参数演示</button>}{guide.step === 4 && <button className="guide-next" onClick={closeGuide}>完成引导</button>}<button onClick={closeGuide}>跳过引导</button><button onClick={closeGuide}>关闭</button></div></div>}
+{guide.active && !guideMinimized && <div className={`guide-coach guide-coach-v2 ${guide.step === 4 ? 'guide-plan-step' : ''}`} style={guideBubbleStyle} role="dialog" aria-live="polite"><div className="guide-drag-handle" onPointerDown={startGuideDrag} onPointerMove={moveGuideDrag} onPointerUp={stopGuideDrag} onPointerCancel={stopGuideDrag}><strong>{guideRetestResult ? '第 3 步：查看执行与复测结果' : guideCopy[guide.step - 1][0]}</strong><span>拖动此处移动</span></div><button className="guide-minimize" aria-label="最小化引导" title="最小化" onClick={() => setGuideMinimized(true)}>—</button><p>{guideRetestResult ? beforeRetest?.location === '正常运行' ? '当前样本的模型预测为正常。右侧高亮区域展示执行前与复核后的同一状态；无需二次维护，请点击“确认正常，无需维护”。' : retestPassed(afterRetest) ? '模拟方案已执行。对比右侧高亮区域的故障、风险和健康指数；复测通过后点击“确认修复完成”，记录维护闭环。' : '模拟方案已执行并完成复测。右侧高亮区域显示复测未达标，故障尚未消除，不能直接确认修复。请点击“修复未达标，需二次维护”，返回方案选择。' : guideCopy[guide.step - 1][1]}</p><div className="guide-actions">{guide.step === 2 && <button className="guide-next" onClick={advanceGuide}>查看结果，下一步</button>}{guide.step === 3 && <button className="guide-next" onClick={advanceGuide}>进入参数演示</button>}{guide.step === 4 && <button className="guide-next" onClick={closeGuide}>完成引导</button>}<button onClick={closeGuide}>跳过引导</button><button onClick={closeGuide}>关闭</button></div></div>}
       {guide.active && guideMinimized && <button className="guide-pill" onClick={() => setGuideMinimized(false)}>💡 引导进行中</button>}
       <section className="scene-panel" aria-label="风电场三维场景">
         <div className="scene-heading"><div><div className="eyebrow"><MapPin size={13} /> 风电场数字场景</div><h1>风场运行总览</h1><p>选择风机，查看状态与维护决策</p></div><div className="scene-weather"><CloudSun size={19} /><span>演示天气 <small>{weatherStatus}</small></span><b>{weather.wind.toFixed(1)} m/s · 浪 {weather.wave.toFixed(1)} m · 能见度 {weather.visibility.toFixed(1)} km</b></div></div>
@@ -798,9 +806,9 @@ export default function App() {
             <div className="plan-facts"><div><span>预计停机</span><strong>{plan.downtime}</strong></div><div><span>资源成本</span><strong>{plan.cost}</strong></div><div><span>风险水平</span><strong>{plan.risk}</strong></div></div>
             {retestPhase === 'executing' && <div className="retest-progress-card"><strong>维护执行中，预计停机 {selectedPlan === 'service' ? '6' : '2'} 小时</strong><div className="retest-progress-track"><span style={{ width: `${retestProgress}%` }} /></div><small>{Math.round(retestProgress)}% · 请保持页面打开</small></div>}
             {retestPhase === 'retesting' && <div className="retest-progress-card"><strong>正在重新检测设备状态</strong><div className="retest-spinner" /><small>AI 正在重新推理传感器数据</small></div>}
-            {retestPhase === 'result' && beforeRetest && afterRetest && <div className="retest-result-card" data-guide-target="retest-result"><div className="retest-head"><span>修复前后复测对比</span><em>{afterRetest.conclusion}</em></div><div className="retest-compare"><div><small>修复前</small><strong>{beforeRetest.location}</strong><span>置信度 {(beforeRetest.confidence * 100).toFixed(0)}% · 风险 {beforeRetest.risk.toFixed(2)} · 健康 {beforeRetest.health.toFixed(1)}</span></div><ArrowRight size={18} /><div className={afterRetest.risk < beforeRetest.risk ? 'improved' : 'worsened'}><small>复测后</small><strong>{afterRetest.location}</strong><span>置信度 {(afterRetest.confidence * 100).toFixed(0)}% · 风险 {afterRetest.risk.toFixed(2)} · 健康 {afterRetest.health.toFixed(1)}</span></div></div><p className={afterRetest.risk > beforeRetest.risk ? 'retest-warning' : ''}>{afterRetest.conclusion}</p><div className="retest-actions"><button className="primary-action" disabled={!retestPassed(afterRetest)} title={retestPassed(afterRetest) ? '复测通过，可确认修复' : `当前故障仍未消除（置信度 ${(afterRetest.confidence * 100).toFixed(0)}%），请进行二次维护`} onClick={() => confirmRetest(true)}><Check size={16} /> 确认修复完成</button><button className="secondary-action" onClick={() => confirmRetest(false)}><AlertTriangle size={16} /> 修复未达标，需二次维护</button></div></div>}
+            {retestPhase === 'result' && beforeRetest && afterRetest && <div className="retest-result-card" data-guide-target="retest-result"><div className="retest-head"><span>{beforeRetest.location === '正常运行' ? '正常状态复核' : '修复前后复测对比'}</span><em>{afterRetest.conclusion}</em></div><div className="retest-compare"><div><small>{beforeRetest.location === '正常运行' ? '执行前' : '修复前'}</small><strong>{beforeRetest.location}</strong><span>置信度 {(beforeRetest.confidence * 100).toFixed(0)}% · 风险 {beforeRetest.risk.toFixed(2)} · 健康 {beforeRetest.health.toFixed(1)}</span></div><ArrowRight size={18} /><div className={retestPassed(afterRetest) ? 'improved' : 'worsened'}><small>{beforeRetest.location === '正常运行' ? '复核后' : '复测后'}</small><strong>{afterRetest.location}</strong><span>置信度 {(afterRetest.confidence * 100).toFixed(0)}% · 风险 {afterRetest.risk.toFixed(2)} · 健康 {afterRetest.health.toFixed(1)}</span></div></div><p className={afterRetest.risk > beforeRetest.risk ? 'retest-warning' : ''}>{afterRetest.conclusion}</p><div className="retest-actions"><button className="primary-action" disabled={!retestPassed(afterRetest)} title={retestPassed(afterRetest) ? '复测通过，可确认修复' : `当前故障仍未消除（置信度 ${(afterRetest.confidence * 100).toFixed(0)}%），请进行二次维护`} onClick={() => confirmRetest(true)}><Check size={16} /> {beforeRetest.location === '正常运行' ? '确认正常，无需维护' : '确认修复完成'}</button>{beforeRetest.location !== '正常运行' && <button className="secondary-action" onClick={() => confirmRetest(false)}><AlertTriangle size={16} /> 修复未达标，需二次维护</button>}</div></div>}
             {retestPhase === 'idle' && !serviced && <button className="primary-action" data-guide-target="execute-plan" disabled={loading || Boolean(planLockReason(decisionAction)) || (mode === 'api' && !apiPlan)} title={planLockReason(decisionAction)} onClick={executePlan}><Check size={17} /> {mode === 'api' ? '记录维护执行' : '模拟执行方案'} <ArrowRight size={17} /></button>}
-            {serviced && <div className="success-message"><Check size={17} /><div><strong>维护复测已确认</strong><span>设备状态已恢复正常，故障标记已清除。</span></div></div>}
+            {serviced && <div className="success-message"><Check size={17} /><div><strong>{beforeRetest?.location === '正常运行' ? '正常状态已确认' : '维护复测已确认'}</strong><span>{beforeRetest?.location === '正常运行' ? '当前模型预测正常，无需故障修复。' : '设备状态已恢复正常，故障标记已清除。'}</span></div></div>}
             <div className="log-panel"><div className="workbench-title"><h3>操作日志</h3><span>{activityLog.length} 条</span></div>{activityLog.length ? activityLog.map((item, i) => <div key={`${item}-${i}`}><Clock3 size={12} />{item}</div>) : <p>尚未进行工程操作</p>}</div>
             {mode === 'api' && (maintenanceRecordId || retestLoading) && <div className="retest-card"><div className="retest-head"><span>维护后复测</span><em>{retestLoading ? '查询中' : '复测记录'}</em></div>{retest ? <><div className="retest-values"><div><span>健康指数</span><strong>{retest.health_index.toFixed(1)}</strong></div><div><span>相对风险</span><strong>{retest.failure_risk.toFixed(3)}</strong></div></div><p>{retest.conclusion}</p><small>复测结果需结合现场检查确认。</small></> : <p>{retestLoading ? '正在查询复测记录...' : '待复测。当前没有后端复测结果。'}</p>}</div>}
             {mode === 'api' && maintenanceRecordId && <div><small>执行记录：{maintenanceRecordId} · 采集端通过 POST /api/retests 提交此记录的复测结果。</small><button className="secondary-action" disabled={retestLoading} onClick={() => void refreshRetests()}>同步现场复测结果</button></div>}
