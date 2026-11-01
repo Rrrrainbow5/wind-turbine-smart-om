@@ -259,6 +259,8 @@ export default function App() {
   const [showSources, setShowSources] = useState(false)
   const [guide, setGuide] = useState<GuideState>({ active: false, step: 0 })
   const [guideInitialTurbine, setGuideInitialTurbine] = useState('')
+  const [guideOverviewSelected, setGuideOverviewSelected] = useState(false)
+  const [guideOverviewTrend, setGuideOverviewTrend] = useState(false)
   const [guidePlanClicked, setGuidePlanClicked] = useState(false)
   const [guideBubbleStyle, setGuideBubbleStyle] = useState<CSSProperties>({})
   const [guideMinimized, setGuideMinimized] = useState(false)
@@ -497,7 +499,8 @@ export default function App() {
   }, [selectedId, turbineStates])
 
   useEffect(() => {
-    if (guide.active && guide.step === 1 && selectedId !== guideInitialTurbine) setGuide(state => ({ ...state, step: 2 }))
+    if (guide.active && guide.step === 1 && selectedId !== guideInitialTurbine) setGuideOverviewSelected(true)
+    if (guide.active && guide.step === 1 && view !== 'overview') setView('overview')
     if (guide.active && guide.step === 2 && view !== 'signal') setView('signal')
     if (guide.active && guide.step === 3 && view !== 'maintenance') setView('maintenance')
     if (guide.active && guide.step === 4 && view !== 'demo') setView('demo')
@@ -521,7 +524,7 @@ export default function App() {
   // Slider changes only reveal the completion button. They never advance the guide.
 
   useEffect(() => {
-    const targetName = guide.step === 1 ? 'turbine-select'
+    const targetName = guide.step === 1 ? guideOverviewTrend ? 'overview-trend' : guideOverviewSelected ? 'overview-status' : 'turbine-select'
       : guide.step === 2 ? 'signal-panel'
             : guide.step === 3 ? 'plan-cards'
               : guide.step === 4 ? 'slider-panel'
@@ -531,7 +534,11 @@ export default function App() {
       setGuideBubbleStyle({})
       return
     }
-    const selector = guide.step === 3
+    const selector = guide.step === 1 && guideOverviewTrend
+      ? '[data-guide-target="overview-trend"]'
+      : guide.step === 1 && guideOverviewSelected
+        ? '[data-guide-target="overview-status"], [data-guide-target="overview-health"], [data-guide-target="overview-metrics"]'
+      : guide.step === 3
       ? retestPhase === 'result'
         ? '[data-guide-target="retest-result"]'
         : '[data-guide-target="plan-cards"], .workbench-block, .constraint-row, .plan-title, .decision-explanation, [data-guide-target="execute-plan"]'
@@ -547,7 +554,7 @@ export default function App() {
       return () => {
         window.clearTimeout(timer)
       }
-  }, [guide.active, guide.step, view, retestPhase])
+  }, [guide.active, guide.step, guideOverviewSelected, guideOverviewTrend, view, retestPhase])
 
   const loadApiPlan = async (restricted: boolean, replan: boolean) => {
     if (!selected) return
@@ -700,6 +707,8 @@ export default function App() {
   const guideRetestResult = guide.step === 3 && retestPhase === 'result' && afterRetest
   const startGuide = () => {
     setGuideInitialTurbine(selectedId)
+    setGuideOverviewSelected(false)
+    setGuideOverviewTrend(false)
     setGuidePlanClicked(false)
     setGuideMinimized(false)
     // Default placement follows the requested scene-center position: just
@@ -710,6 +719,8 @@ export default function App() {
   const closeGuide = () => {
     document.querySelectorAll('.guide-target-highlight').forEach(element => element.classList.remove('guide-target-highlight'))
     setGuide({ active: false, step: 0 })
+    setGuideOverviewSelected(false)
+    setGuideOverviewTrend(false)
     setGuidePlanClicked(false)
     setGuideMinimized(false)
     localStorage.setItem('guideCompleted', 'true')
@@ -718,7 +729,8 @@ export default function App() {
   // initially recommended value, so comparing values alone can leave the button inert.
   const guideDecisionChanged = guide.active && guide.step === 4 && guidePlanClicked && Boolean(decisionAction)
   const advanceGuide = () => {
-    if (guide.active && guide.step === 2) setGuide(state => ({ ...state, step: 3 }))
+    if (guide.active && guide.step === 1 && guideOverviewTrend) setGuide(state => ({ ...state, step: 2 }))
+    else if (guide.active && guide.step === 2) setGuide(state => ({ ...state, step: 3 }))
     else if (guide.active && guide.step === 3) setGuide(state => ({ ...state, step: 4 }))
   }
   const confirmGuidePlan = () => {
@@ -750,7 +762,7 @@ export default function App() {
 
     <main className={`workspace workspace-${view} ${view === 'signal' ? 'workspace-signal' : view === 'demo' ? 'workspace-demo' : ''}`}>
       {guide.active && <div className="guide-overlay" aria-hidden="true" />}
-{guide.active && !guideMinimized && <div className={`guide-coach guide-coach-v2 ${guide.step === 4 ? 'guide-plan-step' : ''}`} style={guideBubbleStyle} role="dialog" aria-live="polite"><div className="guide-drag-handle" onPointerDown={startGuideDrag} onPointerMove={moveGuideDrag} onPointerUp={stopGuideDrag} onPointerCancel={stopGuideDrag}><strong>{guideRetestResult ? '第 3 步：查看执行与复测结果' : guideCopy[guide.step - 1][0]}</strong><span>拖动此处移动</span></div><button className="guide-minimize" aria-label="最小化引导" title="最小化" onClick={() => setGuideMinimized(true)}>—</button><p>{guideRetestResult ? beforeRetest?.location === '正常运行' ? '当前样本的模型预测为正常。右侧高亮区域展示执行前与复核后的同一状态；无需二次维护，请点击“确认正常，无需维护”。' : retestPassed(afterRetest) ? '模拟方案已执行。对比右侧高亮区域的故障、风险和健康指数；复测通过后点击“确认修复完成”，记录维护闭环。' : '模拟方案已执行并完成复测。右侧高亮区域显示复测未达标，故障尚未消除，不能直接确认修复。请点击“修复未达标，需二次维护”，返回方案选择。' : guideCopy[guide.step - 1][1]}</p><div className="guide-actions">{guide.step === 2 && <button className="guide-next" onClick={advanceGuide}>查看结果，下一步</button>}{guide.step === 3 && <button className="guide-next" onClick={advanceGuide}>进入参数演示</button>}{guide.step === 4 && <button className="guide-next" onClick={closeGuide}>完成引导</button>}<button onClick={closeGuide}>跳过引导</button><button onClick={closeGuide}>关闭</button></div></div>}
+{guide.active && !guideMinimized && <div className={`guide-coach guide-coach-v2 ${guide.step === 4 ? 'guide-plan-step' : ''}`} style={guideBubbleStyle} role="dialog" aria-live="polite"><div className="guide-drag-handle" onPointerDown={startGuideDrag} onPointerMove={moveGuideDrag} onPointerUp={stopGuideDrag} onPointerCancel={stopGuideDrag}><strong>{guideRetestResult ? '第 3 步：查看执行与复测结果' : guide.step === 1 && guideOverviewTrend ? '第 1 步：查看传感器趋势' : guide.step === 1 && guideOverviewSelected ? '第 1 步：读取机组状态' : guideCopy[guide.step - 1][0]}</strong><span>拖动此处移动</span></div><button className="guide-minimize" aria-label="最小化引导" title="最小化" onClick={() => setGuideMinimized(true)}>—</button><p>{guideRetestResult ? beforeRetest?.location === '正常运行' ? '当前样本的模型预测为正常。右侧高亮区域展示执行前与复核后的同一状态；无需二次维护，请点击“确认正常，无需维护”。' : retestPassed(afterRetest) ? '模拟方案已执行。对比右侧高亮区域的故障、风险和健康指数；复测通过后点击“确认修复完成”，记录维护闭环。' : '模拟方案已执行并完成复测。右侧高亮区域显示复测未达标，故障尚未消除，不能直接确认修复。请点击“修复未达标，需二次维护”，返回方案选择。' : guide.step === 1 && guideOverviewTrend ? `这里是 ${selectedId} 同一样本的传感器趋势，可结合上方诊断故障、健康指数和风险评分判断状态变化；具体采集字段和处理过程在下一步信号诊断中查看。` : guide.step === 1 && guideOverviewSelected ? `当前选中 ${selectedId}。先看诊断故障与疑似部件，再看健康指数、异常与风险评分、当前功率和风速。风险分数用于比较，不等同于已校准的故障概率。` : guideCopy[guide.step - 1][1]}</p><div className="guide-actions">{guide.step === 1 && guideOverviewSelected && !guideOverviewTrend && <button className="guide-next" onClick={() => setGuideOverviewTrend(true)}>查看下方趋势</button>}{guide.step === 1 && guideOverviewTrend && <button className="guide-next" onClick={advanceGuide}>查看信号诊断，下一步</button>}{guide.step === 2 && <button className="guide-next" onClick={advanceGuide}>查看结果，下一步</button>}{guide.step === 3 && <button className="guide-next" onClick={advanceGuide}>进入参数演示</button>}{guide.step === 4 && <button className="guide-next" onClick={closeGuide}>完成引导</button>}<button onClick={closeGuide}>跳过引导</button><button onClick={closeGuide}>关闭</button></div></div>}
       {guide.active && guideMinimized && <button className="guide-pill" onClick={() => setGuideMinimized(false)}>💡 引导进行中</button>}
       <section className="scene-panel" aria-label="风电场三维场景">
         <div className="scene-heading"><div><div className="eyebrow"><MapPin size={13} /> 风电场数字场景</div><h1>风场运行总览</h1><p>选择风机，查看状态与维护决策</p></div><div className="scene-weather"><CloudSun size={19} /><span>演示天气 <small>{weatherStatus}</small></span><b>{weather.wind.toFixed(1)} m/s · 浪 {weather.wave.toFixed(1)} m · 能见度 {weather.visibility.toFixed(1)} km</b></div></div>
@@ -768,14 +780,14 @@ export default function App() {
         {!loading && !selected && <div className="empty-state"><Server size={28} /><h2>等待后端数据</h2><p>请确认 FastAPI 服务与风机接口可用，或切换至演示模式。</p><button onClick={() => setMode('demo')}>返回演示模式</button></div>}
         {selected && <>
            {view !== 'signal' && <><div className="selector-row"><div><span className="section-kicker">设备状态</span><h2>{selected.turbine_id} <span>{selected.name}</span></h2></div>{persistedSelected?.status === 'monitoring' ? <span className="status-badge status-low">⚠ 故障未处理 · 继续监测中</span> : selected.has_analysis === false ? <span className="status-badge status-neutral">暂无分析结果</span> : <StatusBadge level={serviced ? 'NORMAL' : selected.warning_level} />}</div><div className="turbine-tabs" data-guide-target="turbine-select" role="tablist" aria-label="选择风机">{sceneTurbines.map(t => <button role="tab" aria-selected={selectedId === t.turbine_id} className={selectedId === t.turbine_id ? 'selected' : ''} key={t.turbine_id} onClick={() => selectTurbine(t.turbine_id)}>{t.turbine_id}<i className={`level-${t.warning_level.toLowerCase()}`} /></button>)}</div></>}
-           {view === 'overview' && <div className={`fault-callout ${selected.warning_level === 'NORMAL' || selected.event_name?.includes('正常') || selected.component_label?.includes('正常') || (selected.failure_risk < 0.5 && selected.anomaly_score < 0.5) ? 'normal' : ''}`} role="status"><div><span>当前诊断故障</span><strong>{selected.event_name || selected.component_label || '暂无明确故障'}</strong></div><div><span>疑似部件</span><b>{publicComponentLabel(selected.component_label)}</b></div><em>{selected.event_name?.includes('正常') || selected.component_label?.includes('正常') || (selected.failure_risk < 0.5 && selected.anomaly_score < 0.5) ? '当前信号处于正常区间' : selected.event_name ? '已与当前机组和诊断样本关联' : '当前信号处于正常区间'}</em></div>}
+           {view === 'overview' && <div className={`fault-callout ${selected.warning_level === 'NORMAL' || selected.event_name?.includes('正常') || selected.component_label?.includes('正常') || (selected.failure_risk < 0.5 && selected.anomaly_score < 0.5) ? 'normal' : ''}`} data-guide-target="overview-status" role="status"><div><span>当前诊断故障</span><strong>{selected.event_name || selected.component_label || '暂无明确故障'}</strong></div><div><span>疑似部件</span><b>{publicComponentLabel(selected.component_label)}</b></div><em>{selected.event_name?.includes('正常') || selected.component_label?.includes('正常') || (selected.failure_risk < 0.5 && selected.anomaly_score < 0.5) ? '当前信号处于正常区间' : selected.event_name ? '已与当前机组和诊断样本关联' : '当前信号处于正常区间'}</em></div>}
            {view === 'signal' && <div className="signal-machine-switch"><div><span>信号诊断对象</span><strong>{selected.turbine_id} · {selected.name}</strong></div><div className="turbine-tabs signal-machine-tabs" role="tablist" aria-label="选择信号诊断风机">{sceneTurbines.map(t => <button role="tab" aria-selected={selectedId === t.turbine_id} key={t.turbine_id} className={selectedId === t.turbine_id ? 'selected' : ''} onClick={() => selectTurbine(t.turbine_id)}>{t.turbine_id}<i className={`level-${t.warning_level.toLowerCase()}`} /></button>)}</div></div>}
           {mode === 'demo' && view === 'demo' && <div className="demo-input-tabs" role="tablist" aria-label="演示来源"><button role="tab" aria-selected={demoInput === 'cases'} onClick={() => { setDemoInput('cases'); setFaultEventId(faultEventId) }}><Database size={14} />经典案例</button><button role="tab" aria-selected={demoInput === 'parameters'} onClick={() => setDemoInput('parameters')}><Settings2 size={14} />参数调节</button></div>}
 {mode === 'api' && view === 'signal' ? <div className="api-boundary">上方展示当前机组的实际诊断数据包。三维定位与维护方案沿用同一机组、部件和诊断记录；原始波形未诊断时不会生成故障结论。</div> : view === 'signal' && diagnosticRecord ? <SignalPanel turbine={selected} record={diagnosticRecord} onLocate={() => setEngineeringView(true)} onMaintenance={openMaintenance} /> : view === 'demo' ? demoInput === 'cases' ? <section className="demo-case-panel" aria-label="经典案例"><CareSelector value={faultEventId} turbineId={selectedId} onChange={setFaultEventId} />{selected.care_case && <CarePanel key={selected.care_case.sample_id} sample={selected.care_case} turbineId={selected.turbine_id} expanded />}<div className="info-section"><div className="section-title"><h3>{selected.trend_label}</h3><span>{selected.trend_unit}</span></div><Sparkline values={selected.trend} level={selected.warning_level} /></div></section> : <DemoPanel turbine={selected} params={diagnosticParams} diagnostic={diagnostic} displayLocation={faultLocation(inferenceCategory(diagnostic.location))} history={diagnosticHistory} onParamChange={updateDiagnosticParam} onReset={() => { setDiagnosticParams(defaultDiagnosticParams); setDiagnosticTouched(true) }} onLocate={() => { setDiagnosticTouched(true); setEngineeringView(true) }} /> : view === 'overview' ? <>
             {persistedSelected?.status === 'monitoring' && activeFault && <div className="monitoring-status-tag" role="status">⚠ 故障未处理 · 继续监测中</div>}
-            <div className="reading-primary"><div className="reading-label"><Gauge size={18} /> 健康指数 <span title="与信号诊断共享同一 diagnosis_id">ⓘ</span></div><div className="reading-number">{selected.has_analysis === false ? '--' : serviced ? '待复测' : selected.health_index.toFixed(1)}{selected.has_analysis !== false && !serviced && <small>/ 100</small>}</div><div className="meter"><span style={{ width: selected.has_analysis === false || serviced ? '0%' : `${selected.health_index}%` }} className={selected.warning_level === 'NORMAL' || selected.event_name === '正常运行' ? 'meter-normal' : selected.health_index < 70 ? 'meter-risk' : selected.health_index < 85 ? 'meter-warning' : 'meter-normal'} /></div><p>{selected.has_analysis === false ? '后端尚无该部件的 AI 分析结果。' : serviced ? '维护执行已记录，设备健康状态应由复测数据确认。' : selected.warning_level === 'HIGH' ? '状态持续偏离正常区间，建议进入维护评估。' : '当前状态以信号诊断结果为准。'}</p><small className="record-link">诊断记录 {diagnosticRecord?.diagnosisId} · 样本 {diagnosticRecord?.sampleId}</small></div>
-            <div className="metric-grid"><div><span>异常分数</span><strong>{selected.has_analysis === false ? '--' : selected.anomaly_score.toFixed(2)}</strong><small>模型输出</small></div><div><span>风险评分</span><strong>{selected.has_analysis === false ? '--' : selected.failure_risk.toFixed(2)}</strong><small>0-1 指标，非校准概率</small></div><div><span>当前功率</span><strong>{selected.power_kw !== 0 ? selected.power_kw.toLocaleString() : '--'}<em> kW</em></strong><small>{selected.power_kw !== 0 ? '运行记录' : '未提供'}</small></div><div><span>风速</span><strong>{selected.wind_ms !== 0 ? selected.wind_ms : '--'}<em> m/s</em></strong><small>{selected.wind_ms !== 0 ? '运行记录' : '未提供'}</small></div></div>
-            <div className="info-section"><div className="section-title"><h3>{selected.trend_label || '传感器趋势'}</h3><span>{selected.trend_unit || 'CARE telemetry'}</span></div><Sparkline values={selected.trend} level={selected.warning_level} /></div>
+            <div className="reading-primary" data-guide-target="overview-health"><div className="reading-label"><Gauge size={18} /> 健康指数 <span title="与信号诊断共享同一 diagnosis_id">ⓘ</span></div><div className="reading-number">{selected.has_analysis === false ? '--' : serviced ? '待复测' : selected.health_index.toFixed(1)}{selected.has_analysis !== false && !serviced && <small>/ 100</small>}</div><div className="meter"><span style={{ width: selected.has_analysis === false || serviced ? '0%' : `${selected.health_index}%` }} className={selected.warning_level === 'NORMAL' || selected.event_name === '正常运行' ? 'meter-normal' : selected.health_index < 70 ? 'meter-risk' : selected.health_index < 85 ? 'meter-warning' : 'meter-normal'} /></div><p>{selected.has_analysis === false ? '后端尚无该部件的 AI 分析结果。' : serviced ? '维护执行已记录，设备健康状态应由复测数据确认。' : selected.warning_level === 'HIGH' ? '状态持续偏离正常区间，建议进入维护评估。' : '当前状态以信号诊断结果为准。'}</p><small className="record-link">诊断记录 {diagnosticRecord?.diagnosisId} · 样本 {diagnosticRecord?.sampleId}</small></div>
+            <div className="metric-grid" data-guide-target="overview-metrics"><div><span>异常分数</span><strong>{selected.has_analysis === false ? '--' : selected.anomaly_score.toFixed(2)}</strong><small>模型输出</small></div><div><span>风险评分</span><strong>{selected.has_analysis === false ? '--' : selected.failure_risk.toFixed(2)}</strong><small>0-1 指标，非校准概率</small></div><div><span>当前功率</span><strong>{selected.power_kw !== 0 ? selected.power_kw.toLocaleString() : '--'}<em> kW</em></strong><small>{selected.power_kw !== 0 ? '运行记录' : '未提供'}</small></div><div><span>风速</span><strong>{selected.wind_ms !== 0 ? selected.wind_ms : '--'}<em> m/s</em></strong><small>{selected.wind_ms !== 0 ? '运行记录' : '未提供'}</small></div></div>
+            <div className="info-section" data-guide-target="overview-trend"><div className="section-title"><h3>{selected.trend_label || '传感器趋势'}</h3><span>{selected.trend_unit || 'CARE telemetry'}</span></div><Sparkline values={selected.trend} level={selected.warning_level} /></div>
           <section className="ai-workbench" data-guide-target="slider-panel" aria-label="实时AI故障检测"><div className="workbench-title"><h3><Activity size={15} /> 实时 AI 故障检测</h3><span className="simulated-tag">拖动即推理</span></div><div className="diagnostic-layout"><div className="diagnostic-controls">{diagnosticFields.map(field => <label className="diagnostic-slider" key={field.key}><span><b>{field.label}</b><em>{diagnosticParams[field.key].toFixed(field.step < 1 ? 1 : 0)} {field.unit}</em></span><input style={{ '--slider-color': sliderTint(field, diagnosticParams[field.key]) } as CSSProperties} type="range" min={field.min} max={field.max} step={field.step} value={diagnosticParams[field.key]} onChange={event => updateDiagnosticParam(field.key, Number(event.target.value))} /><small>安全范围 {field.normal[0]}–{field.normal[1]} {field.unit}</small></label>)}<button className="reset-diagnostic" onClick={() => setDiagnosticParams(defaultDiagnosticParams)}><RotateCcw size={14} /> 一键重置参数</button></div><div className="diagnostic-result"><div className="ai-status-line"><span className={`ai-pulse ${diagnostic.level.toLowerCase()}`} />AI 推理完成 <StatusBadge level={diagnostic.level} /></div><DiagnosticDiagram location={displayLocation} risk={diagnostic.risk} /><div className="diagnostic-summary"><strong>{displayLocation}</strong><span>置信度 {(diagnostic.risk * 100).toFixed(0)}% · 风险评分 {diagnostic.risk.toFixed(2)}</span><button className="locate-fault" onClick={() => setEngineeringView(true)}><Eye size={13} /> 在三维中定位</button></div><ConfidenceBars scores={diagnostic.scores} /></div></div><div className="diagnostic-history"><div><strong><History size={14} /> 最近检测</strong><span>{diagnosticHistory.length ? `${diagnosticHistory.length} 条` : '暂无记录'}</span></div>{diagnosticHistory.slice(0, 3).map(item => <span key={`${item.at}-${item.risk}`}>{item.at} · {item.location} · ${(item.risk * 100).toFixed(0)}%</span>)}</div></section>
           <div className="component-line"><div className="component-symbol"><Settings2 size={18} /></div><div><strong>{publicComponentLabel(selected.component_label)}</strong><span>{selected.component_id} · {selected.event_name || '后端部件记录'}</span></div><ChevronDown size={17} /></div>
             <div className="overview-actions"><button className="secondary-action" onClick={() => setView('signal')}><Activity size={16} /> 查看信号诊断 <ArrowRight size={16} /></button><button className="primary-action" data-guide-target="enter-maintenance" disabled={!activeFault} title={!activeFault ? '当前设备无激活故障，无需维护' : '查看维护方案'} onClick={openMaintenance}><Wrench size={17} /> {activeFault ? '查看维护方案' : '设备正常，无需维护'} {activeFault && <ArrowRight size={17} />}</button></div>
