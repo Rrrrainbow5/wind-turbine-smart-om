@@ -545,7 +545,7 @@ export default function App() {
           ? '[data-guide-target="retest-result"], [data-guide-target="plan-cards"]'
         : '[data-guide-target="plan-cards"], .workbench-block, .constraint-row, .plan-title, .decision-explanation, [data-guide-target="execute-plan"]'
       : guide.step === 4
-        ? '[data-guide-target="slider-panel"], .demo-event-selector'
+        ? '.demo-input-tabs, [data-guide-target="slider-panel"]'
         : `[data-guide-target="${targetName}"]`
     const targets = Array.from(document.querySelectorAll(selector)) as HTMLElement[]
     if (!targets.length) return
@@ -701,7 +701,7 @@ export default function App() {
     ['第 1 步：选择风机', '点击风机编号，查看这台风机的运行状态、风险等级和当前故障部件。'],
     ['第 2 步：查看信号诊断', '先查看本次分析使用的信号和数据来源，再依次了解质量检查、预处理、特征计算和模型推理，最后查看诊断结论。'],
     ['第 3 步：维护决策', '现在进入维护决策：先查看异常证据、传感器趋势和历史记录，再核对人员、备件、天气窗口、停机许可与吊装资源，最后比较继续监测、现场检查和计划维护方案。确认方案后记录执行状态，并进入维修后复测。'],
-    ['第 4 步：参数演示', '拖动参数，查看仿真工况的变化。'],
+    ['第 4 步：参数演示', '这里有两种演示方式：选择“经典案例”可加载预设故障样本，查看对应的诊断证据；选择“参数调节”可拖动五类传感器参数，实时观察故障位置、风险等级和三维定位如何变化。'],
   ] as const
   const guideRetestResult = guide.step === 3 && retestPhase === 'result' && afterRetest
   const guideRetestRetry = guide.step === 3 && retestPhase === 'idle' && maintenanceAttempts > 0 && !serviced
