@@ -91,7 +91,7 @@ function SignalPanel({ turbine, record, onLocate, onMaintenance }: { turbine: Tu
     ['峰峰值', (.42 + severity * .48).toFixed(2), 'g'], ['峰值因子', (2.6 + severity * 1.2).toFixed(2), ''],
   ] : [['均值', '--', ''], ['标准差', '--', ''], ['RMS', '--', ''], ['峭度', '--', ''], ['峰峰值', '--', ''], ['峰值因子', '--', '']]
   return <div className="signal-panel-blue" data-guide-target="signal-panel">
-    <div className="signal-panel-head"><div><span className="section-kicker">SIGNAL DIAGNOSTICS · v0.2</span><h2>信号诊断</h2><p>{turbine.turbine_id} · {record.component}</p></div><span className="signal-sample"><Database size={13} /> {record.sampleId}<small>{record.modelVersion}</small></span></div>
+    <div className="signal-panel-head" data-guide-target="signal-start"><div><span className="section-kicker">SIGNAL DIAGNOSTICS · v0.2</span><h2>信号诊断</h2><p>{turbine.turbine_id} · {record.component}</p></div><span className="signal-sample"><Database size={13} /> {record.sampleId}<small>{record.modelVersion}</small></span></div>
     <div className="signal-boundary"><Radio size={14} /> {record.source === 'SIMULATED' ? '当前为参数规则模拟；波形和统计量用于演示，不是真实采集信号或模型预测。' : '当前为已登记样本，原始通道与诊断结果仍需后端核验。'}</div>
     <div className="signal-steps">{record.stages.map((stage, index) => <span key={stage.key} className={stage.status === 'available' ? 'active' : stage.status === 'pending' ? 'pending' : ''}>{String(index + 1).padStart(2, '0')} {stage.label}</span>).reduce<ReactNode[]>((items, item, index, all) => index < all.length - 1 ? [...items, item, <i key={`line-${index}`} />] : [...items, item], [])}</div>
     <div className="signal-source-card"><div className="signal-card-title"><strong>当前样本输入</strong><span>sample_id 一一对应</span></div><div className="signal-source-grid"><div><span>风机 / 部件</span><strong>{record.turbineId} · {record.component}</strong></div><div><span>数据类型</span><strong>风机状态监测数据</strong></div><div><span>处理状态</span><strong>{record.source === 'SIMULATED' ? '分析流程已完成' : '等待原始通道接入'}</strong></div><div><span>诊断结果</span><strong>风险 {record.risk.toFixed(2)} · 健康 {record.health.toFixed(1)}</strong></div></div>{record.source === 'SIMULATED' ? <div className="signal-wave-mini"><span />{Array.from({ length: 48 }, (_, i) => <i key={i} style={{ height: `${18 + ((i * 19 + Math.round(severity * 40)) % 65)}%` }} />)}</div> : <div className="signal-wave-empty">暂无高采样率原始波形<br /><small>当前聚合数据不直接生成 FFT / STFT 频谱</small></div>}<small className="signal-caption">{record.source === 'SIMULATED' ? '规则模拟样本 · 波形为示意图' : '聚合数据记录 · 等待原始通道接入'}</small></div>
@@ -523,7 +523,7 @@ export default function App() {
 
   useEffect(() => {
     const targetName = guide.step === 1 ? guideOverviewTrend ? 'overview-trend' : guideOverviewSelected ? 'overview-status' : 'turbine-select'
-      : guide.step === 2 ? 'signal-header'
+      : guide.step === 2 ? 'signal-start'
             : guide.step === 3 ? 'plan-cards'
               : guide.step === 4 ? 'slider-panel'
             : guide.step === 5 ? 'slider-panel' : ''
@@ -540,18 +540,15 @@ export default function App() {
       ? retestPhase === 'result'
         ? '[data-guide-target="retest-result"]'
         : maintenanceAttempts > 0 && retestPhase === 'idle' && !serviced
-          ? '[data-guide-target="retest-summary"], [data-guide-target="plan-cards"]'
+          ? '[data-guide-target="retest-result"], [data-guide-target="plan-cards"]'
         : '[data-guide-target="plan-cards"], .workbench-block, .constraint-row, .plan-title, .decision-explanation, [data-guide-target="execute-plan"]'
       : guide.step === 4
         ? '[data-guide-target="slider-panel"], .demo-event-selector'
         : `[data-guide-target="${targetName}"]`
     const targets = Array.from(document.querySelectorAll(selector)) as HTMLElement[]
     if (!targets.length) return
-      if (guide.step === 2) {
-        document.querySelector('.inspector')?.scrollTo({ top: 0, behavior: 'auto' })
-      } else {
-        targets[0].scrollIntoView({ behavior: 'smooth', block: 'center' })
-      }
+      if (guide.step === 3 && (retestPhase === 'executing' || retestPhase === 'retesting')) return
+      targets[0].scrollIntoView({ behavior: guide.step === 2 ? 'auto' : 'smooth', block: guide.step === 2 ? 'start' : 'center' })
       const timer = window.setTimeout(() => {
         targets.forEach(target => target.classList.add('guide-target-highlight'))
       }, 150)
@@ -810,8 +807,7 @@ export default function App() {
             <div className="plan-facts"><div><span>预计停机</span><strong>{plan.downtime}</strong></div><div><span>资源成本</span><strong>{plan.cost}</strong></div><div><span>风险水平</span><strong>{plan.risk}</strong></div></div>
             {retestPhase === 'executing' && <div className="retest-progress-card"><strong>维护执行中，预计停机 {selectedPlan === 'service' ? '6' : '2'} 小时</strong><div className="retest-progress-track"><span style={{ width: `${retestProgress}%` }} /></div><small>{Math.round(retestProgress)}% · 请保持页面打开</small></div>}
             {retestPhase === 'retesting' && <div className="retest-progress-card"><strong>正在重新检测设备状态</strong><div className="retest-spinner" /><small>AI 正在重新推理传感器数据</small></div>}
-            {retestPhase === 'result' && beforeRetest && afterRetest && <div className="retest-result-card" data-guide-target="retest-result"><div className="retest-head"><span>{beforeRetest.location === '正常运行' ? '正常状态复核' : '修复前后复测对比'}</span><em>{afterRetest.conclusion}</em></div><div className="retest-compare"><div><small>{beforeRetest.location === '正常运行' ? '执行前' : '修复前'}</small><strong>{beforeRetest.location}</strong><span>置信度 {(beforeRetest.confidence * 100).toFixed(0)}% · 风险 {beforeRetest.risk.toFixed(2)} · 健康 {beforeRetest.health.toFixed(1)}</span></div><ArrowRight size={18} /><div className={retestPassed(afterRetest) ? 'improved' : 'worsened'}><small>{beforeRetest.location === '正常运行' ? '复核后' : '复测后'}</small><strong>{afterRetest.location}</strong><span>置信度 {(afterRetest.confidence * 100).toFixed(0)}% · 风险 {afterRetest.risk.toFixed(2)} · 健康 {afterRetest.health.toFixed(1)}</span></div></div><p className={afterRetest.risk > beforeRetest.risk ? 'retest-warning' : ''}>{afterRetest.conclusion}</p><div className="retest-actions"><button className="primary-action" disabled={!retestPassed(afterRetest)} title={retestPassed(afterRetest) ? '复测通过，可确认修复' : `当前故障仍未消除（置信度 ${(afterRetest.confidence * 100).toFixed(0)}%），请进行二次维护`} onClick={() => confirmRetest(true)}><Check size={16} /> {beforeRetest.location === '正常运行' ? '确认正常，无需维护' : '确认修复完成'}</button>{beforeRetest.location !== '正常运行' && <button className="secondary-action" onClick={() => confirmRetest(false)}><AlertTriangle size={16} /> 修复未达标，需二次维护</button>}</div></div>}
-            {mode === 'demo' && retestPhase === 'idle' && maintenanceAttempts > 0 && afterRetest && <div className="retest-result-card retest-retry-summary" data-guide-target="retest-summary"><div className="retest-head"><span>上次复测未通过 · 第 {maintenanceAttempts} 次</span><em>{afterRetest.conclusion}</em></div><p>故障 {afterRetest.location} · 风险 {afterRetest.risk.toFixed(2)} · 健康 {afterRetest.health.toFixed(1)}。{maintenanceAttempts >= 2 ? '请人工复核并评估更换部件，避免重复执行同一方案。' : '请核对上方工程条件，选择更合适的方案后再次执行。'}</p></div>}
+            {(retestPhase === 'result' || (mode === 'demo' && retestPhase === 'idle' && maintenanceAttempts > 0)) && beforeRetest && afterRetest && <div className="retest-result-card" data-guide-target="retest-result"><div className="retest-head"><span>{beforeRetest.location === '正常运行' ? '正常状态复核' : '修复前后复测对比'}</span><em>{afterRetest.conclusion}</em></div><div className="retest-compare"><div><small>{beforeRetest.location === '正常运行' ? '执行前' : '修复前'}</small><strong>{beforeRetest.location}</strong><span>置信度 {(beforeRetest.confidence * 100).toFixed(0)}% · 风险 {beforeRetest.risk.toFixed(2)} · 健康 {beforeRetest.health.toFixed(1)}</span></div><ArrowRight size={18} /><div className={retestPassed(afterRetest) ? 'improved' : 'worsened'}><small>{beforeRetest.location === '正常运行' ? '复核后' : '复测后'}</small><strong>{afterRetest.location}</strong><span>置信度 {(afterRetest.confidence * 100).toFixed(0)}% · 风险 {afterRetest.risk.toFixed(2)} · 健康 {afterRetest.health.toFixed(1)}</span></div></div><p className={afterRetest.risk > beforeRetest.risk ? 'retest-warning' : ''}>{afterRetest.conclusion}</p>{retestPhase === 'result' && <div className="retest-actions"><button className="primary-action" disabled={!retestPassed(afterRetest)} title={retestPassed(afterRetest) ? '复测通过，可确认修复' : `当前故障仍未消除（置信度 ${(afterRetest.confidence * 100).toFixed(0)}%），请进行二次维护`} onClick={() => confirmRetest(true)}><Check size={16} /> {beforeRetest.location === '正常运行' ? '确认正常，无需维护' : '确认修复完成'}</button>{beforeRetest.location !== '正常运行' && <button className="secondary-action" onClick={() => confirmRetest(false)}><AlertTriangle size={16} /> 修复未达标，需二次维护</button>}</div>}</div>}
             {retestPhase === 'idle' && !serviced && <button className="primary-action" data-guide-target="execute-plan" disabled={loading || Boolean(planLockReason(decisionAction)) || (mode === 'api' && !apiPlan)} title={planLockReason(decisionAction)} onClick={executePlan}><Check size={17} /> {mode === 'api' ? '记录维护执行' : '模拟执行方案'} <ArrowRight size={17} /></button>}
             {serviced && <div className="success-message"><Check size={17} /><div><strong>{beforeRetest?.location === '正常运行' ? '正常状态已确认' : '维护复测已确认'}</strong><span>{beforeRetest?.location === '正常运行' ? '当前模型预测正常，无需故障修复。' : '设备状态已恢复正常，故障标记已清除。'}</span></div></div>}
             <div className="log-panel"><div className="workbench-title"><h3>操作日志</h3><span>{activityLog.length} 条</span></div>{activityLog.length ? activityLog.map((item, i) => <div key={`${item}-${i}`}><Clock3 size={12} />{item}</div>) : <p>尚未进行工程操作</p>}</div>
