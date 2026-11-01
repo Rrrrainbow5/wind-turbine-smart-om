@@ -545,7 +545,7 @@ export default function App() {
           ? '[data-guide-target="retest-result"], [data-guide-target="plan-cards"]'
         : '[data-guide-target="plan-cards"], .workbench-block, .constraint-row, .plan-title, .decision-explanation, [data-guide-target="execute-plan"]'
       : guide.step === 4
-        ? '.demo-input-tabs, .demo-case-panel, [data-guide-target="slider-panel"]'
+        ? '.demo-input-tabs, .demo-case-panel, [data-guide-target="slider-panel"], .diagnostic-slider, .diagnostic-result'
         : `[data-guide-target="${targetName}"]`
     const targets = Array.from(document.querySelectorAll(selector)) as HTMLElement[]
     if (!targets.length) return
