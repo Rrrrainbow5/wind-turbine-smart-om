@@ -523,7 +523,7 @@ export default function App() {
 
   useEffect(() => {
     const targetName = guide.step === 1 ? guideOverviewTrend ? 'overview-trend' : guideOverviewSelected ? 'overview-status' : 'turbine-select'
-      : guide.step === 2 ? 'signal-start'
+      : guide.step === 2 ? 'signal-panel'
             : guide.step === 3 ? 'plan-cards'
               : guide.step === 4 ? 'slider-panel'
             : guide.step === 5 ? 'slider-panel' : ''
