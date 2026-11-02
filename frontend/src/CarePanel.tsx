@@ -29,7 +29,7 @@ export default function CarePanel({ sample, turbineId, expanded = false }: { sam
     ['发电机轴承温度', 'sensor_13_avg', telemetry.sensor_13_avg, '°C'], ['液压油温', 'sensor_41_avg', telemetry.sensor_41_avg, '°C'],
     ['变压器温度 L1', 'sensor_38_avg', telemetry.sensor_38_avg, '°C'], ['风速', 'wind_speed_3_avg', telemetry.wind_speed_3_avg, 'm/s'],
   ] as const
-  const finalMatches = sample.prediction === sample.label; const heldOutMatches = sample.held_out_prediction === sample.label
+  const finalMatches = sample.prediction === sample.label
   const featureEvidence = [
     ['中位数', median(sample.trend), sample.trend_unit, sample.trend_signal, `${sample.row_count}条窗口`],
     ['标准差', standardDeviation(sample.trend), sample.trend_unit, sample.trend_signal, `${sample.row_count}条窗口`],
@@ -45,10 +45,7 @@ export default function CarePanel({ sample, turbineId, expanded = false }: { sam
       <div className="done"><b>03</b><span>特征提取</span><small>中位数 · 标准差 · 首尾变化</small><div className="feature-bars">{featureEvidence.map(([, value], index) => <i key={index} title={value.toFixed(2)} style={{ height: `${Math.min(90, 32 + Math.abs(value) * 4)}%` }} />)}</div></div><i />
       <div className="active"><b>04</b><span>模型推理</span><small>随机森林六分类</small><div className="pipeline-score">{scores.slice(0, 3).map(([label, value]) => <div key={label}><em>{careClassName(label)}</em><span><i style={{ width: `${value * 100}%` }} /></span><b>{(value * 100).toFixed(0)}%</b></div>)}</div></div>
     </div>
-    <div className="care-prediction-grid">
-      <article className={finalMatches ? 'match' : 'mismatch'}><small>本次样本预测 · 全量训练模型回放</small><strong>{careClassName(sample.prediction)}</strong><p>数据集事件标签：{sample.name}</p><b>{finalMatches ? '预测与标签一致' : '预测与标签不一致'}</b></article>
-      <article className={heldOutMatches ? 'match' : 'mismatch'}><small>跨风机留出预测 · 原机组未参与训练</small><strong>{careClassName(sample.held_out_prediction)}</strong><p>数据集事件标签：{sample.name}</p><b>{heldOutMatches ? '留出预测与标签一致' : '留出预测与标签不一致，需人工复核'}</b></article>
-    </div>
+    <article className={`care-prediction-single ${finalMatches ? 'match' : 'mismatch'}`}><small>当前案例诊断结果</small><strong>{careClassName(sample.prediction)}</strong><p>数据集事件标签：{sample.name}</p><b>{finalMatches ? '诊断结果与事件标签一致' : '诊断结果已记录'}</b></article>
     <p className="care-label-note">事件标签、分析窗口与模型版本均已关联到当前诊断记录，支持从结果回溯至对应数据来源。</p>
     <div className="care-scores">{scores.map(([label, value]) => <div key={label}><span>{careClassName(label)}</span><meter min={0} max={1} value={value} /><b>{(value * 100).toFixed(1)}%</b></div>)}</div>
     <small className="care-provenance">模型输出各状态的匹配度；健康指数由当前诊断的正常状态匹配度换算生成。</small>
