@@ -53,6 +53,15 @@ CLASS_TO_COMPONENT = {
     "hydraulic": "hydraulic",
 }
 
+DEMO_FLEET_CASES = (
+    ("WT01", "A-24"),  # normal operation
+    ("WT02", "A-10"),  # gearbox
+    ("WT03", "A-3"),   # normal operation
+    ("WT04", "A-51"),  # gearbox bearing
+    ("WT05", "A-22"),  # hydraulic
+    ("WT06", "A-0"),   # generator bearing
+)
+
 
 def warning_level(risk: float) -> WarningLevel:
     if risk >= 0.75:
@@ -235,6 +244,76 @@ def create_care_router(database: Database) -> APIRouter:
             "live_inference": True,
             "field_diagnosis_persisted": True,
             "calibrated_probability": False,
+        }
+
+    @router.post("/sync-demo-fleet")
+    def sync_demo_fleet():
+        """Populate the API workflow with the same six CARE cases as demo mode."""
+        model, cases = artifacts()
+        samples = {str(sample["id"]): sample for sample in cases["cases"]}
+        results = []
+        for turbine_id, case_id in DEMO_FLEET_CASES:
+            sample = samples.get(case_id)
+            if sample is None:
+                raise HTTPException(503, f"Demo case {case_id} is unavailable")
+            probabilities = predict_portable(model, sample["features"])
+            prediction = max(probabilities, key=probabilities.get)
+            component_key = CLASS_TO_COMPONENT[prediction]
+            component_id = f"{turbine_id}_{prediction.upper()}"
+            component_name = {
+                "healthy": "机组运行状态", "gearbox": "齿轮箱", "gearbox_bearing": "齿轮箱轴承",
+                "generator_bearing": "发电机轴承", "hydraulic": "液压系统",
+            }[prediction]
+            ensure_field_target(database, turbine_id, component_id, component_name, DataOrigin.DERIVED)
+            risk = 1 - probabilities["healthy"]
+            trend_key, trend_label, trend_unit = {
+                "healthy": ("power_30_avg", "并网功率", "kW"),
+                "generator_bearing": ("sensor_13_avg", "发电机驱动端轴承温度", "°C"),
+                "gearbox": ("sensor_12_avg", "齿轮箱油温", "°C"),
+                "hydraulic": ("sensor_41_avg", "液压油温", "°C"),
+                "gearbox_bearing": ("sensor_11_avg", "齿轮箱高速轴轴承温度", "°C"),
+            }[prediction]
+            diagnosis = persist_diagnosis(database, DiagnosisAnalyzeRequest(
+                sample_id=f"DEMO-{turbine_id}-{sample['sample_id']}",
+                turbine_id=turbine_id,
+                component_id=component_id,
+                event_id=str(sample["event_id"]),
+                event_name=str(sample["name"]),
+                data_origin=DataOrigin.DERIVED,
+                sampling_rate_hz=1 / 600,
+                channels=[SignalChannel(
+                    name=trend_key, unit=trend_unit, samples=sample["trend"],
+                    source_reference=f"CARE Wind Farm A / event {sample['event_id']}",
+                    sensor_location=component_name,
+                )],
+                operating_condition={
+                    "scada_window": {"records": 36, "interval_minutes": 10, "source": "CARE demo case"},
+                    "active_power_kw": sample["telemetry"].get("power_30_avg"),
+                    "wind_speed_ms": sample["telemetry"].get("wind_speed_3_avg"),
+                },
+                preprocessing=[
+                    ProcessingStep(name="案例窗口载入", method="CARE 风场 A 连续 36 条十分钟记录"),
+                    ProcessingStep(name="特征构建", method="40通道中位数、标准差、首尾变化"),
+                ],
+                diagnosis=DiagnosisPayload(
+                    model_version=MODEL_VERSION,
+                    class_probabilities=probabilities,
+                    predicted_class=prediction,
+                    uncertainty=1 - max(probabilities.values()),
+                    component_key=component_key,
+                    mapping_status=DiagnosisMappingStatus.CANDIDATE,
+                    health_index=100 * probabilities["healthy"],
+                    anomaly_score=risk,
+                    failure_risk=risk,
+                    warning_level=warning_level(risk),
+                    rationale=f"CARE 演示场景同步：{sample['sample_id']} 的六小时窗口经 {MODEL_VERSION} 重算。",
+                ),
+            ))
+            results.append({"turbine_id": turbine_id, "diagnosis_id": diagnosis.diagnosis_id, "prediction": prediction})
+        return {
+            "source": "CARE_DEMO_SYNC", "data_origin": DataOrigin.DERIVED,
+            "model_version": MODEL_VERSION, "model_sha256": cases["model_sha256"],
+            "turbines": results,
         }
 
     return router

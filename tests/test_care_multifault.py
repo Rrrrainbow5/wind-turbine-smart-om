@@ -127,3 +127,15 @@ def test_field_scada_inference_persists_machine_diagnosis(tmp_path):
         assert client.get(f"/api/diagnosis/{diagnosis_id}").status_code == 200
         state = client.get("/api/turbines/WT09/state").json()
         assert state[0]["latest_ai_result"]["diagnosis_id"] == diagnosis_id
+
+
+def test_demo_fleet_sync_populates_same_six_turbines(tmp_path):
+    with TestClient(create_app(tmp_path / "care-demo-fleet.db")) as client:
+        result = client.post("/api/care/sync-demo-fleet")
+        assert result.status_code == 200
+        body = result.json()
+        assert body["source"] == "CARE_DEMO_SYNC"
+        assert body["data_origin"] == "DERIVED"
+        assert [item["turbine_id"] for item in body["turbines"]] == ["WT01", "WT02", "WT03", "WT04", "WT05", "WT06"]
+        turbines = client.get("/api/turbines").json()
+        assert {item["turbine_id"] for item in turbines}.issuperset({"WT01", "WT02", "WT03", "WT04", "WT05", "WT06"})

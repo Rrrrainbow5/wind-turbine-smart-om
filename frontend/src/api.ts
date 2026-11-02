@@ -70,6 +70,18 @@ export function inferCareScadaWindow(payload: unknown) {
   })
 }
 
+export type DemoFleetSync = {
+  source: 'CARE_DEMO_SYNC'
+  data_origin: 'DERIVED'
+  model_version: string
+  model_sha256: string
+  turbines: Array<{ turbine_id: string; diagnosis_id: string; prediction: string }>
+}
+
+export function syncDemoFleet() {
+  return request<DemoFleetSync>('/api/care/sync-demo-fleet', { method: 'POST' })
+}
+
 export function diagnosisCategory(row: FieldDiagnosis, componentName: string): Turbine['fault_category'] {
   if (row.diagnosis.mapping_status === 'UNMAPPED') return undefined
   const key = row.diagnosis.component_key.toLowerCase()
