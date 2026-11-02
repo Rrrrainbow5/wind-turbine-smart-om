@@ -139,3 +139,13 @@ def test_demo_fleet_sync_populates_same_six_turbines(tmp_path):
         assert [item["turbine_id"] for item in body["turbines"]] == ["WT01", "WT02", "WT03", "WT04", "WT05", "WT06"]
         turbines = client.get("/api/turbines").json()
         assert {item["turbine_id"] for item in turbines}.issuperset({"WT01", "WT02", "WT03", "WT04", "WT05", "WT06"})
+
+
+def test_shippable_gearbox_upload_example_is_accepted(tmp_path):
+    example = Path(__file__).resolve().parents[1] / "examples" / "care-a-gearbox-6h-upload.json"
+    payload = json.loads(example.read_text(encoding="utf-8"))
+    with TestClient(create_app(tmp_path / "care-upload-example.db")) as client:
+        response = client.post("/api/care/field-infer", json={"turbine_id": "WT10", **payload})
+        assert response.status_code == 200
+        assert response.json()["prediction"] == "gearbox"
+        assert response.json()["diagnosis"]["component_id"] == "WT10_GEARBOX"
