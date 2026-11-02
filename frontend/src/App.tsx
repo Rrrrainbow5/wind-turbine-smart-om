@@ -604,6 +604,9 @@ export default function App() {
       return
     }
     chooseAction(action)
+    // Scheduled-maintenance cards use distinct ids from fault-maintenance
+    // cards. Preserve the clicked card id so B remains visibly selected.
+    setSelectedPlan(item.id)
   }
 
   const planMetrics = (item: MaintenancePlan) => {
