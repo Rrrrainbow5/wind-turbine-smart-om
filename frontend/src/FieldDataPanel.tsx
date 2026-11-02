@@ -9,6 +9,7 @@ export default function FieldDataPanel({ turbine, onRefresh, onLocate, onMainten
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [uploadInfo, setUploadInfo] = useState<{ fileName: string; receivedAt: string; runId: string; source: string } | null>(null)
   const record = turbine?.field_diagnosis
   const run = async (action: () => Promise<void>) => {
     setBusy(true); setError(''); setMessage('')
@@ -16,8 +17,9 @@ export default function FieldDataPanel({ turbine, onRefresh, onLocate, onMainten
     finally { setBusy(false) }
   }
   return <section className="dataset-panel field-data-panel">
-    <h3>风场数据接入</h3>
-    <p>采集 / 上传 → 信号诊断 → 三维定位 → 维护决策 → 维护记录 → 实测复测</p>
+    <h3>风场数据接入 · 导入已有诊断结果</h3>
+    <p>采集端诊断结果 → 关联机组与部件 → 三维定位 → 维护决策 → 维护记录 → 实测复测</p>
+    <p className="dataset-boundary">这里接收已经由采集端或已注册模型生成的诊断结果，不把上传动作说成网页重新推理。仅有原始波形时，请使用下方“独立实验与原始信号分析”。</p>
     <button disabled={busy} onClick={() => void run(async () => { await onRefresh(); setMessage('已同步后端最新诊断与机组状态。') })}>同步风场最新结果</button>
     <label>上传采集端诊断数据包<input type="file" accept=".json,application/json" disabled={busy} onChange={event => {
       const file = event.target.files?.[0]; event.target.value = ''; if (!file) return
@@ -25,11 +27,12 @@ export default function FieldDataPanel({ turbine, onRefresh, onLocate, onMainten
         if (file.size > 2 * 1024 * 1024) throw new Error('文件不能超过 2 MB，请截取信号窗口。')
         const result: FieldDiagnosis = await importFieldDiagnosis(JSON.parse(await file.text()))
         await onRefresh(result.turbine_id)
+        setUploadInfo({ fileName: file.name, receivedAt: new Date().toLocaleString('zh-CN'), runId: result.diagnosis_id, source: `${result.data_origin} · ${result.diagnosis.model_version}` })
         setMessage(`已接入 ${result.sample_id}，机组仪表盘、诊断与维护入口已更新。`)
       })
     }} /></label>
     <details><summary>采集系统如何对接</summary><p>采集端按 signal-analysis.v2 协议向 POST /api/diagnosis/analyze 提交机组编号、部件编号、原始通道、处理步骤及已注册模型的诊断结果。本入口接收并保存结果，不将上传动作冒充模型推理。后端校验机组/部件与模型来源。</p><p>只有原始波形时，可先通过下方信号分析入口计算特征。当前在线服务尚未加载诊断权重，不能自动诊断任意风场数据。</p></details>
-    {busy && <p role="status">正在同步数据…</p>}{error && <p className="dataset-error" role="alert">{error}</p>}{message && <p role="status">{message}</p>}
+    {busy && <p role="status">正在同步数据…</p>}{error && <p className="dataset-error" role="alert">{error}</p>}{message && <p role="status">{message}</p>}{uploadInfo && <div className="dataset-run-info"><strong>最近导入</strong><span>文件：{uploadInfo.fileName}</span><span>诊断运行编号：{uploadInfo.runId}</span><span>来源：{uploadInfo.source}</span><span>导入时间：{uploadInfo.receivedAt}</span><b>已导入既有诊断结果，未在浏览器重新推理</b></div>}
     {expanded && (record ? <>
       <h4>{record.event_name || record.diagnosis.predicted_class}</h4>
       <p>{record.sample_id} · {record.turbine_id} · {record.component_id}<br />{record.data_origin} · {record.diagnosis.model_version}</p>
