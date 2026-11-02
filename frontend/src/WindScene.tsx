@@ -197,14 +197,6 @@ export function makeSupplementalTransformerGroup(model: THREE.Object3D, turbineI
     bushing.position.set(index * .2, .36, 0)
     tag(bushing, `BUSHING_${index + 2}`)
   }
-  if (typeof document !== 'undefined') {
-    const label = makeLabel('变压器', '#ff7668')
-    label.name = `${turbineId}_TRANSFORMER_LABEL`
-    label.position.set(0, .7, 0)
-    label.scale.set(6.5, 1.1, 1)
-    label.visible = false
-    group.add(label)
-  }
   return group
 }
 
@@ -365,9 +357,6 @@ function makeGear(name: string, radius: number, material: THREE.Material) {
 
 export function setFaultPartState(model: THREE.Object3D | null, category: Turbine['fault_category'], level: Turbine['warning_level']) {
   if (!model) return
-  let transformerLabel: THREE.Object3D | undefined
-  model.traverse(object => { if (/_TRANSFORMER_LABEL$/.test(object.name)) transformerLabel = object })
-  if (transformerLabel) transformerLabel.visible = category === 'TRANSFORMER' && level !== 'NORMAL'
   const oldOverlay = model.getObjectByName('FAULT_HIGHLIGHT_OVERLAY')
   if (oldOverlay) {
     const disposedMaterials = new Set<THREE.Material>()
