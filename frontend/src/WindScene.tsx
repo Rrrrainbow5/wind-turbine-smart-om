@@ -141,13 +141,23 @@ export function makeSupplementalTransformerGroup(model: THREE.Object3D, turbineI
 
   const modelBounds = new THREE.Box3().setFromObject(model)
   const modelSize = modelBounds.getSize(new THREE.Vector3())
-  const anchor = modelBounds.getCenter(new THREE.Vector3())
-  // Anchor within the upper nacelle volume using the normalized model bounds.
-  // This stays stable even when the source CAD changes its generator hierarchy.
-  anchor.y = modelBounds.min.y + modelSize.y * .72
-  // Place the cabinet alongside the lower nacelle service frame, where its
-  // dedicated fault highlight remains visible in the cutaway view.
-  anchor.z += modelSize.z * .12
+  const generatorBounds = new THREE.Box3()
+  let hasGeneratorBounds = false
+  model.traverse(node => {
+    if (!(node instanceof THREE.Mesh) || node.userData.componentCategory !== 'GENERATOR') return
+    generatorBounds.expandByObject(node)
+    hasGeneratorBounds = true
+  })
+  const anchor = hasGeneratorBounds
+    ? generatorBounds.getCenter(new THREE.Vector3())
+    : modelBounds.getCenter(new THREE.Vector3())
+  const electricalReference = hasGeneratorBounds ? generatorBounds : modelBounds
+  const electricalSize = electricalReference.getSize(new THREE.Vector3())
+  // In a turbine nacelle the transformer cabinet sits on the service floor
+  // beside/behind the generator. Use the actual generator CAD bounds as the
+  // anchor instead of a free point in the full turbine bounding box.
+  anchor.y = electricalReference.min.y + electricalSize.y * .18
+  anchor.z = electricalReference.max.z + Math.max(electricalSize.z * .42, modelSize.z * .018)
   group.position.copy(model.worldToLocal(anchor))
   // Child geometry uses scene units while the imported CAD may use millimetres.
   // The transformed CAD has a large internal coordinate range. Keep the
@@ -169,6 +179,9 @@ export function makeSupplementalTransformerGroup(model: THREE.Object3D, turbineI
     mesh.userData.modelOrigin = 'SYSTEM_SUPPLEMENTAL_ELECTRICAL_MODEL'
     group.add(mesh)
   }
+  const base = new THREE.Mesh(new THREE.BoxGeometry(.92, .1, .64), new THREE.MeshStandardMaterial({ color: 0x344b52, metalness: .65, roughness: .42 }))
+  base.position.y = -.3
+  tag(base, 'MOUNTING_SKID')
   tag(new THREE.Mesh(new THREE.BoxGeometry(.78, .5, .5), bodyMaterial), 'ENCLOSURE')
   for (let index = -3; index <= 3; index++) {
     const fin = new THREE.Mesh(new THREE.BoxGeometry(.68, .04, .66), finMaterial)
