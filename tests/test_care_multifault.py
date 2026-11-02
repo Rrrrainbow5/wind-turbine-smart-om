@@ -1,0 +1,151 @@
+from datetime import datetime, timedelta
+import json
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+import numpy as np
+import pandas as pd
+
+from ai.care_multifault import (
+    FEATURE_NAMES, SIGNALS, build_windows, load_model, predict_portable, sha256, window_features,
+)
+from backend.app.main import create_app
+
+ROOT = Path(__file__).resolve().parents[1] / "models" / "care-multifault"
+
+
+def test_saved_model_recomputes_every_case():
+    manifest = json.loads((ROOT / "cases.json").read_text(encoding="utf-8"))
+    model = load_model(ROOT / "model.json.gz")
+    assert sha256(ROOT / "model.json.gz") == manifest["model_sha256"]
+    assert len(manifest["classes"]) == 5
+    assert len(manifest["cases"]) >= 5
+    assert not any(metadata in name for metadata in ("asset_id", "event_id", "train_test", "time_stamp") for name in FEATURE_NAMES)
+    for sample in manifest["cases"]:
+        recomputed = predict_portable(model, sample["features"])
+        assert np.allclose(list(recomputed.values()), list(sample["probabilities"].values()), atol=1e-12)
+        assert sample["prediction"] == max(recomputed, key=recomputed.get)
+        assert abs(sum(recomputed.values()) - 1) < 1e-10
+        assert len(sample["trend"]) == 36
+        expected_signal = {
+            "healthy": "power_30_avg", "generator_bearing": "sensor_13_avg",
+            "gearbox": "sensor_12_avg", "hydraulic": "sensor_41_avg",
+            "gearbox_bearing": "sensor_11_avg",
+        }[sample["label"]]
+        assert sample["trend_signal"] == expected_signal
+        assert np.isclose(np.median(sample["trend"]), sample["telemetry"][expected_signal])
+    frontend = Path(__file__).resolve().parents[1] / "frontend/src/care-cases.json"
+    assert json.loads(frontend.read_text(encoding="utf-8")) == manifest
+    report = json.loads((ROOT / "report.json").read_text(encoding="utf-8"))
+    for fold in report["folds"]:
+        assert not set(fold["train_assets"]) & set(fold["test_assets"])
+    assert len(report["folds"]) == 5
+
+
+def test_windows_exclude_training_rows_partial_intervals_and_conflicts(tmp_path):
+    (tmp_path / "datasets").mkdir()
+    frame = pd.DataFrame({key: np.arange(144, dtype=float) for key in SIGNALS})
+    frame["time_stamp"] = pd.date_range("2023-01-01", periods=144, freq="10min")
+    frame["train_test"] = "prediction"
+    frame.loc[:35, "train_test"] = "train"
+    frame.to_csv(tmp_path / "datasets/0.csv", sep=";", index=False)
+    events = pd.DataFrame([{
+        "asset": 0, "event_id": 0, "event_label": "anomaly",
+        "event_start": "2023-01-01 05:00", "event_end": "2023-01-01 18:30",
+        "event_description": "Gearbox failure",
+    }])
+    events.to_csv(tmp_path / "event_info.csv", sep=";", index=False)
+    windows, _, _ = build_windows(tmp_path)
+    assert [row["start"] for row in windows] == ["2023-01-01 06:00:00", "2023-01-01 12:00:00"]
+    # A second event of a different class removes the overlapping six-hour window.
+    events.loc[1] = [0, 1, "anomaly", "2023-01-01 12:00", "2023-01-01 17:50", "Hydraulic group"]
+    frame.to_csv(tmp_path / "datasets/1.csv", sep=";", index=False)
+    events.to_csv(tmp_path / "event_info.csv", sep=";", index=False)
+    windows, _, rejected = build_windows(tmp_path)
+    assert len(windows) == 1
+    assert rejected["overlapping_labels"] > 0
+    assert windows[0]["label"] == "gearbox"
+
+
+def test_feature_contract_uses_real_window_values():
+    rows = [{key: index for key in SIGNALS} for index in range(36)]
+    result = window_features(rows)
+    assert result[:len(SIGNALS)] == [17.5] * len(SIGNALS)
+    assert result[-len(SIGNALS):] == [35.0] * len(SIGNALS)
+
+
+def test_scada_api_computes_and_rejects_incompatible_inputs(tmp_path):
+    with TestClient(create_app(tmp_path / "care.db")) as client:
+        manifest = client.get("/api/care/cases").json()
+        sample = manifest["cases"][0]
+        replay = client.post(f"/api/care/cases/{sample['id']}/infer")
+        assert replay.status_code == 200
+        assert replay.json()["prediction"] == sample["prediction"]
+        assert replay.json()["source"] == "TRAINING_CASE_REPLAY"
+        assert client.post("/api/care/cases/missing/infer").status_code == 404
+        start = datetime(2023, 1, 1)
+        rows = [{"time_stamp": (start + timedelta(minutes=10 * index)).isoformat(),
+                 "signals": {key: float(index) for key in SIGNALS}} for index in range(36)]
+        result = client.post("/api/care/infer", json={"rows": rows})
+        assert result.status_code == 200
+        assert result.json()["live_inference"] is True
+        assert result.json()["field_diagnosis_persisted"] is False
+        rows[2]["time_stamp"] = rows[1]["time_stamp"]
+        assert client.post("/api/care/infer", json={"rows": rows}).status_code == 422
+        assert client.post("/api/care/infer", json={"rows": rows[:12]}).status_code == 422
+        rows[2]["time_stamp"] = (start + timedelta(minutes=20)).isoformat()
+        rows[0]["signals"]["event_id"] = 0
+        assert client.post("/api/care/infer", json={"rows": rows}).status_code == 422
+
+
+def test_field_scada_inference_persists_machine_diagnosis(tmp_path):
+    with TestClient(create_app(tmp_path / "care-field.db")) as client:
+        manifest = client.get("/api/care/cases").json()
+        sample = manifest["cases"][0]
+        start = datetime(2026, 11, 2, 6, 0)
+        rows = [
+            {
+                "time_stamp": (start + timedelta(minutes=10 * index)).isoformat(),
+                "signals": sample["telemetry"],
+            }
+            for index in range(36)
+        ]
+        result = client.post("/api/care/field-infer", json={
+            "turbine_id": "WT09",
+            "sample_id": "SCADA-WT09-20261102T1200",
+            "source_reference": "unit-test collector batch",
+            "data_origin": "REAL",
+            "rows": rows,
+        })
+        assert result.status_code == 200
+        body = result.json()
+        assert body["field_diagnosis_persisted"] is True
+        assert body["diagnosis"]["turbine_id"] == "WT09"
+        assert body["diagnosis"]["component_id"].startswith("WT09_")
+        assert body["diagnosis"]["diagnosis"]["model_version"] == "care-scada-rf-demo-coverage-v2"
+        diagnosis_id = body["diagnosis"]["diagnosis_id"]
+        assert client.get(f"/api/diagnosis/{diagnosis_id}").status_code == 200
+        state = client.get("/api/turbines/WT09/state").json()
+        assert state[0]["latest_ai_result"]["diagnosis_id"] == diagnosis_id
+
+
+def test_demo_fleet_sync_populates_same_six_turbines(tmp_path):
+    with TestClient(create_app(tmp_path / "care-demo-fleet.db")) as client:
+        result = client.post("/api/care/sync-demo-fleet")
+        assert result.status_code == 200
+        body = result.json()
+        assert body["source"] == "CARE_DEMO_SYNC"
+        assert body["data_origin"] == "DERIVED"
+        assert [item["turbine_id"] for item in body["turbines"]] == ["WT01", "WT02", "WT03", "WT04", "WT05", "WT06"]
+        turbines = client.get("/api/turbines").json()
+        assert {item["turbine_id"] for item in turbines}.issuperset({"WT01", "WT02", "WT03", "WT04", "WT05", "WT06"})
+
+
+def test_shippable_gearbox_upload_example_is_accepted(tmp_path):
+    example = Path(__file__).resolve().parents[1] / "examples" / "care-a-gearbox-6h-upload.json"
+    payload = json.loads(example.read_text(encoding="utf-8"))
+    with TestClient(create_app(tmp_path / "care-upload-example.db")) as client:
+        response = client.post("/api/care/field-infer", json={"turbine_id": "WT10", **payload})
+        assert response.status_code == 200
+        assert response.json()["prediction"] == "gearbox"
+        assert response.json()["diagnosis"]["component_id"] == "WT10_GEARBOX"
