@@ -70,3 +70,11 @@ export function getDemoPlans(weatherRestricted: boolean): MaintenancePlan[] {
     { id: 'monitor', title: '继续监测', timing: '持续', action: '提高监测频率并复评；故障保持未处理状态', risk: '较高', downtime: '0 h', cost: '低', recommended: weatherRestricted },
   ]
 }
+
+export function getScheduledMaintenancePlans(weatherRestricted: boolean): MaintenancePlan[] {
+  return [
+    { id: 'routine_inspection', title: '例行巡检与状态复核', timing: weatherRestricted ? '天气恢复后' : '本周期内', action: '完成外观、紧固件、润滑状态和运行记录的周期核查，形成例行巡检记录。', risk: '低', downtime: '0.5 h', cost: '¥0.2 万', recommended: !weatherRestricted },
+    { id: 'scheduled_service', title: '计划润滑与紧固维护', timing: '下一个计划窗口', action: '按维护周期执行润滑、紧固和过滤器检查；不以故障修复为前提。', risk: '低', downtime: '2 h', cost: '¥0.6 万', recommended: false },
+    { id: 'monitor', title: '持续状态监测', timing: '持续', action: '保持在线监测，在下一次计划维护窗口前跟踪健康指数和关键趋势。', risk: '低', downtime: '0 h', cost: '¥0', recommended: false },
+  ]
+}
