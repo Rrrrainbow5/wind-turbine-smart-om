@@ -51,6 +51,25 @@ export async function importFieldDiagnosis(payload: unknown) {
   return request<FieldDiagnosis>('/api/diagnosis/analyze', { method: 'POST', body: JSON.stringify(payload) })
 }
 
+export type CareScadaFieldResult = {
+  diagnosis: FieldDiagnosis
+  model_version: string
+  model_sha256: string
+  prediction: string
+  probabilities: Record<string, number>
+  trend: { signal: string; label: string; unit: string }
+  live_inference: true
+  field_diagnosis_persisted: true
+  calibrated_probability: false
+}
+
+/** Submit the latest six-hour SCADA window from a file or a collector. */
+export function inferCareScadaWindow(payload: unknown) {
+  return request<CareScadaFieldResult>('/api/care/field-infer', {
+    method: 'POST', body: JSON.stringify(payload),
+  })
+}
+
 export function diagnosisCategory(row: FieldDiagnosis, componentName: string): Turbine['fault_category'] {
   if (row.diagnosis.mapping_status === 'UNMAPPED') return undefined
   const key = row.diagnosis.component_key.toLowerCase()
@@ -63,6 +82,23 @@ export function diagnosisCategory(row: FieldDiagnosis, componentName: string): T
   if (key === 'bearing' && /转子|主轴|rotor|main.?shaft/i.test(componentName)) return 'ROTOR_BEARING'
   if (key === 'bearing' && /齿轮箱|gearbox/i.test(componentName)) return 'GEARBOX_BEARING'
   return undefined
+}
+
+function fieldDiagnosisName(row?: FieldDiagnosis) {
+  const names: Record<string, string> = {
+    healthy: '正常运行', gearbox: '齿轮箱故障', gearbox_bearing: '齿轮箱轴承故障',
+    generator_bearing: '发电机轴承故障', hydraulic: '液压系统故障',
+  }
+  return row ? (names[row.diagnosis.predicted_class] || row.event_name || row.diagnosis.predicted_class) : undefined
+}
+
+function fieldComponentLabel(row: FieldDiagnosis | undefined, fallback: string) {
+  if (!row) return fallback
+  const labels: Record<string, string> = {
+    UNMAPPED: '机组运行状态', gearbox: '齿轮箱', gearbox_bearing: '齿轮箱轴承',
+    generator: '发电机轴承', hydraulic: '液压系统',
+  }
+  return labels[row.diagnosis.component_key] || fallback
 }
 
 interface ApiTurbineState {
@@ -166,7 +202,7 @@ export async function fetchTurbines(): Promise<Turbine[]> {
         : telemetry?.active_power_kw ?? 0,
       wind_ms: telemetry?.wind_speed_ms ?? 0,
       component_id: state?.component_id || `${item.turbine_id}_COMPONENT_01`,
-      component_label: diagnosis ? state.component_name : verified ? state.component_name : '待核验关键部件',
+      component_label: diagnosis ? fieldComponentLabel(diagnosis, state.component_name) : verified ? state.component_name : '待核验关键部件',
       mapping_status: state?.mapping_status || 'UNVERIFIED',
       has_analysis: Boolean(latest),
       updated_at: latest?.timestamp || '暂无分析结果',
@@ -177,7 +213,7 @@ export async function fetchTurbines(): Promise<Turbine[]> {
       model_version: latest?.model_version || '未提供',
       field_diagnosis: diagnosis,
       ...(diagnosis ? {
-        event_name: diagnosis.event_name || diagnosis.diagnosis.predicted_class,
+        event_name: fieldDiagnosisName(diagnosis),
         fault_category: diagnosisCategory(diagnosis, state.component_name),
       } : {}),
     }

@@ -96,3 +96,34 @@ def test_scada_api_computes_and_rejects_incompatible_inputs(tmp_path):
         rows[2]["time_stamp"] = (start + timedelta(minutes=20)).isoformat()
         rows[0]["signals"]["event_id"] = 0
         assert client.post("/api/care/infer", json={"rows": rows}).status_code == 422
+
+
+def test_field_scada_inference_persists_machine_diagnosis(tmp_path):
+    with TestClient(create_app(tmp_path / "care-field.db")) as client:
+        manifest = client.get("/api/care/cases").json()
+        sample = manifest["cases"][0]
+        start = datetime(2026, 11, 2, 6, 0)
+        rows = [
+            {
+                "time_stamp": (start + timedelta(minutes=10 * index)).isoformat(),
+                "signals": sample["telemetry"],
+            }
+            for index in range(36)
+        ]
+        result = client.post("/api/care/field-infer", json={
+            "turbine_id": "WT09",
+            "component_id": "WT09_COMPONENT_01",
+            "sample_id": "SCADA-WT09-20261102T1200",
+            "source_reference": "unit-test collector batch",
+            "data_origin": "REAL",
+            "rows": rows,
+        })
+        assert result.status_code == 200
+        body = result.json()
+        assert body["field_diagnosis_persisted"] is True
+        assert body["diagnosis"]["turbine_id"] == "WT09"
+        assert body["diagnosis"]["diagnosis"]["model_version"] == "care-scada-rf-demo-coverage-v2"
+        diagnosis_id = body["diagnosis"]["diagnosis_id"]
+        assert client.get(f"/api/diagnosis/{diagnosis_id}").status_code == 200
+        state = client.get("/api/turbines/WT09/state").json()
+        assert state[0]["latest_ai_result"]["diagnosis_id"] == diagnosis_id
