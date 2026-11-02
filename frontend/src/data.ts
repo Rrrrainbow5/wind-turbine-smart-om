@@ -24,7 +24,7 @@ export interface Turbine {
   event_id?: number
   mapping_status?: string
   has_analysis?: boolean
-  fault_category?: 'GEARBOX_BEARING' | 'ROTOR_BEARING' | 'GEARBOX' | 'GENERATOR' | 'DRIVETRAIN' | 'BEARING' | 'HYDRAULIC' | 'TRANSFORMER'
+  fault_category?: 'GEARBOX_BEARING' | 'ROTOR_BEARING' | 'GEARBOX' | 'GENERATOR' | 'DRIVETRAIN' | 'BEARING' | 'HYDRAULIC'
   care_case?: CareCase
   event_name?: string
   event_description?: string

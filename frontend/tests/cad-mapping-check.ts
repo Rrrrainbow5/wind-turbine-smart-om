@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import * as THREE from 'three'
-import { bindCadPartNames, makeRealGearboxBearingGroup, makeSupplementalTransformerGroup, setFaultPartState } from '../src/WindScene'
+import { bindCadPartNames, makeRealGearboxBearingGroup, setFaultPartState } from '../src/WindScene'
 import { effectiveCadCategory } from '../src/cadMapping'
 
 export function runChecks() {
@@ -19,11 +19,10 @@ export function runChecks() {
   bindCadPartNames(root, 'WT02')
   root.add(makeRealGearboxBearingGroup(root, 'WT02'))
   root.updateWorldMatrix(true, true)
-  root.add(makeSupplementalTransformerGroup(root, 'WT02'))
   const fastener = /bolt|screw|washer|fastener|navrt|podlo|civij|(?:^|[\s_])(?:[šs]?raf|klin)\b/i
   const source = (object: THREE.Object3D) => String(object.userData.sourceCadName || '')
   const counts: Record<string, number> = {}
-  for (const category of ['GEARBOX', 'GEARBOX_BEARING', 'HYDRAULIC', 'GENERATOR', 'ROTOR_BEARING', 'DRIVETRAIN', 'TRANSFORMER'] as const) {
+  for (const category of ['GEARBOX', 'GEARBOX_BEARING', 'HYDRAULIC', 'GENERATOR', 'ROTOR_BEARING', 'DRIVETRAIN'] as const) {
     setFaultPartState(root, category, 'HIGH')
     const overlay = root.getObjectByName('FAULT_HIGHLIGHT_OVERLAY')!
     assert.ok(overlay?.children.length, `${category} must have real CAD targets`)

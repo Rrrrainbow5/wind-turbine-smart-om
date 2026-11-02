@@ -126,83 +126,6 @@ export function makeRealGearboxBearingGroup(root: THREE.Object3D, turbineId: str
   return group
 }
 
-// The supplied mechanical CAD does not contain the transformer. Add a clearly
-// identified electrical assembly so transformer events have a dedicated 3D
-// target instead of being mapped onto a mechanical CAD part.
-export function makeSupplementalTransformerGroup(model: THREE.Object3D, turbineId: string) {
-  const group = new THREE.Group()
-  group.name = `${turbineId}_SUPPLEMENTAL_TRANSFORMER_MODEL`
-  group.userData.componentId = `${turbineId}_TRANSFORMER`
-  group.userData.componentGroupId = `${turbineId}_TRANSFORMER`
-  group.userData.componentLabel = '机舱电气变压器总成'
-  group.userData.componentCategory = 'TRANSFORMER'
-  group.userData.sourceCadName = 'SYSTEM_SUPPLEMENTAL_TRANSFORMER'
-  group.userData.modelOrigin = 'SYSTEM_SUPPLEMENTAL_ELECTRICAL_MODEL'
-
-  const modelBounds = new THREE.Box3().setFromObject(model)
-  const modelSize = modelBounds.getSize(new THREE.Vector3())
-  const generatorBounds = new THREE.Box3()
-  let hasGeneratorBounds = false
-  model.traverse(node => {
-    if (!(node instanceof THREE.Mesh) || node.userData.componentCategory !== 'GENERATOR') return
-    const source = String(node.userData.sourceCadName || node.name).toLowerCase()
-    // The generator cable is classified with the generator assembly but spans
-    // much of the nacelle. It must not determine the transformer location.
-    if (source.includes('kabl') || source.includes('cable') || source.includes('cev za elektricni')) return
-    generatorBounds.expandByObject(node)
-    hasGeneratorBounds = true
-  })
-  const anchor = hasGeneratorBounds
-    ? generatorBounds.getCenter(new THREE.Vector3())
-    : modelBounds.getCenter(new THREE.Vector3())
-  const electricalReference = hasGeneratorBounds ? generatorBounds : modelBounds
-  const electricalSize = electricalReference.getSize(new THREE.Vector3())
-  // In a turbine nacelle the transformer cabinet sits on the service floor
-  // beside the generator. Anchor it to the compact stator/rotor envelope,
-  // excluding the long generator cable that otherwise pulls it to the hub.
-  // CAD source axes are rotated on import. A Z-side offset projects below the
-  // nacelle in the engineering camera, so keep the cabinet in the generator
-  // envelope and lift it onto the nacelle service floor instead.
-  anchor.y = electricalReference.min.y + electricalSize.y * .64
-  anchor.z = electricalReference.getCenter(new THREE.Vector3()).z + Math.max(electricalSize.z * .06, modelSize.z * .004)
-  group.position.copy(model.worldToLocal(anchor))
-  // Child geometry uses scene units while the imported CAD may use millimetres.
-  // The transformed CAD has a large internal coordinate range. Keep the
-  // electrical enclosure compact relative to the nacelle rather than letting
-  // its procedural scene-unit geometry fill the cutaway.
-  const inverseScale = .065 / Math.max(Math.abs(model.scale.x), .0001)
-  group.scale.setScalar(inverseScale)
-
-  const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x597680, metalness: .55, roughness: .36 })
-  const finMaterial = new THREE.MeshStandardMaterial({ color: 0x9db8bd, metalness: .65, roughness: .28 })
-  const bushingMaterial = new THREE.MeshStandardMaterial({ color: 0xc8d7d6, metalness: .32, roughness: .25 })
-  const tag = (mesh: THREE.Mesh, id: string) => {
-    mesh.name = `${turbineId}_TRANSFORMER_${id}`
-    mesh.userData.componentId = mesh.name
-    mesh.userData.componentGroupId = `${turbineId}_TRANSFORMER`
-    mesh.userData.componentLabel = '机舱电气变压器总成'
-    mesh.userData.componentCategory = 'TRANSFORMER'
-    mesh.userData.sourceCadName = `SYSTEM_TRANSFORMER_${id}`
-    mesh.userData.modelOrigin = 'SYSTEM_SUPPLEMENTAL_ELECTRICAL_MODEL'
-    group.add(mesh)
-  }
-  const base = new THREE.Mesh(new THREE.BoxGeometry(.92, .1, .64), new THREE.MeshStandardMaterial({ color: 0x344b52, metalness: .65, roughness: .42 }))
-  base.position.y = -.3
-  tag(base, 'MOUNTING_SKID')
-  tag(new THREE.Mesh(new THREE.BoxGeometry(.78, .5, .5), bodyMaterial), 'ENCLOSURE')
-  for (let index = -3; index <= 3; index++) {
-    const fin = new THREE.Mesh(new THREE.BoxGeometry(.68, .04, .66), finMaterial)
-    fin.position.set(0, index * .065, 0)
-    tag(fin, `COOLING_FIN_${index + 4}`)
-  }
-  for (let index = -1; index <= 1; index++) {
-    const bushing = new THREE.Mesh(new THREE.CylinderGeometry(.055, .055, .22, 16), bushingMaterial)
-    bushing.position.set(index * .2, .36, 0)
-    tag(bushing, `BUSHING_${index + 2}`)
-  }
-  return group
-}
-
 const engineeringColors: Record<string, number> = {
   // Neutral cutaway materials. The selected fault is overlaid in red by
   // setFaultPartState; unselected parts must not look like faults.
@@ -214,7 +137,6 @@ const engineeringColors: Record<string, number> = {
   DRIVETRAIN: 0xb7c5c8,
   ROTOR: 0x80939a,
   HYDRAULIC: 0xa2b7b1,
-  TRANSFORMER: 0x809ca4,
 }
 
 function isCadExterior(object: THREE.Object3D, category: string) {
@@ -232,7 +154,7 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
   model.traverse(object => {
     if (!(object instanceof THREE.Mesh)) return
     const category = effectiveCadCategory(object, model)
-    const highlightedInternal = ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN', 'HYDRAULIC', 'TRANSFORMER'].includes(category)
+    const highlightedInternal = ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN', 'HYDRAULIC'].includes(category)
     const source = String(object.userData.sourceCadName || '').toLowerCase()
     // Fade only outer panels, not the NACELLE parent and its mechanical children.
     const outerPanel = /^kuci_te [12]\.step/i.test(source)
@@ -815,7 +737,6 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
         })
         const realBearings = makeRealGearboxBearingGroup(imported, id)
         imported.add(realBearings)
-        imported.add(makeSupplementalTransformerGroup(imported, id))
         const cadBlades: THREE.Object3D[] = []
         imported.traverse(child => {
           const source = String(child.userData.sourceCadName || '').toLowerCase()
@@ -1041,7 +962,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
       // Keep the procedural rotor visible until the CAD model has loaded.
       // The CAD load is asynchronous and may be slower on GitHub Pages.
       object.blades.visible = !object.cadModel
-      object.beacon.visible = !(engineeringView && id === selectedId) || turbine.fault_category === 'TRANSFORMER'
+      object.beacon.visible = !(engineeringView && id === selectedId)
       object.engineering.visible = false
       const engineeringActive = engineeringView && id === selectedId
       if (!engineeringActive) setFaultPartState(object.cadModel, undefined, 'NORMAL')

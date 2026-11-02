@@ -135,7 +135,7 @@ function ConfidenceBars({ scores }: { scores: Record<string, number> }) {
 }
 
 function faultLocation(category: Turbine['fault_category']) {
-  return category === 'GEARBOX' || category === 'GEARBOX_BEARING' ? '齿轮箱' : category === 'GENERATOR' ? '发电机' : category === 'HYDRAULIC' ? '液压系统' : category === 'TRANSFORMER' ? '变压器' : category === 'ROTOR_BEARING' || category === 'BEARING' ? '主轴/轴承' : category === 'DRIVETRAIN' ? '主轴/联轴器' : '正常运行'
+  return category === 'GEARBOX' || category === 'GEARBOX_BEARING' ? '齿轮箱' : category === 'GENERATOR' ? '发电机' : category === 'HYDRAULIC' ? '液压系统' : category === 'ROTOR_BEARING' || category === 'BEARING' ? '主轴/轴承' : category === 'DRIVETRAIN' ? '主轴/联轴器' : '正常运行'
 }
 
 function inferenceCategory(location: string): Turbine['fault_category'] {
@@ -774,7 +774,7 @@ export default function App() {
       <section className="scene-panel" aria-label="风电场三维场景">
         <div className="scene-heading"><div><div className="eyebrow"><MapPin size={13} /> 风电场数字场景</div><h1>风场运行总览</h1><p>选择风机，查看状态与维护决策</p></div><div className="scene-weather"><CloudSun size={19} /><span>演示天气 <small>{weatherStatus}</small></span><b>{weather.wind.toFixed(1)} m/s · 浪 {weather.wave.toFixed(1)} m · 能见度 {weather.visibility.toFixed(1)} km</b></div></div>
         <WindScene turbines={sceneTurbines} selectedId={selectedId} onSelect={selectTurbine} serviced={activeMapping ? false : serviced} engineeringView={engineeringView} diagnosticFaultCategory={activeMapping?.part.category || activeCategory} onBearingParts={registerBearingParts} onOpenEngineering={() => setEngineeringView(true)} />
-         {engineeringView && activeMapping ? <div className="engineering-caption">{activeMapping.evidence.kind === 'signal' ? '采集位置关联' : '实验预测映射'}<strong>{activeMapping.part.turbineId} · {activeMapping.part.label}</strong><small>{activeMapping.evidence.sampleId} · 非现场诊断</small></div> : engineeringView && selected?.event_id !== undefined && <div className="engineering-caption"><span className={(selected.mapping_status === 'CAD_VERIFIED' || selected.mapping_status === 'SUPPLEMENTAL_3D_MODEL') ? 'engineering-caption-dot' : ''} />CARE v6 · {selected.event_name} <strong>{publicComponentLabel(selected.component_label)}</strong><small>{selected.mapping_status === 'CAD_VERIFIED' ? '项目 CAD 工程模型定位' : selected.mapping_status === 'SUPPLEMENTAL_3D_MODEL' ? '系统补充电气模型定位' : '机组级电气状态关联'}</small></div>}
+         {engineeringView && activeMapping ? <div className="engineering-caption">{activeMapping.evidence.kind === 'signal' ? '采集位置关联' : '实验预测映射'}<strong>{activeMapping.part.turbineId} · {activeMapping.part.label}</strong><small>{activeMapping.evidence.sampleId} · 非现场诊断</small></div> : engineeringView && selected?.event_id !== undefined && <div className="engineering-caption"><span className={selected.mapping_status === 'CAD_VERIFIED' ? 'engineering-caption-dot' : ''} />CARE v6 · {selected.event_name} <strong>{publicComponentLabel(selected.component_label)}</strong><small>{selected.mapping_status === 'CAD_VERIFIED' ? '项目 CAD 工程模型定位' : '机组级状态关联'}</small></div>}
          <div className="scene-bottom"><div className="scene-legend"><span><i className="legend-normal" />正常</span><span><i className="legend-low" />关注</span><span><i className="legend-high" />高风险</span></div></div>
       </section>
 
