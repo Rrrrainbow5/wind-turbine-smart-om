@@ -40,7 +40,6 @@ class FieldScadaWindow(ScadaWindow):
     """A traceable six-hour SCADA upload bound to one registered turbine."""
 
     turbine_id: str = Field(min_length=1, max_length=120)
-    component_id: str = Field(min_length=1, max_length=160)
     sample_id: str | None = Field(default=None, min_length=1, max_length=200)
     source_reference: str = Field(min_length=1, max_length=1000)
     data_origin: DataOrigin = DataOrigin.REAL
@@ -77,9 +76,11 @@ def validate_rows(rows: list[ScadaRow]) -> None:
             raise HTTPException(422, "Expected 36 ordered consecutive 10-minute records")
 
 
-def ensure_field_target(database: Database, window: FieldScadaWindow) -> None:
+def ensure_field_target(
+    database: Database, turbine_id: str, component_id: str, display_name: str, data_origin: DataOrigin
+) -> None:
     """Register a newly connected field asset without inventing an engineering mapping."""
-    turbine = database.fetch_one("SELECT turbine_id FROM turbines WHERE turbine_id = ?", (window.turbine_id,))
+    turbine = database.fetch_one("SELECT turbine_id FROM turbines WHERE turbine_id = ?", (turbine_id,))
     if not turbine:
         now = datetime.now().astimezone().isoformat()
         database.execute(
@@ -87,12 +88,12 @@ def ensure_field_target(database: Database, window: FieldScadaWindow) -> None:
             INSERT INTO turbines (turbine_id, display_name, wind_farm, operational_status, data_origin, created_at)
             VALUES (?, ?, ?, 'CONNECTED', ?, ?)
             """,
-            (window.turbine_id, window.turbine_id, "FIELD_CONNECTED", window.data_origin.value, now),
+            (turbine_id, turbine_id, "FIELD_CONNECTED", data_origin.value, now),
         )
     component = database.fetch_one(
-        "SELECT turbine_id FROM components WHERE component_id = ?", (window.component_id,)
+        "SELECT turbine_id FROM components WHERE component_id = ?", (component_id,)
     )
-    if component and component["turbine_id"] != window.turbine_id:
+    if component and component["turbine_id"] != turbine_id:
         raise HTTPException(409, "component_id is already registered to a different turbine")
     if not component:
         now = datetime.now().astimezone().isoformat()
@@ -101,7 +102,7 @@ def ensure_field_target(database: Database, window: FieldScadaWindow) -> None:
             INSERT INTO components (component_id, turbine_id, display_name, mapping_status, data_origin, created_at)
             VALUES (?, ?, ?, 'UNVERIFIED', ?, ?)
             """,
-            (window.component_id, window.turbine_id, "现场接入关键部件", window.data_origin.value, now),
+            (component_id, turbine_id, display_name, data_origin.value, now),
         )
 
 
@@ -162,7 +163,6 @@ def create_care_router(database: Database) -> APIRouter:
     def field_infer(window: FieldScadaWindow):
         """Run the deployed SCADA model and attach its output to the requested machine."""
         validate_rows(window.rows)
-        ensure_field_target(database, window)
         model, cases = artifacts()
         probabilities = predict_portable(model, window_features([row.signals for row in window.rows]))
         prediction = max(probabilities, key=probabilities.get)
@@ -175,11 +175,17 @@ def create_care_router(database: Database) -> APIRouter:
             "gearbox_bearing": ("sensor_11_avg", "齿轮箱高速轴轴承温度", "°C"),
         }[prediction]
         component_key = CLASS_TO_COMPONENT[prediction]
+        component_id = f"{window.turbine_id}_{prediction.upper()}"
+        component_name = {
+            "healthy": "机组运行状态", "gearbox": "齿轮箱", "gearbox_bearing": "齿轮箱轴承",
+            "generator_bearing": "发电机轴承", "hydraulic": "液压系统",
+        }[prediction]
+        ensure_field_target(database, window.turbine_id, component_id, component_name, window.data_origin)
         sample_id = window.sample_id or f"SCADA-{window.turbine_id}-{window.rows[-1].time_stamp.strftime('%Y%m%dT%H%M%S')}-{uuid4().hex[:8]}"
         request = DiagnosisAnalyzeRequest(
             sample_id=sample_id,
             turbine_id=window.turbine_id,
-            component_id=window.component_id,
+            component_id=component_id,
             data_origin=window.data_origin,
             sampling_rate_hz=1 / 600,
             channels=[SignalChannel(

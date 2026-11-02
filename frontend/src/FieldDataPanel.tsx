@@ -14,25 +14,22 @@ export default function FieldDataPanel({ turbine, onRefresh, onLocate, onMainten
   const [message, setMessage] = useState('')
   const [uploadInfo, setUploadInfo] = useState<UploadInfo | null>(null)
   const [targetTurbineId, setTargetTurbineId] = useState(turbine?.turbine_id || '')
-  const [targetComponentId, setTargetComponentId] = useState(turbine?.component_id || '')
   const record = turbine?.field_diagnosis
   useEffect(() => {
     setTargetTurbineId(turbine?.turbine_id || '')
-    setTargetComponentId(turbine?.component_id || '')
-  }, [turbine?.turbine_id, turbine?.component_id])
+  }, [turbine?.turbine_id])
   const run = async (action: () => Promise<void>) => {
     setBusy(true); setError(''); setMessage('')
     try { await action() } catch (reason) { setError(reason instanceof Error ? reason.message : '数据接入失败') }
     finally { setBusy(false) }
   }
   const submitSixHourWindow = (file: File) => void run(async () => {
-    if (!targetTurbineId.trim() || !targetComponentId.trim()) throw new Error('请填写关联机组编号和部件编号。')
+    if (!targetTurbineId.trim()) throw new Error('请填写关联机组编号。')
     if (file.size > 2 * 1024 * 1024) throw new Error('文件不能超过 2 MB；请仅保留最近 6 小时的 36 条 SCADA 记录。')
     const source = JSON.parse(await file.text()) as Record<string, unknown>
     const result = await inferCareScadaWindow({
       ...source,
       turbine_id: targetTurbineId.trim(),
-      component_id: targetComponentId.trim(),
       data_origin: source.data_origin || 'REAL',
       source_reference: source.source_reference || file.name,
     })
@@ -49,7 +46,7 @@ export default function FieldDataPanel({ turbine, onRefresh, onLocate, onMainten
   return <section className="dataset-panel field-data-panel">
     <div className="field-entry-head"><div><span className="section-kicker">现场数据工作流</span><h3>上传数据或接入传感器</h3></div><span className="field-target">当前页面：{turbine?.turbine_id || '--'} · {turbine ? turbine.component_label : '等待接入'}</span></div>
     <p>近 6 小时数据 → 模型推理 → 信号诊断 → 三维定位 → 维护决策 → 执行记录与复测。接口模式与演示模式共用后续业务流程，区别仅在数据来源。</p>
-    <div className="field-target-form"><label>关联机组编号<input value={targetTurbineId} onChange={event => setTargetTurbineId(event.target.value)} placeholder="例如 WT09" /></label><label>关联部件编号<input value={targetComponentId} onChange={event => setTargetComponentId(event.target.value)} placeholder="例如 WT09_COMPONENT_01" /></label><small>首次接入的新编号会注册为新机组；已有编号则更新该机组的最新诊断。</small></div>
+    <div className="field-target-form"><label>关联机组编号<input value={targetTurbineId} onChange={event => setTargetTurbineId(event.target.value)} placeholder="例如 WT09" /></label><small>首次接入的新编号会注册为新机组；模型完成推理后自动关联齿轮箱、轴承、发电机或液压系统等对应部件。</small></div>
     <div className="dataset-entry-grid">
       <section><strong><Upload size={15} /> 方式一：上传近 6 小时 SCADA</strong><p>上传最近 36 条连续十分钟记录。系统在后端构建窗口特征并运行已部署的五类 CARE 状态模型。</p><label className="dataset-upload">选择 JSON 数据包<input type="file" accept=".json,application/json" disabled={busy} onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) submitSixHourWindow(file) }} /></label></section>
       <section><strong><Radio size={15} /> 方式二：实时采集端接入</strong><p>采集网关保留最新 36 条记录后，向同一接口持续发送；每次提交都会更新对应机组的诊断与运维闭环。</p><code>POST /api/care/field-infer</code><small>请求体与上传文件相同。机组和部件由采集端登记，页面按该记录同步展示。</small></section>

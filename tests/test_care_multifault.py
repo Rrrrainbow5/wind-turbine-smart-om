@@ -112,7 +112,6 @@ def test_field_scada_inference_persists_machine_diagnosis(tmp_path):
         ]
         result = client.post("/api/care/field-infer", json={
             "turbine_id": "WT09",
-            "component_id": "WT09_COMPONENT_01",
             "sample_id": "SCADA-WT09-20261102T1200",
             "source_reference": "unit-test collector batch",
             "data_origin": "REAL",
@@ -122,6 +121,7 @@ def test_field_scada_inference_persists_machine_diagnosis(tmp_path):
         body = result.json()
         assert body["field_diagnosis_persisted"] is True
         assert body["diagnosis"]["turbine_id"] == "WT09"
+        assert body["diagnosis"]["component_id"].startswith("WT09_")
         assert body["diagnosis"]["diagnosis"]["model_version"] == "care-scada-rf-demo-coverage-v2"
         diagnosis_id = body["diagnosis"]["diagnosis_id"]
         assert client.get(f"/api/diagnosis/{diagnosis_id}").status_code == 200
