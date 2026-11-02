@@ -1,0 +1,57 @@
+{
+  "handoff_schema": "signal-analysis.v2-input-staging",
+  "submission_state": "PENDING_B_PROCESSING_AND_DIAGNOSIS",
+  "api_target": "POST /api/diagnosis/analyze",
+  "sample_id": "wt-sweden-2018-dataset02-row-000000",
+  "processing_run_id": "PENDING_B_PROCESSING_RUN_ID",
+  "turbine_id": "EXTERNAL_WT_SWEDEN_DATASET02",
+  "component_id": "EXTERNAL_UNMAPPED_COMPONENT_01",
+  "event_id": null,
+  "event_name": null,
+  "fault_id": null,
+  "data_origin": "EXTERNAL_PUBLIC",
+  "sampling_rate_hz": 12800,
+  "channel": {
+    "name": "output_shaft_bearing_housing_axial_vibration",
+    "unit": "G",
+    "sample_count": 16384,
+    "artifact_uri": "PENDING_D_ARTIFACT_STORE_URI",
+    "local_artifact_sha256": "6a9da0a7273112dd5af5cbaec302c67611a351734131779959e451f87960cf75",
+    "source_reference": "https://doi.org/10.5878/cbn6-c922; source_file=DATASET02.csv; byte_range=0-305563",
+    "source_file_sha256": "cfaac3ebfe5665bfdacac9d4e6846afd57400f4367fe749c2b431dffa3954b8e",
+    "sensor_location": "output_shaft_bearing_housing_axial",
+    "window_length": 16384,
+    "overlap": 0.0
+  },
+  "operating_condition": {
+    "time_years_since_recording_start": 0,
+    "rotation_cpm": 750.9325,
+    "rotation_hz": 12.515541666666667
+  },
+  "verified_time_features": {
+    "feature_origin": "DERIVED",
+    "formula_convention": "population variance and excess kurtosis",
+    "mean": 0.0001542262212232962,
+    "variance": 0.10380048013025077,
+    "rms": 0.3221808559116707,
+    "kurtosis_excess": -0.062039454568272756,
+    "min": -1.29770775244106,
+    "max": 1.3053269853699,
+    "peak_to_peak": 2.60303473781096,
+    "crest_factor": 4.05153491096246
+  },
+  "pending_steps": [
+    "D artifact-store URI assignment",
+    "B preprocessing output",
+    "B FFT artifact",
+    "B STFT or wavelet artifact",
+    "B model inference or explicit out-of-scope result",
+    "D final diagnosis submission",
+    "C chart and scene integration"
+  ],
+  "prohibited_claims": [
+    "The sample has no fault-class label and cannot train or validate supervised fault classification.",
+    "No CAD component mapping is approved.",
+    "No model output, risk score, health index, confidence, or maintenance decision is included."
+  ]
+}

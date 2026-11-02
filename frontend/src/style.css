@@ -198,13 +198,44 @@ body{background:#07141d}
 .signal-method-card{display:grid;gap:6px;margin:0 0 10px;padding:11px;border:1px solid #285b66;background:#0a222c;border-radius:3px}.signal-method-card code{display:block;padding:5px 7px;background:#071b24;color:#9ee9e8;font:10px Consolas,monospace;overflow:auto}.signal-method-card small{color:#8db5bb;font-size:9px;line-height:1.5}
 .signal-standards{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:0 0 10px}.signal-standards span{color:#78a8b0;font-size:9px;margin-right:3px}.signal-standards b{padding:4px 6px;border:1px solid #315f69;background:#102c36;color:#b9dfe1;border-radius:2px;font-size:8px;font-weight:500}
 @media(max-width:700px){.signal-provenance{grid-template-columns:1fr 1fr}.signal-provenance div:nth-child(3){grid-column:1/-1}}
-.guide-target-highlight{position:relative!important;z-index:10000!important;outline:4px solid #ffe27a!important;outline-offset:4px;box-shadow:0 0 0 7px rgba(255,226,122,.42),0 0 28px rgba(255,226,122,.95)!important;filter:brightness(1.22)}
-.guide-overlay{z-index:5!important}.workspace{position:relative;z-index:6}
-.inspector.guide-focus-step-3 .workbench-block,.inspector.guide-focus-step-3 .constraint-row,.inspector.guide-focus-step-3 .plan-title,.inspector.guide-focus-step-3 .plans,.inspector.guide-focus-step-3 .decision-explanation,.inspector.guide-focus-step-3 [data-guide-target="execute-plan"]{outline:3px solid #ffe27a!important;outline-offset:4px;box-shadow:0 0 0 6px #ffe27a66,0 0 22px #ffe27acc!important;position:relative;z-index:10000!important}
-.inspector.guide-focus-retest.guide-focus-step-3 .workbench-block,.inspector.guide-focus-retest.guide-focus-step-3 .constraint-row,.inspector.guide-focus-retest.guide-focus-step-3 .plan-title,.inspector.guide-focus-retest.guide-focus-step-3 .plans,.inspector.guide-focus-retest.guide-focus-step-3 .decision-explanation,.inspector.guide-focus-retest.guide-focus-step-3 [data-guide-target="execute-plan"]{outline:none!important;box-shadow:none!important;filter:none;z-index:auto!important}.inspector.guide-focus-retest [data-guide-target="retest-result"]{outline:4px solid #ffe27a!important;outline-offset:4px;box-shadow:0 0 0 7px #ffe27a66,0 0 28px #ffe27acc!important;position:relative;z-index:10000!important}
-.inspector.guide-focus-retest [data-guide-target="retest-complete"],.inspector.guide-focus-retest [data-guide-target="confirm-repair"]{outline:4px solid #ffe27a!important;outline-offset:4px;box-shadow:0 0 0 7px #ffe27a66,0 0 28px #ffe27acc!important;position:relative;z-index:10000!important}
-.inspector.guide-focus-step-4 .diagnostic-slider,.inspector.guide-focus-step-4 .diagnostic-result{outline:4px solid #ffe27a!important;outline-offset:4px;box-shadow:0 0 0 7px #ffe27a66,0 0 28px #ffe27acc!important;position:relative;z-index:10000!important}
-.inspector.guide-focus-step-4 .demo-event-selector,.inspector.guide-focus-step-4 .ai-workbench{outline:3px solid #ffe27a!important;outline-offset:4px;box-shadow:0 0 0 6px #ffe27a66,0 0 22px #ffe27acc!important;position:relative;z-index:10000!important}
-.fault-callout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(120px,.8fr);gap:8px 16px;margin:14px 0 4px;padding:13px 14px;border:1px solid #b4574f;border-left:4px solid #ff665c;background:linear-gradient(135deg,#3b2025,#18252b);border-radius:3px}.fault-callout div{min-width:0}.fault-callout span{display:block;color:#9fc0c3;font-size:10px;margin-bottom:5px}.fault-callout strong,.fault-callout b{display:block;color:#fff1ef;font-size:14px;line-height:1.35;overflow-wrap:anywhere}.fault-callout b{font-size:12px;color:#ffc1a9}.fault-callout em{grid-column:1/-1;color:#dca79d;font-size:10px;font-style:normal}
-.fault-callout.normal{border-color:#278f78;border-left-color:#55d6a6;background:linear-gradient(135deg,#10352f,#14282d)}.fault-callout.normal strong,.fault-callout.normal b{color:#55d6a6}.fault-callout.normal em{color:#8bd8bd}
-.signal-machine-switch .signal-machine-tabs{display:flex;gap:5px;overflow-x:auto;margin-top:10px;padding:0 0 11px;border-bottom:1px solid #234852}.signal-machine-switch .signal-machine-tabs button{flex:1;min-width:68px;height:36px;margin:0;padding:0;border:1px solid #285764;background:#0e2a35;color:#a4c8cc;border-radius:2px;display:flex;align-items:center;justify-content:center;gap:7px;font-size:11px;font-weight:700}.signal-machine-switch .signal-machine-tabs button.selected{background:#0b5d6c;border-color:#24c7d8;color:#efffff;box-shadow:0 0 14px #18b7cf33}.signal-machine-switch .signal-machine-tabs i{width:7px;height:7px;flex:none;border-radius:50%;display:inline-block}
+
+/* Make the demo boundary explicit without changing the existing data flow. */
+.app-shell .ai-workbench .workbench-title h3{font-size:0}
+.app-shell .ai-workbench .workbench-title h3:after{content:'独立参数规则演示';font-size:15px}
+.app-shell .ai-workbench .workbench-title .simulated-tag{font-size:0}
+.app-shell .ai-workbench .workbench-title .simulated-tag:after{content:'SIMULATED · 不属于八台风机实测诊断';font-size:11px}
+.app-shell .ai-workbench:before{content:'八台风机显示 CARE 聚合状态；本区域仅用于观察参数变化，不代表八台风机已有真实高频诊断。接口上传数据请切换到“接口”模式。';display:block;margin:-4px 0 12px;padding:9px 10px;border-left:3px solid #d4a85a;background:#16333b;color:#e8cb8d;font-size:12px;line-height:1.5}
+
+/* Defense layout: give the diagnostic inspector enough width to read without browser zoom. */
+@media(min-width:1101px){
+  .workspace-signal{grid-template-columns:minmax(0,1.08fr) minmax(560px,.92fr)}
+  .workspace-demo{grid-template-columns:minmax(0,1.05fr) minmax(560px,.95fr)}
+  .workspace-signal .inspector,.workspace-demo .inspector{padding-left:32px;padding-right:32px}
+  .workspace-signal .signal-panel-blue{max-width:680px;margin-left:auto;margin-right:auto}
+  .workspace-demo .demo-panel{max-width:680px;margin-left:auto;margin-right:auto}
+}
+
+/* Readability defaults for live demonstrations and projected defense screens. */
+.app-shell .top-nav button{font-size:14px}
+.app-shell .section-kicker,.app-shell .scene-heading p,.app-shell .scene-weather span,.app-shell .scene-weather small{font-size:12px}
+.app-shell .scene-legend,.app-shell .scene-hint{font-size:12px}
+.app-shell .selector-row h2{font-size:23px}
+.app-shell .status-badge{font-size:12px}
+.app-shell .reading-label{font-size:14px}
+.app-shell .reading-number{font-size:44px}
+.app-shell .reading-primary p{font-size:12px}
+.app-shell .metric-grid span{font-size:11px}
+.app-shell .metric-grid strong{font-size:22px}
+.app-shell .metric-grid small{font-size:10px}
+.app-shell .section-title h3,.app-shell .workbench-title h3{font-size:15px}
+.app-shell .section-title span,.app-shell .workbench-title>span{font-size:11px}
+.app-shell .primary-action{font-size:14px}
+.app-shell .secondary-action{font-size:13px}
+.app-shell .diagnostic-slider>span{font-size:14px}
+.app-shell .diagnostic-slider small,.app-shell .diagnostic-history{font-size:11px}
+.app-shell .ai-status-line{font-size:13px}
+.app-shell .diagnostic-summary{font-size:13px}
+.app-shell .diagnostic-summary strong{font-size:17px}
+.app-shell .confidence-row{font-size:12px}
+.app-shell .history-clear{border:1px solid #4c8088;background:#123541;color:#dffaff;border-radius:3px;padding:2px 7px;font-size:11px}
+.app-shell .history-clear:disabled{opacity:.45}

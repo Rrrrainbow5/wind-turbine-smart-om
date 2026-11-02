@@ -1,0 +1,56 @@
+{
+  "library_version": "v0.2-draft",
+  "data_origin": "REFERENCE",
+  "frequency_policy": "Return formulas and missing_parameters when design parameters are unavailable; never invent Hz values.",
+  "categories": [
+    {
+      "fault_class": "GEAR",
+      "display_name": "齿轮故障",
+      "failure_forms": ["pitting", "wear", "crack", "tooth_breakage", "eccentricity"],
+      "mechanism": "Mesh-stiffness modulation, local impacts, backlash or eccentricity variation.",
+      "evidence_channels": ["vibration", "envelope_spectrum", "oil_debris"],
+      "feature_relations": [{"name": "GMF", "formula": "Z * fr", "required_parameters": ["Z", "fr_hz"]}],
+      "component_key": null,
+      "mapping_status": "UNVERIFIED"
+    },
+    {
+      "fault_class": "BEARING",
+      "display_name": "轴承故障",
+      "failure_forms": ["inner_race", "outer_race", "rolling_element", "cage"],
+      "mechanism": "Localized defects generate periodic impacts and excite structural resonance.",
+      "evidence_channels": ["vibration", "envelope_spectrum", "kurtosis", "temperature"],
+      "feature_relations": [
+        {"name": "BPFO", "formula": "(n/2)*fr_hz*(1-(d/D)*cos(theta_rad))", "required_parameters": ["n", "d", "D", "theta_rad", "fr_hz"]},
+        {"name": "BPFI", "formula": "(n/2)*fr_hz*(1+(d/D)*cos(theta_rad))", "required_parameters": ["n", "d", "D", "theta_rad", "fr_hz"]},
+        {"name": "BSF", "formula": "(D/(2*d))*fr_hz*(1-((d/D)*cos(theta_rad))^2)", "required_parameters": ["n", "d", "D", "theta_rad", "fr_hz"]},
+        {"name": "FTF", "formula": "(1/2)*fr_hz*(1-(d/D)*cos(theta_rad))", "required_parameters": ["n", "d", "D", "theta_rad", "fr_hz"]}
+      ],
+      "component_key": null,
+      "mapping_status": "UNVERIFIED"
+    },
+    {
+      "fault_class": "VIBRATION",
+      "display_name": "振动异常",
+      "failure_forms": ["imbalance", "misalignment", "mechanical_looseness", "resonance"],
+      "mechanism": "Mass eccentricity, shaft alignment error, loss of stiffness, or excitation of natural frequencies.",
+      "evidence_channels": ["radial_vibration", "axial_vibration", "phase", "speed"],
+      "feature_relations": [
+        {"name": "1X", "formula": "fr_hz", "required_parameters": ["fr_hz"]},
+        {"name": "2X", "formula": "2*fr_hz", "required_parameters": ["fr_hz"]}
+      ],
+      "component_key": null,
+      "mapping_status": "UNVERIFIED"
+    },
+    {
+      "fault_class": "ELECTRICAL",
+      "display_name": "电机电气故障",
+      "failure_forms": ["stator_turn_short", "rotor_bar", "air_gap_eccentricity", "current_imbalance"],
+      "mechanism": "Magnetic-field asymmetry, slip disturbance and electromagnetic torque ripple.",
+      "evidence_channels": ["three_phase_current", "voltage", "power", "temperature"],
+      "feature_relations": [{"name": "MCSA_sidebands", "formula": "dependent on supply_frequency_hz, pole_pairs and slip", "required_parameters": ["supply_frequency_hz", "pole_pairs", "slip"]}],
+      "component_key": null,
+      "mapping_status": "UNVERIFIED"
+    }
+  ],
+  "references": ["IEC 61400-25 series", "ISO 13373 series", "ISO 13374-1", "ISO 13379-1", "ISO 15243"]
+}

@@ -21,6 +21,8 @@ export interface Turbine {
   trend_unit?: string
   source: SourceKind
   model_version: string
+  sample_id?: string
+  diagnosis_id?: string
   event_id?: number
   mapping_status?: string
   has_analysis?: boolean
@@ -64,17 +66,25 @@ export const warningText: Record<WarningLevel, string> = {
 }
 
 export function getDemoPlans(weatherRestricted: boolean): MaintenancePlan[] {
-  return [
-    { id: 'inspect', title: '安排现场检查', timing: weatherRestricted ? '天气恢复后' : '今日', action: '核验异常并形成检查记录，不代表已经完成维修', risk: '中', downtime: '待现场确认', cost: '低', recommended: !weatherRestricted },
-    { id: 'service', title: '安排预防性维护', timing: weatherRestricted ? '下一可用窗口' : '按计划执行', action: '完成维护后采集新数据并进入维修后复测', risk: '较低', downtime: '按现场计划', cost: '中', recommended: false },
-    { id: 'monitor', title: '继续监测', timing: '持续', action: '提高监测频率并复评；故障保持未处理状态', risk: '较高', downtime: '0 h', cost: '低', recommended: weatherRestricted },
+  return weatherRestricted ? [
+    { id: 'inspect', title: '远程监测并准备备件', timing: '今日', action: '持续监测，准备现场检查', risk: '中', downtime: '0 h', cost: '低', recommended: true },
+    { id: 'service', title: '窗口恢复后安排维护', timing: '下个可用窗口', action: '现场检查后按需维护', risk: '较低', downtime: '按现场计划', cost: '中' },
+    { id: 'monitor', title: '继续监测', timing: '持续', action: '提高监测频率并复评', risk: '较高', downtime: '0 h', cost: '低' },
+  ] : [
+    { id: 'inspect', title: '安排现场检查', timing: '今日', action: '核验异常并准备备件', risk: '中', downtime: '待定', cost: '低', recommended: true },
+    { id: 'service', title: '安排预防性维护', timing: '下一可用窗口', action: '检查后执行维护', risk: '较低', downtime: '按现场计划', cost: '中' },
+    { id: 'monitor', title: '继续监测', timing: '持续', action: '提高监测频率并复评', risk: '较高', downtime: '0 h', cost: '低' },
   ]
 }
 
 export function getScheduledMaintenancePlans(weatherRestricted: boolean): MaintenancePlan[] {
-  return [
-    { id: 'routine_inspection', title: '例行巡检与状态复核', timing: weatherRestricted ? '天气恢复后' : '本周期内', action: '完成外观、紧固件、润滑状态和运行记录的周期核查，形成例行巡检记录。', risk: '低', downtime: '0.5 h', cost: '¥0.2 万', recommended: !weatherRestricted },
-    { id: 'scheduled_service', title: '计划润滑与紧固维护', timing: '下一个计划窗口', action: '按维护周期执行润滑、紧固和过滤器检查；不以故障修复为前提。', risk: '低', downtime: '2 h', cost: '¥0.6 万', recommended: false },
-    { id: 'monitor', title: '持续状态监测', timing: '持续', action: '保持在线监测，在下一次计划维护窗口前跟踪健康指数和关键趋势。', risk: '低', downtime: '0 h', cost: '¥0', recommended: false },
+  return weatherRestricted ? [
+    { id: 'routine_inspection', title: '窗口恢复后例行检查', timing: '下一个可用窗口', action: '完成外观、紧固与润滑例行检查', risk: '低', downtime: '0.5 h', cost: '¥0.2 万', recommended: true },
+    { id: 'scheduled_service', title: '纳入下次计划维护', timing: '计划窗口', action: '按维护周期安排润滑、紧固和功能检查', risk: '低', downtime: '2 h', cost: '¥0.6 万' },
+    { id: 'monitor', title: '保持常规监测', timing: '持续', action: '维持当前状态监测频率', risk: '低', downtime: '0 h', cost: '¥0' },
+  ] : [
+    { id: 'routine_inspection', title: '安排例行检查', timing: '本周期内', action: '完成外观、紧固与润滑例行检查', risk: '低', downtime: '0.5 h', cost: '¥0.2 万', recommended: true },
+    { id: 'scheduled_service', title: '纳入计划维护', timing: '下一个计划窗口', action: '按维护周期安排润滑、紧固和功能检查', risk: '低', downtime: '2 h', cost: '¥0.6 万' },
+    { id: 'monitor', title: '保持常规监测', timing: '持续', action: '维持当前状态监测频率', risk: '低', downtime: '0 h', cost: '¥0' },
   ]
 }
