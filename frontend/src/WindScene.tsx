@@ -160,10 +160,11 @@ export function makeSupplementalTransformerGroup(model: THREE.Object3D, turbineI
   // In a turbine nacelle the transformer cabinet sits on the service floor
   // beside the generator. Anchor it to the compact stator/rotor envelope,
   // excluding the long generator cable that otherwise pulls it to the hub.
-  anchor.y = electricalReference.min.y + electricalSize.y * .34
-  // Keep the cabinet beside the generator service aisle, rather than inside
-  // the drivetrain volume where it would intersect shafts and gearbox rails.
-  anchor.z = electricalReference.max.z + Math.max(electricalSize.z * .52, modelSize.z * .028)
+  // CAD source axes are rotated on import. A Z-side offset projects below the
+  // nacelle in the engineering camera, so keep the cabinet in the generator
+  // envelope and lift it onto the nacelle service floor instead.
+  anchor.y = electricalReference.min.y + electricalSize.y * .64
+  anchor.z = electricalReference.getCenter(new THREE.Vector3()).z + Math.max(electricalSize.z * .06, modelSize.z * .004)
   group.position.copy(model.worldToLocal(anchor))
   // Child geometry uses scene units while the imported CAD may use millimetres.
   // The transformed CAD has a large internal coordinate range. Keep the
