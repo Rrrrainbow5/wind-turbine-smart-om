@@ -205,6 +205,15 @@ export async function fetchTurbines(): Promise<Turbine[]> {
     const operating = diagnosis?.operating_condition || {}
     const diagnosisPower = Number(operating.active_power_kw)
     const diagnosisWind = Number(operating.wind_speed_ms)
+    // Demo-fleet records carry a complete six-hour CARE snapshot. Prefer it
+    // over an older local telemetry placeholder (often zero or stale).
+    const useDiagnosisOperating = diagnosis?.data_origin === 'DERIVED'
+    const powerKw = useDiagnosisOperating && Number.isFinite(diagnosisPower)
+      ? diagnosisPower
+      : telemetry?.active_power_kw ?? (Number.isFinite(diagnosisPower) ? diagnosisPower : 0)
+    const windMs = useDiagnosisOperating && Number.isFinite(diagnosisWind)
+      ? diagnosisWind
+      : telemetry?.wind_speed_ms ?? (Number.isFinite(diagnosisWind) ? diagnosisWind : 0)
     const verified = state?.mapping_status === 'VERIFIED'
     return {
       turbine_id: item.turbine_id,
@@ -216,10 +225,10 @@ export async function fetchTurbines(): Promise<Turbine[]> {
       failure_risk: latest?.failure_risk ?? 0,
       // Treat tiny negative sensor offsets as zero for display; preserve larger
       // negative values so genuine reverse power flow remains diagnosable.
-      power_kw: telemetry?.active_power_kw != null && telemetry.active_power_kw < 0 && telemetry.active_power_kw > -0.01
+      power_kw: powerKw < 0 && powerKw > -0.01
         ? 0
-        : telemetry?.active_power_kw ?? (Number.isFinite(diagnosisPower) ? diagnosisPower : 0),
-      wind_ms: telemetry?.wind_speed_ms ?? (Number.isFinite(diagnosisWind) ? diagnosisWind : 0),
+        : powerKw,
+      wind_ms: windMs,
       component_id: state?.component_id || `${item.turbine_id}_COMPONENT_01`,
       component_label: diagnosis ? fieldComponentLabel(diagnosis, state.component_name) : verified ? state.component_name : '待核验关键部件',
       mapping_status: state?.mapping_status || 'UNVERIFIED',
