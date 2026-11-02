@@ -363,6 +363,7 @@ export default function App() {
   const plan = plans.find(p => p.id === selectedPlan) || plans[0]
   const highCount = turbines.filter(t => t.has_analysis !== false && t.warning_level === 'HIGH').length
   const retest = retests[0]
+  const selectedHistory = turbineStates[selectedId]?.maintenanceLog || []
   const activeFault = Boolean(selected && !serviced && selected.has_analysis !== false && (selected.warning_level !== 'NORMAL' || (mode === 'demo' && diagnostic.risk >= .2)))
   const conditionSummary = `人员${personnelAvailable ? '✓' : '✗'} 备件${spareAvailable ? '✓' : '✗'} 天气${weatherRestricted ? '✗' : '✓'} 停机${shutdownAllowed ? '✓' : '✗'}`
   const weatherClosed = weather.wind > 12 || weather.wave > 2
@@ -742,9 +743,9 @@ export default function App() {
               <button onClick={() => openEvidence('trend', '传感器趋势')}><Activity size={15} />传感器趋势</button>
               <button onClick={() => openEvidence('history', '历史记录')}><History size={15} />历史记录</button>
               <button onClick={() => openEvidence('context', 'Event 51 说明')}><ClipboardList size={15} />Event 51 说明</button>
-              <button onClick={() => openEvidence('review', '人工复核')}><ShieldCheck size={15} />请求人工复核</button>
-            </div></div>
-            <div className="evidence-panel">{evidencePanel === 'evidence' && <><strong>异常证据</strong><p>当前部件风险评分 {selected.failure_risk.toFixed(3)}，健康指数 {selected.health_index.toFixed(1)}。该评分用于相对排序，不是校准故障概率。</p></>}{evidencePanel === 'trend' && <><strong>{selected.trend_label || '传感器趋势'}</strong><Sparkline values={selected.trend} level={selected.warning_level} /><p>趋势依据 CARE 数据集记录整理。</p></>}{evidencePanel === 'history' && <><strong>维护历史</strong><p>暂无可核验的历史维护记录。执行后将保留 plan_id、record_id 和复测状态。</p></>}{evidencePanel === 'context' && <><strong>CARE Version 6 · Event {selected.event_id || 51}</strong><p>当前场景为海上风场演示，部件为 {selected.component_label}。</p></>}{evidencePanel === 'review' && <><strong>人工复核请求已记录</strong><p>请工程人员确认数据记录和维护窗口；系统不会自动把复核视为故障确认。</p></>}</div>
+               <button onClick={() => openEvidence('review', '人工核查标记')}><ShieldCheck size={15} />标记待人工核查</button>
+             </div></div>
+             <div className="evidence-panel">{evidencePanel === 'evidence' && <><strong>异常证据</strong><p>当前部件风险评分 {selected.failure_risk.toFixed(3)}，健康指数 {selected.health_index.toFixed(1)}。该评分用于相对排序，不是校准故障概率。</p></>}{evidencePanel === 'trend' && <><strong>{selected.trend_label || '传感器趋势'}</strong><Sparkline values={selected.trend} level={selected.warning_level} /><p>趋势依据 {mode === 'api' ? selected.source === 'DERIVED' ? 'CARE 聚合记录' : '接口诊断记录' : '演示样本'}。</p></>}{evidencePanel === 'history' && <><strong>维护历史</strong>{selectedHistory.length ? selectedHistory.slice(0, 8).map((item, index) => <p key={`${item.time}-${index}`}>{item.time} · {item.action} · {item.detail} · {item.result}</p>) : <p>当前机组尚无操作记录。</p>}</>}{evidencePanel === 'context' && <><strong>{mode === 'api' ? '当前数据来源' : `CARE Version 6 · Event ${selected.event_id || 51}`}</strong><p>{mode === 'api' ? `${selected.source} · ${selected.updated_at} · 当前部件 ${selected.component_label}` : `当前场景为海上风场演示，部件为 ${selected.component_label}。`}</p></>}{evidencePanel === 'review' && <><strong>已标记待人工核查（演示）</strong><p>请工程人员核对数据来源、测点和维护窗口。该标记不会确认故障，也不会自动创建维修工单。</p></>}</div>
             <div className="workbench-block"><div className="workbench-title"><h3>工程资源与约束</h3><span>改变条件后重新生成方案</span></div><div className="resource-grid">
               <button className={personnelAvailable ? 'resource-on' : ''} onClick={() => { setPersonnelAvailable(v => !v); logAction(`维护人员${personnelAvailable ? '不可用' : '可用'}`) }}><UserRound size={15} />人员 {personnelAvailable ? '可用' : '不可用'}</button>
               <button className={spareAvailable ? 'resource-on' : ''} onClick={() => { setSpareAvailable(v => !v); logAction(`备件${spareAvailable ? '不可用' : '可用'}`) }}><PackageCheck size={15} />备件 {spareAvailable ? '可用' : '不可用'}</button>
