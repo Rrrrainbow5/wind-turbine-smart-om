@@ -212,6 +212,17 @@ body{background:#07141d}
   .workspace-demo{grid-template-columns:minmax(0,1.05fr) minmax(560px,.95fr)}
   .workspace-signal .inspector,.workspace-demo .inspector{padding-left:32px;padding-right:32px}
   .workspace-signal .signal-panel-blue{max-width:680px;margin-left:auto;margin-right:auto}
+
+/* Keep the current diagnosis readable as a compact two-column status card. */
+.fault-callout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(120px,.8fr);gap:8px 16px;margin:14px 0 4px;padding:13px 14px;border:1px solid #b4574f;border-left:4px solid #ff665c;background:#302025;border-radius:3px}
+.fault-callout div{min-width:0}
+.fault-callout span{display:block;color:#9fc0c3;font-size:10px;margin-bottom:5px}
+.fault-callout strong,.fault-callout b{display:block;color:#fff1ef;font-size:14px;line-height:1.35;overflow-wrap:anywhere}
+.fault-callout b{font-size:12px;color:#ffc1a9}
+.fault-callout em{grid-column:1/-1;color:#dca79d;font-size:10px;font-style:normal}
+.fault-callout.normal{border-color:#247b68;border-left-color:#31c99c;background:#102d2b}
+.fault-callout.normal strong{color:#d9fff0}.fault-callout.normal b{color:#a5e8cf}.fault-callout.normal em{color:#8ccdb8}
+@media(max-width:560px){.fault-callout{grid-template-columns:1fr;gap:10px;margin-top:10px}}
   .workspace-demo .demo-panel{max-width:680px;margin-left:auto;margin-right:auto}
 }
 
