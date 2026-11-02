@@ -21,12 +21,13 @@ export function runChecks() {
   const fastener = /bolt|screw|washer|fastener|navrt|podlo|civij|(?:^|[\s_])(?:[šs]?raf|klin)\b/i
   const source = (object: THREE.Object3D) => String(object.userData.sourceCadName || '')
   const counts: Record<string, number> = {}
-  for (const category of ['GEARBOX', 'GEARBOX_BEARING', 'HYDRAULIC'] as const) {
+  for (const category of ['GEARBOX', 'GEARBOX_BEARING', 'HYDRAULIC', 'GENERATOR', 'ROTOR_BEARING', 'DRIVETRAIN'] as const) {
     setFaultPartState(root, category, 'HIGH')
     const overlay = root.getObjectByName('FAULT_HIGHLIGHT_OVERLAY')!
     assert.ok(overlay?.children.length, `${category} must have real CAD targets`)
     assert.ok(overlay.children.every(node => !fastener.test(source(node))), `${category} must exclude all bolts, nuts, pins and washers`)
-    assert.ok(overlay.children.every(node => effectiveCadCategory(node, root) === category))
+    const overlayCategories = [...new Set(overlay.children.map(node => effectiveCadCategory(node, root)))]
+    assert.deepEqual(overlayCategories, [category], `${category} overlay categories: ${overlayCategories.join(', ')}`)
     if (category === 'HYDRAULIC') {
       assert.ok(overlay.children.some(node => source(node) === 'rezervoar.STEP'), 'Hydraulic tank must be highlighted')
       assert.ok(overlay.children.some(node => source(node).startsWith('crevo od T spoja')), 'Hydraulic hose must be highlighted')
@@ -35,6 +36,11 @@ export function runChecks() {
     }
     counts[category] = overlay.children.length
   }
+  // Transformer is an external electrical asset in the supplied CAD, not an
+  // imported nacelle component. It must never receive a false 3D highlight.
+  setFaultPartState(root, 'TRANSFORMER', 'HIGH')
+  assert.equal(root.getObjectByName('FAULT_HIGHLIGHT_OVERLAY'), undefined)
+  assert.equal(root.userData.faultHighlightCount, 0)
   setFaultPartState(root, undefined, 'NORMAL')
   assert.equal(root.getObjectByName('FAULT_HIGHLIGHT_OVERLAY'), undefined)
   assert.equal(root.userData.faultHighlightCount, 0)

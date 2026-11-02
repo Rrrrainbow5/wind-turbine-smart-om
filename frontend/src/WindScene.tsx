@@ -101,7 +101,11 @@ export function makeRealGearboxBearingGroup(root: THREE.Object3D, turbineId: str
   root.traverse(object => {
     const source = String(object.userData.sourceCadName || '').toLowerCase()
     if (!(object instanceof THREE.Mesh) || (!source.includes('bearing') && !source.includes('le_aj'))) return
-    if (isCadFastener(object, root) || effectiveCadCategory(object, root) === 'HYDRAULIC') return
+    const existingCategory = effectiveCadCategory(object, root)
+    // Main-shaft bearings already have an explicit rotor-bearing identity.
+    // Never relabel them as gearbox bearings merely because both sit inside
+    // the nacelle hierarchy.
+    if (isCadFastener(object, root) || existingCategory === 'HYDRAULIC' || existingCategory === 'ROTOR_BEARING') return
     const ancestry: string[] = []
     let parent = object.parent
     while (parent && parent !== root) {
