@@ -40,8 +40,8 @@ export default function CarePanel({ sample, turbineId, expanded = false }: { sam
     <div className="care-title" data-guide-target="signal-start"><Database size={15} /><strong>信号诊断 · {turbineId} · 目标机组</strong><span>{verified ? '后端重算' : '训练案例回放'}</span></div>
     <div className="care-signal-meta"><span>当前样本 <b>{sample.sample_id}</b></span><span>来源 <b>CARE Wind Farm A · 原机组 {sample.source_asset}</b></span><span>窗口 <b>{sample.row_count} 条 · 每 10 min · 共 6 h</b></span></div>
     <div className="care-pipeline" aria-label="信号处理流程">
-      <div className="done"><b>01</b><span>原始采集</span><small>SCADA 十分钟聚合</small><svg viewBox="0 0 220 54" preserveAspectRatio="none"><polyline points={points(sample.trend, 220, 54)} /></svg></div><i />
-      <div className="done"><b>02</b><span>预处理</span><small>质量检查 · 缺失填补</small><svg viewBox="0 0 220 54" preserveAspectRatio="none"><polyline className="temp-a" points={points(sample.trend, 220, 54)} /></svg></div><i />
+      <div className="done"><b>01</b><span>原始采集</span><small>SCADA 十分钟聚合 · 详见下方步骤</small></div><i />
+      <div className="done"><b>02</b><span>预处理</span><small>质量检查 · 缺失填补</small></div><i />
       <div className="done"><b>03</b><span>特征提取</span><small>中位数 · 标准差 · 首尾变化</small><div className="feature-bars">{featureEvidence.map(([, value], index) => <i key={index} title={value.toFixed(2)} style={{ height: `${Math.min(90, 32 + Math.abs(value) * 4)}%` }} />)}</div></div><i />
       <div className="active"><b>04</b><span>模型推理</span><small>随机森林状态分类</small><div className="pipeline-score">{scores.slice(0, 3).map(([label, value]) => <div key={label}><em>{careClassName(label)}</em><span><i style={{ width: `${value * 100}%` }} /></span><b>{(value * 100).toFixed(0)}%</b></div>)}</div></div>
     </div>
