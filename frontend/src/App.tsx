@@ -679,8 +679,9 @@ export default function App() {
         return
       }
       if (selectedPlan === 'inspect' || decisionAction === 'SCHEDULE_INSPECTION') {
-        setDecisionFeedback('现场检查记录已生成：该动作只核验异常和准备资源，不代表维修完成，也不生成维修后复测。')
-        setRetestPhase('idle'); setServiced(false); playConfirmSound(); logAction('现场检查已记录：故障状态保持不变')
+        setAfterRetest(createRetestSnapshot(false))
+        setDecisionFeedback('现场检查已完成：已保留执行前后的状态复核结果。检查不会清除故障，请根据复核结果决定是否安排维护。')
+        setRetestPhase('result'); setServiced(false); playConfirmSound(); logAction('现场检查已记录：已生成状态复核结果')
         return
       }
       await runRetestProgress()
