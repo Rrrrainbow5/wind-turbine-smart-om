@@ -69,6 +69,7 @@ export function getDemoPlans(weatherRestricted: boolean): MaintenancePlan[] {
   return weatherRestricted ? [
     { id: 'inspect', title: '远程监测并准备备件', timing: '今日', action: '持续监测，准备现场检查', risk: '中', downtime: '0 h', cost: '低', recommended: true },
     { id: 'service', title: '窗口恢复后安排维护', timing: '下个可用窗口', action: '现场检查后按需维护', risk: '较低', downtime: '按现场计划', cost: '中' },
+    { id: 'monitor', title: '继续监测', timing: '持续', action: '提高监测频率并复评', risk: '较高', downtime: '0 h', cost: '低' },
   ] : [
     { id: 'inspect', title: '安排现场检查', timing: '今日', action: '核验异常并准备备件', risk: '中', downtime: '待定', cost: '低', recommended: true },
     { id: 'service', title: '安排预防性维护', timing: '下一可用窗口', action: '检查后执行维护', risk: '较低', downtime: '按现场计划', cost: '中' },
