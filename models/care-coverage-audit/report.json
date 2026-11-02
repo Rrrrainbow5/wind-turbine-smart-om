@@ -1,0 +1,736 @@
+{
+  "status": "METADATA_AUDIT_NOT_MODEL_VALIDATION",
+  "source_counts": {
+    "A": {
+      "events": 22,
+      "normal": 10
+    },
+    "B": {
+      "events": 15,
+      "normal": 9
+    },
+    "C": {
+      "events": 58,
+      "normal": 31
+    }
+  },
+  "semantic_channels": {
+    "ambient_temperature": {
+      "A": "sensor_0_avg",
+      "B": "sensor_8_avg",
+      "C": "sensor_7_avg"
+    },
+    "wind_speed": {
+      "A": "wind_speed_3_avg",
+      "B": "wind_speed_61_avg",
+      "C": "wind_speed_235_avg"
+    },
+    "active_power": {
+      "A": "power_30_avg",
+      "B": "power_62_avg",
+      "C": "power_2_avg"
+    },
+    "gearbox_oil_temperature": {
+      "A": "sensor_12_avg",
+      "B": "sensor_38_avg",
+      "C": "sensor_186_avg"
+    },
+    "generator_bearing_temperature": {
+      "A": "sensor_13_avg",
+      "B": "sensor_32_avg"
+    },
+    "rotor_bearing_temperature": {
+      "C": "sensor_196_avg"
+    },
+    "transformer_temperature": {
+      "A": "sensor_38_avg",
+      "B": "sensor_41_avg",
+      "C": "sensor_191_avg"
+    }
+  },
+  "categories": {
+    "converter_event": {
+      "independent_assets": 1,
+      "assets": [
+        "C:38"
+      ],
+      "farms": [
+        "C"
+      ],
+      "events": [
+        {
+          "farm": "C",
+          "event_id": 81,
+          "asset_id": "C:38"
+        }
+      ],
+      "asset_holdout_eligible": false
+    },
+    "gear_oil_pump_coupling_event": {
+      "independent_assets": 1,
+      "assets": [
+        "C:33"
+      ],
+      "farms": [
+        "C"
+      ],
+      "events": [
+        {
+          "farm": "C",
+          "event_id": 49,
+          "asset_id": "C:33"
+        }
+      ],
+      "asset_holdout_eligible": false
+    },
+    "gearbox": {
+      "independent_assets": 1,
+      "assets": [
+        "A:10"
+      ],
+      "farms": [
+        "A"
+      ],
+      "events": [
+        {
+          "farm": "A",
+          "event_id": 10,
+          "asset_id": "A:10"
+        }
+      ],
+      "asset_holdout_eligible": false
+    },
+    "gearbox_bearing": {
+      "independent_assets": 1,
+      "assets": [
+        "A:21"
+      ],
+      "farms": [
+        "A"
+      ],
+      "events": [
+        {
+          "farm": "A",
+          "event_id": 51,
+          "asset_id": "A:21"
+        }
+      ],
+      "asset_holdout_eligible": false
+    },
+    "generator_bearing": {
+      "independent_assets": 2,
+      "assets": [
+        "A:0",
+        "A:10"
+      ],
+      "farms": [
+        "A"
+      ],
+      "events": [
+        {
+          "farm": "A",
+          "event_id": 0,
+          "asset_id": "A:0"
+        },
+        {
+          "farm": "A",
+          "event_id": 40,
+          "asset_id": "A:10"
+        }
+      ],
+      "asset_holdout_eligible": true
+    },
+    "healthy": {
+      "independent_assets": 36,
+      "assets": [
+        "A:0",
+        "A:10",
+        "A:11",
+        "A:13",
+        "A:21",
+        "B:0",
+        "B:11",
+        "B:12",
+        "B:13",
+        "B:14",
+        "B:2",
+        "B:5",
+        "B:6",
+        "B:7",
+        "C:12",
+        "C:13",
+        "C:14",
+        "C:15",
+        "C:16",
+        "C:2",
+        "C:21",
+        "C:23",
+        "C:32",
+        "C:33",
+        "C:34",
+        "C:35",
+        "C:38",
+        "C:42",
+        "C:43",
+        "C:44",
+        "C:5",
+        "C:50",
+        "C:52",
+        "C:53",
+        "C:55",
+        "C:56"
+      ],
+      "farms": [
+        "A",
+        "B",
+        "C"
+      ],
+      "events": [
+        {
+          "farm": "A",
+          "event_id": 3,
+          "asset_id": "A:10"
+        },
+        {
+          "farm": "A",
+          "event_id": 13,
+          "asset_id": "A:21"
+        },
+        {
+          "farm": "A",
+          "event_id": 14,
+          "asset_id": "A:13"
+        },
+        {
+          "farm": "A",
+          "event_id": 17,
+          "asset_id": "A:10"
+        },
+        {
+          "farm": "A",
+          "event_id": 24,
+          "asset_id": "A:0"
+        },
+        {
+          "farm": "A",
+          "event_id": 25,
+          "asset_id": "A:11"
+        },
+        {
+          "farm": "A",
+          "event_id": 38,
+          "asset_id": "A:13"
+        },
+        {
+          "farm": "A",
+          "event_id": 69,
+          "asset_id": "A:11"
+        },
+        {
+          "farm": "A",
+          "event_id": 71,
+          "asset_id": "A:0"
+        },
+        {
+          "farm": "A",
+          "event_id": 92,
+          "asset_id": "A:11"
+        },
+        {
+          "farm": "B",
+          "event_id": 2,
+          "asset_id": "B:13"
+        },
+        {
+          "farm": "B",
+          "event_id": 21,
+          "asset_id": "B:0"
+        },
+        {
+          "farm": "B",
+          "event_id": 23,
+          "asset_id": "B:6"
+        },
+        {
+          "farm": "B",
+          "event_id": 52,
+          "asset_id": "B:14"
+        },
+        {
+          "farm": "B",
+          "event_id": 74,
+          "asset_id": "B:11"
+        },
+        {
+          "farm": "B",
+          "event_id": 82,
+          "asset_id": "B:5"
+        },
+        {
+          "farm": "B",
+          "event_id": 83,
+          "asset_id": "B:2"
+        },
+        {
+          "farm": "B",
+          "event_id": 86,
+          "asset_id": "B:12"
+        },
+        {
+          "farm": "B",
+          "event_id": 87,
+          "asset_id": "B:7"
+        },
+        {
+          "farm": "C",
+          "event_id": 1,
+          "asset_id": "C:53"
+        },
+        {
+          "farm": "C",
+          "event_id": 6,
+          "asset_id": "C:38"
+        },
+        {
+          "farm": "C",
+          "event_id": 8,
+          "asset_id": "C:50"
+        },
+        {
+          "farm": "C",
+          "event_id": 20,
+          "asset_id": "C:53"
+        },
+        {
+          "farm": "C",
+          "event_id": 29,
+          "asset_id": "C:13"
+        },
+        {
+          "farm": "C",
+          "event_id": 32,
+          "asset_id": "C:42"
+        },
+        {
+          "farm": "C",
+          "event_id": 36,
+          "asset_id": "C:2"
+        },
+        {
+          "farm": "C",
+          "event_id": 37,
+          "asset_id": "C:23"
+        },
+        {
+          "farm": "C",
+          "event_id": 41,
+          "asset_id": "C:33"
+        },
+        {
+          "farm": "C",
+          "event_id": 43,
+          "asset_id": "C:52"
+        },
+        {
+          "farm": "C",
+          "event_id": 46,
+          "asset_id": "C:16"
+        },
+        {
+          "farm": "C",
+          "event_id": 48,
+          "asset_id": "C:35"
+        },
+        {
+          "farm": "C",
+          "event_id": 50,
+          "asset_id": "C:12"
+        },
+        {
+          "farm": "C",
+          "event_id": 54,
+          "asset_id": "C:52"
+        },
+        {
+          "farm": "C",
+          "event_id": 56,
+          "asset_id": "C:34"
+        },
+        {
+          "farm": "C",
+          "event_id": 57,
+          "asset_id": "C:55"
+        },
+        {
+          "farm": "C",
+          "event_id": 58,
+          "asset_id": "C:35"
+        },
+        {
+          "farm": "C",
+          "event_id": 59,
+          "asset_id": "C:32"
+        },
+        {
+          "farm": "C",
+          "event_id": 60,
+          "asset_id": "C:53"
+        },
+        {
+          "farm": "C",
+          "event_id": 61,
+          "asset_id": "C:43"
+        },
+        {
+          "farm": "C",
+          "event_id": 62,
+          "asset_id": "C:21"
+        },
+        {
+          "farm": "C",
+          "event_id": 63,
+          "asset_id": "C:56"
+        },
+        {
+          "farm": "C",
+          "event_id": 64,
+          "asset_id": "C:15"
+        },
+        {
+          "farm": "C",
+          "event_id": 65,
+          "asset_id": "C:16"
+        },
+        {
+          "farm": "C",
+          "event_id": 75,
+          "asset_id": "C:44"
+        },
+        {
+          "farm": "C",
+          "event_id": 80,
+          "asset_id": "C:23"
+        },
+        {
+          "farm": "C",
+          "event_id": 85,
+          "asset_id": "C:14"
+        },
+        {
+          "farm": "C",
+          "event_id": 88,
+          "asset_id": "C:55"
+        },
+        {
+          "farm": "C",
+          "event_id": 89,
+          "asset_id": "C:5"
+        },
+        {
+          "farm": "C",
+          "event_id": 93,
+          "asset_id": "C:43"
+        },
+        {
+          "farm": "C",
+          "event_id": 94,
+          "asset_id": "C:34"
+        }
+      ],
+      "asset_holdout_eligible": true
+    },
+    "hydraulic": {
+      "independent_assets": 4,
+      "assets": [
+        "A:0",
+        "A:10",
+        "A:13",
+        "A:21"
+      ],
+      "farms": [
+        "A"
+      ],
+      "events": [
+        {
+          "farm": "A",
+          "event_id": 22,
+          "asset_id": "A:21"
+        },
+        {
+          "farm": "A",
+          "event_id": 26,
+          "asset_id": "A:0"
+        },
+        {
+          "farm": "A",
+          "event_id": 42,
+          "asset_id": "A:10"
+        },
+        {
+          "farm": "A",
+          "event_id": 45,
+          "asset_id": "A:13"
+        },
+        {
+          "farm": "A",
+          "event_id": 73,
+          "asset_id": "A:0"
+        },
+        {
+          "farm": "A",
+          "event_id": 84,
+          "asset_id": "A:13"
+        }
+      ],
+      "asset_holdout_eligible": true
+    },
+    "pitch_system_event": {
+      "independent_assets": 4,
+      "assets": [
+        "C:12",
+        "C:16",
+        "C:23",
+        "C:53"
+      ],
+      "farms": [
+        "C"
+      ],
+      "events": [
+        {
+          "farm": "C",
+          "event_id": 15,
+          "asset_id": "C:12"
+        },
+        {
+          "farm": "C",
+          "event_id": 16,
+          "asset_id": "C:53"
+        },
+        {
+          "farm": "C",
+          "event_id": 30,
+          "asset_id": "C:16"
+        },
+        {
+          "farm": "C",
+          "event_id": 66,
+          "asset_id": "C:12"
+        },
+        {
+          "farm": "C",
+          "event_id": 70,
+          "asset_id": "C:23"
+        },
+        {
+          "farm": "C",
+          "event_id": 76,
+          "asset_id": "C:53"
+        }
+      ],
+      "asset_holdout_eligible": true
+    },
+    "rotor_or_main_bearing": {
+      "independent_assets": 3,
+      "assets": [
+        "B:12",
+        "B:6",
+        "B:7"
+      ],
+      "farms": [
+        "B"
+      ],
+      "events": [
+        {
+          "farm": "B",
+          "event_id": 27,
+          "asset_id": "B:7"
+        },
+        {
+          "farm": "B",
+          "event_id": 53,
+          "asset_id": "B:6"
+        },
+        {
+          "farm": "B",
+          "event_id": 77,
+          "asset_id": "B:12"
+        }
+      ],
+      "asset_holdout_eligible": true
+    },
+    "transformer_event": {
+      "independent_assets": 1,
+      "assets": [
+        "C:35"
+      ],
+      "farms": [
+        "C"
+      ],
+      "events": [
+        {
+          "farm": "C",
+          "event_id": 67,
+          "asset_id": "C:35"
+        }
+      ],
+      "asset_holdout_eligible": false
+    },
+    "transformer_thermal": {
+      "independent_assets": 4,
+      "assets": [
+        "A:11",
+        "B:11",
+        "B:13",
+        "B:14"
+      ],
+      "farms": [
+        "A",
+        "B"
+      ],
+      "events": [
+        {
+          "farm": "A",
+          "event_id": 68,
+          "asset_id": "A:11"
+        },
+        {
+          "farm": "B",
+          "event_id": 7,
+          "asset_id": "B:13"
+        },
+        {
+          "farm": "B",
+          "event_id": 19,
+          "asset_id": "B:11"
+        },
+        {
+          "farm": "B",
+          "event_id": 34,
+          "asset_id": "B:14"
+        }
+      ],
+      "asset_holdout_eligible": true
+    }
+  },
+  "excluded_anomaly_events": [
+    {
+      "farm": "A",
+      "event_id": 72,
+      "asset_id": "21",
+      "reason": "mixed, uncertain, or unmapped event"
+    },
+    {
+      "farm": "C",
+      "event_id": 4,
+      "asset_id": "34",
+      "reason": "mixed, uncertain, or unmapped event"
+    },
+    {
+      "farm": "C",
+      "event_id": 5,
+      "asset_id": "32",
+      "reason": "mixed, uncertain, or unmapped event"
+    },
+    {
+      "farm": "C",
+      "event_id": 9,
+      "asset_id": "55",
+      "reason": "mixed, uncertain, or unmapped event"
+    },
+    {
+      "farm": "C",
+      "event_id": 11,
+      "asset_id": "43",
+      "reason": "mixed, uncertain, or unmapped event"
+    },
+    {
+      "farm": "C",
+      "event_id": 12,
+      "asset_id": "2",
+      "reason": "mixed, uncertain, or unmapped event"
+    },
+    {
+      "farm": "C",
+      "event_id": 18,
+      "asset_id": "34",
+      "reason": "mixed, uncertain, or unmapped event"
+    },
+    {
+      "farm": "C",
+      "event_id": 28,
+      "asset_id": "52",
+      "reason": "mixed, uncertain, or unmapped event"
+    },
+    {
+      "farm": "C",
+      "event_id": 31,
+      "asset_id": "35",
+      "reason": "mixed, uncertain, or unmapped event"
+    },
+    {
+      "farm": "C",
+      "event_id": 33,
+      "asset_id": "43",
+      "reason": "mixed, uncertain, or unmapped event"
+    },
+    {
+      "farm": "C",
+      "event_id": 35,
+      "asset_id": "53",
+      "reason": "mixed, uncertain, or unmapped event"
+    },
+    {
+      "farm": "C",
+      "event_id": 39,
+      "asset_id": "52",
+      "reason": "mixed, uncertain, or unmapped event"
+    },
+    {
+      "farm": "C",
+      "event_id": 44,
+      "asset_id": "44",
+      "reason": "mixed, uncertain, or unmapped event"
+    },
+    {
+      "farm": "C",
+      "event_id": 47,
+      "asset_id": "21",
+      "reason": "mixed, uncertain, or unmapped event"
+    },
+    {
+      "farm": "C",
+      "event_id": 55,
+      "asset_id": "50",
+      "reason": "mixed, uncertain, or unmapped event"
+    },
+    {
+      "farm": "C",
+      "event_id": 78,
+      "asset_id": "15",
+      "reason": "mixed, uncertain, or unmapped event"
+    },
+    {
+      "farm": "C",
+      "event_id": 79,
+      "asset_id": "16",
+      "reason": "mixed, uncertain, or unmapped event"
+    },
+    {
+      "farm": "C",
+      "event_id": 90,
+      "asset_id": "56",
+      "reason": "mixed, uncertain, or unmapped event"
+    },
+    {
+      "farm": "C",
+      "event_id": 91,
+      "asset_id": "42",
+      "reason": "mixed, uncertain, or unmapped event"
+    }
+  ],
+  "limits": [
+    "Independent asset count is necessary but not sufficient: time-series availability, aligned units, clean event intervals and class separability require separate checks.",
+    "Pitch, converter and gear-oil pump events are not interchangeable with gearbox, bearing or transformer failure modes.",
+    "CARE channels are ten-minute SCADA aggregates, not high-frequency raw vibration/current signals."
+  ]
+}
