@@ -160,14 +160,16 @@ export function makeSupplementalTransformerGroup(model: THREE.Object3D, turbineI
   // In a turbine nacelle the transformer cabinet sits on the service floor
   // beside the generator. Anchor it to the compact stator/rotor envelope,
   // excluding the long generator cable that otherwise pulls it to the hub.
-  anchor.y = electricalReference.min.y + electricalSize.y * .42
-  anchor.z = electricalReference.getCenter(new THREE.Vector3()).z + Math.max(electricalSize.z * .18, modelSize.z * .008)
+  anchor.y = electricalReference.min.y + electricalSize.y * .34
+  // Keep the cabinet beside the generator service aisle, rather than inside
+  // the drivetrain volume where it would intersect shafts and gearbox rails.
+  anchor.z = electricalReference.max.z + Math.max(electricalSize.z * .52, modelSize.z * .028)
   group.position.copy(model.worldToLocal(anchor))
   // Child geometry uses scene units while the imported CAD may use millimetres.
   // The transformed CAD has a large internal coordinate range. Keep the
   // electrical enclosure compact relative to the nacelle rather than letting
   // its procedural scene-unit geometry fill the cutaway.
-  const inverseScale = .12 / Math.max(Math.abs(model.scale.x), .0001)
+  const inverseScale = .065 / Math.max(Math.abs(model.scale.x), .0001)
   group.scale.setScalar(inverseScale)
 
   const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x597680, metalness: .55, roughness: .36 })
