@@ -57,7 +57,7 @@ CLASS_TO_COMPONENT = {
 DEMO_FLEET_CASES = (
     ("WT01", "A-24"),  # normal operation
     ("WT02", "A-10"),  # gearbox
-    ("WT03", "A-3"),   # normal operation
+    ("WT03", "A-13"),  # normal operation; model prediction agrees with label
     ("WT04", "A-51"),  # gearbox bearing
     ("WT05", "A-22"),  # hydraulic
     ("WT06", "A-0"),   # generator bearing

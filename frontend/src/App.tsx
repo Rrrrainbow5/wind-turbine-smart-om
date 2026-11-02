@@ -467,7 +467,8 @@ export default function App() {
     setSampleMapping(null)
     setDiagnosticTouched(mode === 'demo' && view === 'demo' && demoInput === 'parameters'); setRetestPhase('idle'); setBeforeRetest(null); setAfterRetest(null)
     const saved = mode === 'demo' ? turbineStates[id] : undefined
-    setSelectedId(id); setView('overview'); setServiced(saved?.status === 'maintained'); setDiagnosticParams(saved?.params || defaultDiagnosticParams); setDiagnosticHistory([]); setSelectedPlan('inspect'); setApiPlan(null); setMaintenanceRecordId(''); setRetests([]); setMaintenanceAttempts(0); setReplacementRecommended(false)
+    const nextTurbine = replayTurbines.find(turbine => turbine.turbine_id === id)
+    setSelectedId(id); setView('overview'); setServiced(saved?.status === 'maintained' && nextTurbine?.warning_level !== 'NORMAL'); setDiagnosticParams(saved?.params || defaultDiagnosticParams); setDiagnosticHistory([]); setSelectedPlan('inspect'); setApiPlan(null); setMaintenanceRecordId(''); setRetests([]); setMaintenanceAttempts(0); setReplacementRecommended(false)
   }
 
   const refreshFieldData = async (id?: string, destination: 'overview' | 'signal' = 'signal') => {
