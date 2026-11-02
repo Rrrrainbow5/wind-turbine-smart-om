@@ -12,7 +12,7 @@ import hashlib
 import json
 from pathlib import Path
 
-MODEL_VERSION = "care-scada-rf-v1"
+MODEL_VERSION = "care-scada-rf-demo-coverage-v2"
 WINDOW_ROWS = 36
 LABELS = {
     "": ("healthy", "正常运行", None),
@@ -192,7 +192,8 @@ def prepare(farm: Path, cache: Path | None = None) -> tuple[list[dict], list[dic
     return rows, sources, rejected
 
 
-def train(farm: Path, output: Path, frontend_export: Path | None = None, cache: Path | None = None) -> dict:
+def train(farm: Path, output: Path, frontend_export: Path | None = None, cache: Path | None = None,
+          excluded_labels: set[str] | None = None) -> dict:
     import numpy as np
     import sklearn
     from sklearn.ensemble import RandomForestClassifier
@@ -202,6 +203,11 @@ def train(farm: Path, output: Path, frontend_export: Path | None = None, cache: 
 
     output.mkdir(parents=True, exist_ok=True)
     rows, sources, rejected = prepare(farm, cache)
+    excluded_labels = excluded_labels or set()
+    rows = [row for row in rows if row["label"] not in excluded_labels]
+    sources = [source for source in sources if source["label"] not in excluded_labels]
+    if not rows:
+        raise ValueError("No trainable CARE windows remain after label exclusion")
     x = np.array([[np.nan if value is None else value for value in row["features"]] for row in rows])
     y = np.array([row["label"] for row in rows])
     groups = np.array([row["asset"] for row in rows])
@@ -258,7 +264,10 @@ def train(farm: Path, output: Path, frontend_export: Path | None = None, cache: 
     for index in np.linspace(0, len(rows) - 1, min(40, len(rows)), dtype=int):
         assert np.allclose(list(predict_portable(loaded, rows[index]["features"]).values()),
                            full_probabilities[index], atol=1e-12)
-    label_info = {value[0]: {"name": value[1], "category": value[2]} for value in LABELS.values()}
+    label_info = {
+        value[0]: {"name": value[1], "category": value[2]}
+        for value in LABELS.values() if value[0] in classes
+    }
     cases = []
     for event in sorted(set(event_ids)):
         candidates = [index for index, row in enumerate(rows) if row["event_id"] == event]
@@ -295,6 +304,7 @@ def train(farm: Path, output: Path, frontend_export: Path | None = None, cache: 
             } for label in classes
         },
         "excluded": rejected, "folds": folds,
+        "excluded_labels": sorted(excluded_labels),
         "evaluation": {
             "protocol": "leave one physical asset out; train-only imputation; no parameter search",
             "accuracy": accuracy_score(y, predictions),
@@ -305,7 +315,7 @@ def train(farm: Path, output: Path, frontend_export: Path | None = None, cache: 
         "model_sha256": sha256(model_path),
         "limits": [
             "Historical labeled interval classification, not early warning or remaining life estimation.",
-            "Transformer and gearbox-bearing each have only one independent asset/event; no validated generalization.",
+            "Gearbox and gearbox-bearing each have only one independent asset/event; no validated generalization.",
             "Final model replay includes its training samples; held-out predictions are shown separately.",
             "Farm A only; no claim of transfer to other farms, turbine types or live field units.",
             "Anomaly score = 1 - normal class score; health display = 100 * normal score; not calibrated risk.",
@@ -330,6 +340,8 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=Path, default=Path("models/care-multifault"))
     parser.add_argument("--frontend-export", type=Path)
     parser.add_argument("--cache", type=Path)
+    parser.add_argument("--exclude-label", action="append", default=[],
+                        help="CARE label excluded from the trained/exported demo model; repeatable")
     parser.add_argument("--prepare-only", action="store_true")
     parser.add_argument("--refresh-trends", action="store_true")
     args = parser.parse_args()
@@ -338,4 +350,4 @@ if __name__ == "__main__":
     elif args.prepare_only:
         prepare(args.farm, args.cache)
     else:
-        train(args.farm, args.output, args.frontend_export, args.cache)
+        train(args.farm, args.output, args.frontend_export, args.cache, set(args.exclude_label))

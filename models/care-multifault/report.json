@@ -1,5 +1,5 @@
 {
-  "model_version": "care-scada-rf-v1",
+  "model_version": "care-scada-rf-demo-coverage-v2",
   "method": "6h SCADA median/std/endpoint delta + RandomForest",
   "sklearn_version": "1.7.2",
   "config": {
@@ -10,7 +10,7 @@
     "random_state": 20261029,
     "n_jobs": 4
   },
-  "windows": 963,
+  "windows": 909,
   "features": 120,
   "assets": [
     0,
@@ -19,7 +19,7 @@
     13,
     21
   ],
-  "events": 22,
+  "events": 21,
   "classes": {
     "healthy": {
       "name": "正常运行",
@@ -40,10 +40,6 @@
     "gearbox_bearing": {
       "name": "齿轮箱轴承损坏",
       "category": "GEARBOX_BEARING"
-    },
-    "transformer": {
-      "name": "变压器故障",
-      "category": "TRANSFORMER"
     }
   },
   "sources": [
@@ -151,13 +147,6 @@
       "label": "gearbox_bearing",
       "sha256": "cc4eaa53400424e1044f68379da070215d311d92f940b7050affbf2f289d0ebc",
       "file": "51.csv"
-    },
-    {
-      "event_id": 68,
-      "asset": 11,
-      "label": "transformer",
-      "sha256": "ab1db0f9a261c525572e09067def2c2876b2002335ec9d5c9c268246573bbcc3",
-      "file": "68.csv"
     },
     {
       "event_id": 69,
@@ -270,15 +259,6 @@
         73,
         84
       ]
-    },
-    "transformer": {
-      "windows": 54,
-      "assets": [
-        11
-      ],
-      "events": [
-        68
-      ]
     }
   },
   "excluded": {
@@ -325,10 +305,8 @@
         13,
         21
       ],
-      "missing_train_classes": [
-        "transformer"
-      ],
-      "test_windows": 195
+      "missing_train_classes": [],
+      "test_windows": 141
     },
     {
       "test_assets": [
@@ -359,10 +337,13 @@
       "test_windows": 123
     }
   ],
+  "excluded_labels": [
+    "transformer"
+  ],
   "evaluation": {
     "protocol": "leave one physical asset out; train-only imputation; no parameter search",
-    "accuracy": 0.4683281412253375,
-    "macro_f1": 0.12645398800217336,
+    "accuracy": 0.49504950495049505,
+    "macro_f1": 0.15276818211898618,
     "per_class": {
       "gearbox": {
         "precision": 0.0,
@@ -383,35 +364,29 @@
         "support": 170.0
       },
       "healthy": {
-        "precision": 0.574607329842932,
+        "precision": 0.569390402075227,
         "recall": 0.8084714548802947,
-        "f1-score": 0.6717674062739097,
+        "f1-score": 0.6681887366818874,
         "support": 543.0
       },
       "hydraulic": {
-        "precision": 0.09917355371900827,
-        "recall": 0.07741935483870968,
-        "f1-score": 0.08695652173913043,
+        "precision": 0.14666666666666667,
+        "recall": 0.07096774193548387,
+        "f1-score": 0.09565217391304348,
         "support": 155.0
       },
-      "transformer": {
-        "precision": 0.0,
-        "recall": 0.0,
-        "f1-score": 0.0,
-        "support": 54.0
-      },
-      "accuracy": 0.4683281412253375,
+      "accuracy": 0.49504950495049505,
       "macro avg": {
-        "precision": 0.11229681392699004,
-        "recall": 0.14764846828650072,
-        "f1-score": 0.12645398800217336,
-        "support": 963.0
+        "precision": 0.14321141374837873,
+        "recall": 0.17588783936315572,
+        "f1-score": 0.15276818211898618,
+        "support": 909.0
       },
       "weighted avg": {
-        "precision": 0.33996228549445306,
-        "recall": 0.4683281412253375,
-        "f1-score": 0.39278085407715285,
-        "support": 963.0
+        "precision": 0.36514006783298303,
+        "recall": 0.49504950495049505,
+        "f1-score": 0.41545937400966626,
+        "support": 909.0
       }
     },
     "confusion_labels": [
@@ -419,64 +394,50 @@
       "gearbox_bearing",
       "generator_bearing",
       "healthy",
-      "hydraulic",
-      "transformer"
+      "hydraulic"
     ],
     "confusion_matrix": [
       [
         0,
         0,
-        1,
-        18,
-        6,
-        0
+        0,
+        20,
+        5
       ],
       [
         0,
         0,
         0,
         16,
-        0,
         0
       ],
       [
         0,
         0,
         0,
-        155,
-        7,
-        8
+        165,
+        5
       ],
       [
         0,
         2,
-        42,
+        48,
         439,
-        60,
-        0
+        54
       ],
       [
         0,
-        1,
+        0,
         13,
-        126,
-        12,
-        3
-      ],
-      [
-        0,
-        0,
-        8,
-        10,
-        36,
-        0
+        131,
+        11
       ]
     ]
   },
-  "model_sha256": "8ea5e819c9cc517243f1684f176f55146f5f4b3ec6b40cb380c61cfdd87c1605",
+  "model_sha256": "012294c2b6f1f6707503e3ed54063c0afedbb6c21ffc528fe0025f42e60892c6",
   "limits": [
     "Historical labeled interval classification, not early warning or remaining life estimation.",
-    "Transformer and gearbox-bearing each have only one independent asset/event; no validated generalization.",
+    "Gearbox and gearbox-bearing each have only one independent asset/event; no validated generalization.",
     "Final model replay includes its training samples; held-out predictions are shown separately.",
     "Farm A only; no claim of transfer to other farms, turbine types or live field units.",
     "Anomaly score = 1 - normal class score; health display = 100 * normal score; not calibrated risk.",

@@ -18,8 +18,8 @@ def test_saved_model_recomputes_every_case():
     manifest = json.loads((ROOT / "cases.json").read_text(encoding="utf-8"))
     model = load_model(ROOT / "model.json.gz")
     assert sha256(ROOT / "model.json.gz") == manifest["model_sha256"]
-    assert len(manifest["classes"]) == 6
-    assert len(manifest["cases"]) >= 6
+    assert len(manifest["classes"]) == 5
+    assert len(manifest["cases"]) >= 5
     assert not any(metadata in name for metadata in ("asset_id", "event_id", "train_test", "time_stamp") for name in FEATURE_NAMES)
     for sample in manifest["cases"]:
         recomputed = predict_portable(model, sample["features"])
@@ -30,7 +30,7 @@ def test_saved_model_recomputes_every_case():
         expected_signal = {
             "healthy": "power_30_avg", "generator_bearing": "sensor_13_avg",
             "gearbox": "sensor_12_avg", "hydraulic": "sensor_41_avg",
-            "gearbox_bearing": "sensor_11_avg", "transformer": "sensor_38_avg",
+            "gearbox_bearing": "sensor_11_avg",
         }[sample["label"]]
         assert sample["trend_signal"] == expected_signal
         assert np.isclose(np.median(sample["trend"]), sample["telemetry"][expected_signal])

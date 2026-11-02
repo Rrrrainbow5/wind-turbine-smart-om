@@ -1,6 +1,6 @@
 {
-  "model_version": "care-scada-rf-v1",
-  "model_sha256": "8ea5e819c9cc517243f1684f176f55146f5f4b3ec6b40cb380c61cfdd87c1605",
+  "model_version": "care-scada-rf-demo-coverage-v2",
+  "model_sha256": "012294c2b6f1f6707503e3ed54063c0afedbb6c21ffc528fe0025f42e60892c6",
   "classes": {
     "healthy": {
       "name": "正常运行",
@@ -21,16 +21,12 @@
     "gearbox_bearing": {
       "name": "齿轮箱轴承损坏",
       "category": "GEARBOX_BEARING"
-    },
-    "transformer": {
-      "name": "变压器故障",
-      "category": "TRANSFORMER"
     }
   },
   "evaluation": {
     "protocol": "leave one physical asset out; train-only imputation; no parameter search",
-    "accuracy": 0.4683281412253375,
-    "macro_f1": 0.12645398800217336,
+    "accuracy": 0.49504950495049505,
+    "macro_f1": 0.15276818211898618,
     "per_class": {
       "gearbox": {
         "precision": 0.0,
@@ -51,35 +47,29 @@
         "support": 170.0
       },
       "healthy": {
-        "precision": 0.574607329842932,
+        "precision": 0.569390402075227,
         "recall": 0.8084714548802947,
-        "f1-score": 0.6717674062739097,
+        "f1-score": 0.6681887366818874,
         "support": 543.0
       },
       "hydraulic": {
-        "precision": 0.09917355371900827,
-        "recall": 0.07741935483870968,
-        "f1-score": 0.08695652173913043,
+        "precision": 0.14666666666666667,
+        "recall": 0.07096774193548387,
+        "f1-score": 0.09565217391304348,
         "support": 155.0
       },
-      "transformer": {
-        "precision": 0.0,
-        "recall": 0.0,
-        "f1-score": 0.0,
-        "support": 54.0
-      },
-      "accuracy": 0.4683281412253375,
+      "accuracy": 0.49504950495049505,
       "macro avg": {
-        "precision": 0.11229681392699004,
-        "recall": 0.14764846828650072,
-        "f1-score": 0.12645398800217336,
-        "support": 963.0
+        "precision": 0.14321141374837873,
+        "recall": 0.17588783936315572,
+        "f1-score": 0.15276818211898618,
+        "support": 909.0
       },
       "weighted avg": {
-        "precision": 0.33996228549445306,
-        "recall": 0.4683281412253375,
-        "f1-score": 0.39278085407715285,
-        "support": 963.0
+        "precision": 0.36514006783298303,
+        "recall": 0.49504950495049505,
+        "f1-score": 0.41545937400966626,
+        "support": 909.0
       }
     },
     "confusion_labels": [
@@ -87,57 +77,43 @@
       "gearbox_bearing",
       "generator_bearing",
       "healthy",
-      "hydraulic",
-      "transformer"
+      "hydraulic"
     ],
     "confusion_matrix": [
       [
         0,
         0,
-        1,
-        18,
-        6,
-        0
+        0,
+        20,
+        5
       ],
       [
         0,
         0,
         0,
         16,
-        0,
         0
       ],
       [
         0,
         0,
         0,
-        155,
-        7,
-        8
+        165,
+        5
       ],
       [
         0,
         2,
-        42,
+        48,
         439,
-        60,
-        0
+        54
       ],
       [
         0,
-        1,
+        0,
         13,
-        126,
-        12,
-        3
-      ],
-      [
-        0,
-        0,
-        8,
-        10,
-        36,
-        0
+        131,
+        11
       ]
     ]
   },
@@ -157,21 +133,19 @@
       "source_sha256": "f0a8365b2b60845b9ad78cf4deb167a2da500abef66199a55c381e8fff2bb26b",
       "prediction": "generator_bearing",
       "probabilities": {
-        "gearbox": 0.0009228493107741824,
+        "gearbox": 0.01220152817574021,
         "gearbox_bearing": 0.0,
-        "generator_bearing": 0.8752349877608749,
-        "healthy": 0.038470188570012366,
-        "hydraulic": 0.07665052753036615,
-        "transformer": 0.008721446827972495
+        "generator_bearing": 0.8489363966532069,
+        "healthy": 0.06136800296240199,
+        "hydraulic": 0.07749407220865129
       },
       "held_out_prediction": "healthy",
       "held_out_probabilities": {
-        "gearbox": 0.06349661277919884,
-        "gearbox_bearing": 0.008097319347319347,
-        "generator_bearing": 0.037800534303696495,
-        "healthy": 0.5278175292140855,
-        "hydraulic": 0.3220874294180764,
-        "transformer": 0.040700574937623246
+        "gearbox": 0.048794854946527036,
+        "gearbox_bearing": 0.0,
+        "generator_bearing": 0.021310814226396173,
+        "healthy": 0.6347899851414379,
+        "hydraulic": 0.29510434568563887
       },
       "independent_class_assets": 2,
       "validation": "asset_held_out_available",
@@ -394,23 +368,21 @@
       "end": "2023-05-07 17:50:00",
       "row_count": 36,
       "source_sha256": "af3e8a8b9907183edecb763f60b1a5a79bb437228cbaa158be0a6dde24e93910",
-      "prediction": "healthy",
+      "prediction": "gearbox",
       "probabilities": {
-        "gearbox": 0.37867148491423896,
+        "gearbox": 0.4528156744642772,
         "gearbox_bearing": 0.0,
-        "generator_bearing": 0.0608590845099072,
-        "healthy": 0.4348375869630296,
-        "hydraulic": 0.11664907738155912,
-        "transformer": 0.008982766231264861
+        "generator_bearing": 0.038819836372553936,
+        "healthy": 0.41232705568728856,
+        "hydraulic": 0.09603743347588042
       },
       "held_out_prediction": "healthy",
       "held_out_probabilities": {
         "gearbox": 0.0,
-        "gearbox_bearing": 0.007761313745356298,
-        "generator_bearing": 0.15984412006852708,
-        "healthy": 0.45295522539816685,
-        "hydraulic": 0.3167418277450786,
-        "transformer": 0.06269751304287105
+        "gearbox_bearing": 0.0,
+        "generator_bearing": 0.14891008716662194,
+        "healthy": 0.5323196992823142,
+        "hydraulic": 0.31877021355106394
       },
       "independent_class_assets": 5,
       "validation": "asset_held_out_available",
@@ -635,21 +607,19 @@
       "source_sha256": "16a5bdaaf9afb5ce9b02e456c60e8ed7a6b6943c5e517d4866d7eedf31568914",
       "prediction": "gearbox",
       "probabilities": {
-        "gearbox": 0.72544749913995,
+        "gearbox": 0.73366175693193,
         "gearbox_bearing": 0.0,
-        "generator_bearing": 0.03544917350404651,
-        "healthy": 0.09412650051123306,
-        "hydraulic": 0.1307871189002372,
-        "transformer": 0.014189707944533182
+        "generator_bearing": 0.028269816084495438,
+        "healthy": 0.09851958619484905,
+        "hydraulic": 0.13954884078872568
       },
-      "held_out_prediction": "hydraulic",
+      "held_out_prediction": "healthy",
       "held_out_probabilities": {
         "gearbox": 0.0,
-        "gearbox_bearing": 0.012207602339181285,
-        "generator_bearing": 0.21487785850439128,
-        "healthy": 0.30898443878035686,
-        "hydraulic": 0.34115953335970833,
-        "transformer": 0.12277056701636217
+        "gearbox_bearing": 0.0072079282449394174,
+        "generator_bearing": 0.25598539247477975,
+        "healthy": 0.38399615184978936,
+        "hydraulic": 0.3528105274304915
       },
       "independent_class_assets": 1,
       "validation": "single_asset_replay",
@@ -875,20 +845,18 @@
       "prediction": "healthy",
       "probabilities": {
         "gearbox": 0.0,
-        "gearbox_bearing": 0.011008547747609258,
-        "generator_bearing": 0.05425446729073084,
-        "healthy": 0.8598807639761705,
-        "hydraulic": 0.07090302680459125,
-        "transformer": 0.0039531941808981655
+        "gearbox_bearing": 0.0,
+        "generator_bearing": 0.0378754488123051,
+        "healthy": 0.891151005821235,
+        "hydraulic": 0.07097354536645988
       },
       "held_out_prediction": "healthy",
       "held_out_probabilities": {
         "gearbox": 0.0,
         "gearbox_bearing": 0.0,
-        "generator_bearing": 0.16583874850802746,
-        "healthy": 0.7189968323890028,
-        "hydraulic": 0.10359251274845464,
-        "transformer": 0.011571906354515049
+        "generator_bearing": 0.1555441623171024,
+        "healthy": 0.6965188422734326,
+        "hydraulic": 0.14793699540946484
       },
       "independent_class_assets": 5,
       "validation": "asset_held_out_available",
@@ -1113,21 +1081,19 @@
       "source_sha256": "93bee35d6a6fa0b6d01961cd0980a53561184da36a80118b964750294be0f6ce",
       "prediction": "healthy",
       "probabilities": {
-        "gearbox": 0.0,
-        "gearbox_bearing": 0.02341576367640099,
-        "generator_bearing": 0.033502397202098674,
-        "healthy": 0.8248660171930443,
-        "hydraulic": 0.1138704766307312,
-        "transformer": 0.004345345297724751
+        "gearbox": 0.0036560867818400964,
+        "gearbox_bearing": 0.020001163134965954,
+        "generator_bearing": 0.043714977322418726,
+        "healthy": 0.8284247264370492,
+        "hydraulic": 0.1042030463237262
       },
       "held_out_prediction": "healthy",
       "held_out_probabilities": {
-        "gearbox": 0.008041549953314658,
-        "gearbox_bearing": 0.038810665949511054,
-        "generator_bearing": 0.14152646198954127,
-        "healthy": 0.6896816854425727,
-        "hydraulic": 0.10439341669487429,
-        "transformer": 0.017546219970186013
+        "gearbox": 0.004015481373971941,
+        "gearbox_bearing": 0.024300766283524903,
+        "generator_bearing": 0.1373194657938522,
+        "healthy": 0.73104047491234,
+        "hydraulic": 0.1033238116363109
       },
       "independent_class_assets": 5,
       "validation": "asset_held_out_available",
@@ -1354,19 +1320,17 @@
       "probabilities": {
         "gearbox": 0.0,
         "gearbox_bearing": 0.0,
-        "generator_bearing": 0.15233202325922263,
-        "healthy": 0.8201783094361809,
-        "hydraulic": 0.02748966730459636,
-        "transformer": 0.0
+        "generator_bearing": 0.1427265730694937,
+        "healthy": 0.8145874223557862,
+        "hydraulic": 0.04268600457472002
       },
       "held_out_prediction": "healthy",
       "held_out_probabilities": {
         "gearbox": 0.0,
-        "gearbox_bearing": 0.015795698924731184,
-        "generator_bearing": 0.09245186862121063,
-        "healthy": 0.7402731798006783,
-        "hydraulic": 0.12138168950877888,
-        "transformer": 0.030097563144600863
+        "gearbox_bearing": 0.02387300540060337,
+        "generator_bearing": 0.11063227729852323,
+        "healthy": 0.7447260093898567,
+        "hydraulic": 0.12076870791101668
       },
       "independent_class_assets": 5,
       "validation": "asset_held_out_available",
@@ -1591,21 +1555,19 @@
       "source_sha256": "06b0745cc1b5ed3ec9bd0e34a81b1074bc23c4f76f854c8b395ea625237a76a3",
       "prediction": "hydraulic",
       "probabilities": {
-        "gearbox": 0.008639027508184833,
-        "gearbox_bearing": 0.007905124087731613,
-        "generator_bearing": 0.07083661379974145,
-        "healthy": 0.16239801704096704,
-        "hydraulic": 0.7299328202789745,
-        "transformer": 0.020288397284400708
+        "gearbox": 0.004760315871335996,
+        "gearbox_bearing": 0.00825358851674641,
+        "generator_bearing": 0.07753453835095729,
+        "healthy": 0.15648173853998665,
+        "hydraulic": 0.7529698187209737
       },
       "held_out_prediction": "hydraulic",
       "held_out_probabilities": {
-        "gearbox": 0.017744800389831932,
+        "gearbox": 0.011256141227412775,
         "gearbox_bearing": 0.0,
-        "generator_bearing": 0.22456517282986638,
-        "healthy": 0.27778281653814696,
-        "hydraulic": 0.42308168434961946,
-        "transformer": 0.05682552589253521
+        "generator_bearing": 0.23384242652546036,
+        "healthy": 0.305398039008925,
+        "hydraulic": 0.44950339323820193
       },
       "independent_class_assets": 4,
       "validation": "asset_held_out_available",
@@ -1830,21 +1792,19 @@
       "source_sha256": "310c27badde12582045627ae22a29d79d642b58f1379e2676bd3f21f46ac697e",
       "prediction": "healthy",
       "probabilities": {
-        "gearbox": 0.02656045681782774,
-        "gearbox_bearing": 0.0040467625899280575,
-        "generator_bearing": 0.0688739339651669,
-        "healthy": 0.6334934896164293,
-        "hydraulic": 0.2605636514818014,
-        "transformer": 0.006461705528846492
+        "gearbox": 0.012073331128304225,
+        "gearbox_bearing": 0.012141499333023472,
+        "generator_bearing": 0.045966574935231215,
+        "healthy": 0.7433292091255337,
+        "hydraulic": 0.18648938547790747
       },
       "held_out_prediction": "healthy",
       "held_out_probabilities": {
-        "gearbox": 0.039710958326145816,
-        "gearbox_bearing": 0.0245656992202191,
-        "generator_bearing": 0.021619762775641243,
-        "healthy": 0.6649138810800933,
-        "hydraulic": 0.213468248094968,
-        "transformer": 0.03572145050293278
+        "gearbox": 0.026999393611982676,
+        "gearbox_bearing": 0.01992216249702623,
+        "generator_bearing": 0.03975181644088807,
+        "healthy": 0.695916598608464,
+        "hydraulic": 0.2174100288416394
       },
       "independent_class_assets": 5,
       "validation": "asset_held_out_available",
@@ -2069,12 +2029,11 @@
       "source_sha256": "f09afa3bfea796bb2bb52058830981554734a2a2b6085e3415f20d67b91defc6",
       "prediction": "healthy",
       "probabilities": {
-        "gearbox": 0.012819465239648175,
-        "gearbox_bearing": 0.004126409017713366,
-        "generator_bearing": 0.04190950964353462,
-        "healthy": 0.7944134353237412,
-        "hydraulic": 0.07930761283332084,
-        "transformer": 0.06742356794204202
+        "gearbox": 0.01907554810780617,
+        "gearbox_bearing": 0.016122250267422967,
+        "generator_bearing": 0.05840051564678657,
+        "healthy": 0.8183817681087839,
+        "hydraulic": 0.0880199178692001
       },
       "held_out_prediction": "healthy",
       "held_out_probabilities": {
@@ -2082,8 +2041,7 @@
         "gearbox_bearing": 0.027089701180920807,
         "generator_bearing": 0.14889867458324968,
         "healthy": 0.504609967163137,
-        "hydraulic": 0.2761569421818441,
-        "transformer": 0.0
+        "hydraulic": 0.2761569421818441
       },
       "independent_class_assets": 5,
       "validation": "asset_held_out_available",
@@ -2308,21 +2266,19 @@
       "source_sha256": "6bf52430a8102d198c9bea3986e4bf81a120f7e86c8acc859ca1b606a3f08d35",
       "prediction": "hydraulic",
       "probabilities": {
-        "gearbox": 0.019397695268329258,
-        "gearbox_bearing": 0.007192393550667741,
-        "generator_bearing": 0.14766925930645816,
-        "healthy": 0.20968889833264864,
-        "hydraulic": 0.6061138123530038,
-        "transformer": 0.009937941188892822
+        "gearbox": 0.01417785608622175,
+        "gearbox_bearing": 0.01187362133713659,
+        "generator_bearing": 0.13139282438989025,
+        "healthy": 0.18987463240785118,
+        "hydraulic": 0.6526810657789002
       },
       "held_out_prediction": "healthy",
       "held_out_probabilities": {
-        "gearbox": 0.08751538923621037,
-        "gearbox_bearing": 0.022115212217939183,
-        "generator_bearing": 0.023415408529974393,
-        "healthy": 0.6385645821302338,
-        "hydraulic": 0.175747293232113,
-        "transformer": 0.05264211465352916
+        "gearbox": 0.09608356989329707,
+        "gearbox_bearing": 0.02439108637760756,
+        "generator_bearing": 0.04043889630116136,
+        "healthy": 0.6946539822199689,
+        "hydraulic": 0.1444324652079648
       },
       "independent_class_assets": 4,
       "validation": "asset_held_out_available",
@@ -2547,21 +2503,19 @@
       "source_sha256": "085324d3dffe3fa12d37a2d95b71d439d8ba7085839dca644192b2b4ee360775",
       "prediction": "healthy",
       "probabilities": {
-        "gearbox": 0.003982300884955752,
-        "gearbox_bearing": 0.055150670705622934,
-        "generator_bearing": 0.036382608278805496,
-        "healthy": 0.7888287107160241,
-        "hydraulic": 0.10080849007454072,
-        "transformer": 0.014847219340050748
+        "gearbox": 0.008121827411167511,
+        "gearbox_bearing": 0.0676197304497837,
+        "generator_bearing": 0.03128033819512503,
+        "healthy": 0.7692401071205006,
+        "hydraulic": 0.12373799682342292
       },
       "held_out_prediction": "healthy",
       "held_out_probabilities": {
-        "gearbox": 0.0,
-        "gearbox_bearing": 0.2636234283656237,
-        "generator_bearing": 0.06953619881097266,
-        "healthy": 0.49439666572080115,
-        "hydraulic": 0.14005081584423354,
-        "transformer": 0.03239289125836897
+        "gearbox": 0.0038338658146964853,
+        "gearbox_bearing": 0.2887998126579706,
+        "generator_bearing": 0.06236810604873791,
+        "healthy": 0.5324042673142495,
+        "hydraulic": 0.11259394816434552
       },
       "independent_class_assets": 5,
       "validation": "asset_held_out_available",
@@ -2788,19 +2742,17 @@
       "probabilities": {
         "gearbox": 0.0,
         "gearbox_bearing": 0.0,
-        "generator_bearing": 0.9093247573733554,
-        "healthy": 0.08048152994024711,
-        "hydraulic": 0.01019371268639763,
-        "transformer": 0.0
+        "generator_bearing": 0.890298988580234,
+        "healthy": 0.10406848113705583,
+        "hydraulic": 0.005632530282710445
       },
       "held_out_prediction": "healthy",
       "held_out_probabilities": {
         "gearbox": 0.0,
-        "gearbox_bearing": 0.028008701863757385,
-        "generator_bearing": 0.08453012460323185,
-        "healthy": 0.7481856270383903,
-        "hydraulic": 0.10626331406977021,
-        "transformer": 0.03301223242485015
+        "gearbox_bearing": 0.026895849698936547,
+        "generator_bearing": 0.06604987627973612,
+        "healthy": 0.7253000807044961,
+        "hydraulic": 0.18175419331683101
       },
       "independent_class_assets": 2,
       "validation": "asset_held_out_available",
@@ -3025,21 +2977,19 @@
       "source_sha256": "22af8df47d9d9844f15506980847ed27dca3b8148167073ee6e85e6faada5b4a",
       "prediction": "hydraulic",
       "probabilities": {
-        "gearbox": 0.24658661159236825,
-        "gearbox_bearing": 0.0,
-        "generator_bearing": 0.03817178288584723,
-        "healthy": 0.15635573122950705,
-        "hydraulic": 0.5529733971734826,
-        "transformer": 0.005912477118794892
+        "gearbox": 0.26828603883618324,
+        "gearbox_bearing": 0.003921848260125499,
+        "generator_bearing": 0.04143713101425825,
+        "healthy": 0.1400154943064907,
+        "hydraulic": 0.5463394875829424
       },
       "held_out_prediction": "healthy",
       "held_out_probabilities": {
         "gearbox": 0.0,
-        "gearbox_bearing": 0.01214086217240446,
-        "generator_bearing": 0.12856249024626545,
-        "healthy": 0.4890387030806706,
-        "hydraulic": 0.28660004868439,
-        "transformer": 0.08365789581626913
+        "gearbox_bearing": 0.004166666666666667,
+        "generator_bearing": 0.15351391126479635,
+        "healthy": 0.5212571031462548,
+        "hydraulic": 0.32106231892228226
       },
       "independent_class_assets": 4,
       "validation": "asset_held_out_available",
@@ -3264,21 +3214,19 @@
       "source_sha256": "cc51aeabe485286e2fee4df23f39caf77c19ce5fdc34f1e16b01097209f4aa1b",
       "prediction": "hydraulic",
       "probabilities": {
-        "gearbox": 0.009019440219865092,
-        "gearbox_bearing": 0.01529353620463236,
-        "generator_bearing": 0.03288066267693176,
-        "healthy": 0.2592591437707202,
-        "hydraulic": 0.679283554773361,
-        "transformer": 0.0042636623544898295
+        "gearbox": 0.002471805819048169,
+        "gearbox_bearing": 0.01587211480158131,
+        "generator_bearing": 0.03387377528380727,
+        "healthy": 0.2590556087420123,
+        "hydraulic": 0.6887266953535508
       },
       "held_out_prediction": "healthy",
       "held_out_probabilities": {
-        "gearbox": 0.04768227615757387,
-        "gearbox_bearing": 0.07405632162180807,
-        "generator_bearing": 0.12241946987735465,
-        "healthy": 0.4549810382871193,
-        "hydraulic": 0.28607070129493667,
-        "transformer": 0.014790192761207476
+        "gearbox": 0.0345347698018303,
+        "gearbox_bearing": 0.08413486704892197,
+        "generator_bearing": 0.1280670851658066,
+        "healthy": 0.49188254915403523,
+        "hydraulic": 0.26138072882940594
       },
       "independent_class_assets": 4,
       "validation": "asset_held_out_available",
@@ -3503,21 +3451,19 @@
       "source_sha256": "cc4eaa53400424e1044f68379da070215d311d92f940b7050affbf2f289d0ebc",
       "prediction": "gearbox_bearing",
       "probabilities": {
-        "gearbox": 0.007977877313589175,
-        "gearbox_bearing": 0.5839262872408822,
-        "generator_bearing": 0.035736302023343554,
-        "healthy": 0.21999716591086474,
-        "hydraulic": 0.14442759134855077,
-        "transformer": 0.00793477616276932
+        "gearbox": 0.0,
+        "gearbox_bearing": 0.577794958099467,
+        "generator_bearing": 0.034794376684563325,
+        "healthy": 0.21297168969314678,
+        "hydraulic": 0.17443897552282303
       },
       "held_out_prediction": "healthy",
       "held_out_probabilities": {
-        "gearbox": 0.051532948749196186,
+        "gearbox": 0.01980509011302826,
         "gearbox_bearing": 0.0,
-        "generator_bearing": 0.1493288124321343,
-        "healthy": 0.42211805984206646,
-        "hydraulic": 0.35898683070005405,
-        "transformer": 0.018033348276549115
+        "generator_bearing": 0.11609648684382795,
+        "healthy": 0.531151781263422,
+        "hydraulic": 0.33294664177972183
       },
       "independent_class_assets": 1,
       "validation": "single_asset_replay",
@@ -3728,245 +3674,6 @@
       "trend_unit": "°C"
     },
     {
-      "id": "A-68",
-      "sample_id": "CARE-A-68-20230804T1800",
-      "event_id": 68,
-      "source_asset": 11,
-      "label": "transformer",
-      "name": "变压器故障",
-      "category": "TRANSFORMER",
-      "description": "Transformer failure",
-      "start": "2023-08-04 18:00:00",
-      "end": "2023-08-04 23:50:00",
-      "row_count": 36,
-      "source_sha256": "ab1db0f9a261c525572e09067def2c2876b2002335ec9d5c9c268246573bbcc3",
-      "prediction": "transformer",
-      "probabilities": {
-        "gearbox": 0.00795055485320972,
-        "gearbox_bearing": 0.007478279894897144,
-        "generator_bearing": 0.07119022056350031,
-        "healthy": 0.054262143375376666,
-        "hydraulic": 0.058260391731414826,
-        "transformer": 0.8008584095816011
-      },
-      "held_out_prediction": "generator_bearing",
-      "held_out_probabilities": {
-        "gearbox": 0.03750357155212588,
-        "gearbox_bearing": 0.004166666666666667,
-        "generator_bearing": 0.4056267567066009,
-        "healthy": 0.19122415848849578,
-        "hydraulic": 0.3614788465861108,
-        "transformer": 0.0
-      },
-      "independent_class_assets": 1,
-      "validation": "single_asset_replay",
-      "features": [
-        35.5,
-        3.3,
-        3.3,
-        22.2,
-        48.0,
-        48.0,
-        75.5,
-        48.5,
-        44.0,
-        50.0,
-        51.0,
-        52.5,
-        54.5,
-        60.0,
-        60.5,
-        60.0,
-        480.75,
-        42.5,
-        43.5,
-        43.0,
-        0.7000000000000001,
-        20.5,
-        19.4,
-        21.1,
-        50.0,
-        -0.005414634146341401,
-        400.54999999999995,
-        400.2,
-        397.4,
-        42.0,
-        41.0,
-        41.5,
-        82.0,
-        86.0,
-        79.0,
-        47.0,
-        41.5,
-        40.5,
-        0.013609756097560901,
-        -0.0039512195121951,
-        2.8081671013555805,
-        1.1465830880393177,
-        1.0674873868049468,
-        11.385016618128484,
-        3.4268141991586814,
-        1.5654447559561517,
-        17.502028101175043,
-        1.905766104338212,
-        1.003081671403766,
-        4.414744515348818,
-        2.6223163824902107,
-        6.257526332543006,
-        5.932425544371051,
-        11.807352804372096,
-        11.731433979265987,
-        11.686755191822076,
-        490.8051165488759,
-        3.8293054522868215,
-        2.0159472239809606,
-        1.3766124103737625,
-        0.14873437255808394,
-        64.7826065476769,
-        72.53079337532661,
-        68.1962262156912,
-        0.01643355495305472,
-        0.02182698201865557,
-        2.1766631926692246,
-        2.4180822801509914,
-        1.9894843149686203,
-        1.693305628236464,
-        1.7240134054647658,
-        1.5986105077709065,
-        0.6454972243679026,
-        0.7510281019219874,
-        0.7370277311900888,
-        0.8620067027323833,
-        2.1184084405486243,
-        3.901566636906541,
-        0.022546699870738072,
-        0.02716367930884471,
-        -7.0,
-        -2.9,
-        -2.7,
-        23.7,
-        -8.0,
-        -3.0,
-        -45.0,
-        -4.0,
-        -2.0,
-        -11.0,
-        -8.0,
-        -17.0,
-        -15.0,
-        -30.0,
-        -30.0,
-        -29.0,
-        -1249.5,
-        -9.0,
-        -4.0,
-        -2.0,
-        0.09999999999999998,
-        -125.7,
-        -125.6,
-        -136.5,
-        0.0,
-        -0.0585365853658535,
-        0.30000000000001137,
-        0.9000000000000341,
-        -1.6999999999999886,
-        -3.0,
-        -4.0,
-        -4.0,
-        0.0,
-        -1.0,
-        0.0,
-        2.0,
-        -3.0,
-        -11.0,
-        -0.0227317073170731,
-        -0.0207804878048779
-      ],
-      "telemetry": {
-        "sensor_0_avg": 35.5,
-        "wind_speed_3_avg": 3.3,
-        "wind_speed_4_avg": 3.3,
-        "sensor_5_avg": 22.2,
-        "sensor_6_avg": 48.0,
-        "sensor_7_avg": 48.0,
-        "sensor_8_avg": 75.5,
-        "sensor_9_avg": 48.5,
-        "sensor_10_avg": 44.0,
-        "sensor_11_avg": 50.0,
-        "sensor_12_avg": 51.0,
-        "sensor_13_avg": 52.5,
-        "sensor_14_avg": 54.5,
-        "sensor_15_avg": 60.0,
-        "sensor_16_avg": 60.5,
-        "sensor_17_avg": 60.0,
-        "sensor_18_avg": 480.75,
-        "sensor_19_avg": 42.5,
-        "sensor_20_avg": 43.5,
-        "sensor_21_avg": 43.0,
-        "sensor_22_avg": 0.7000000000000001,
-        "sensor_23_avg": 20.5,
-        "sensor_24_avg": 19.4,
-        "sensor_25_avg": 21.1,
-        "sensor_26_avg": 50.0,
-        "sensor_31_avg": -0.005414634146341401,
-        "sensor_32_avg": 400.54999999999995,
-        "sensor_33_avg": 400.2,
-        "sensor_34_avg": 397.4,
-        "sensor_35_avg": 42.0,
-        "sensor_36_avg": 41.0,
-        "sensor_37_avg": 41.5,
-        "sensor_38_avg": 82.0,
-        "sensor_39_avg": 86.0,
-        "sensor_40_avg": 79.0,
-        "sensor_41_avg": 47.0,
-        "sensor_43_avg": 41.5,
-        "sensor_53_avg": 40.5,
-        "power_29_avg": 0.013609756097560901,
-        "power_30_avg": -0.0039512195121951
-      },
-      "trend": [
-        81.0,
-        81.0,
-        81.0,
-        82.0,
-        82.0,
-        82.0,
-        82.0,
-        82.0,
-        82.0,
-        82.0,
-        82.0,
-        82.0,
-        82.0,
-        83.0,
-        83.0,
-        83.0,
-        83.0,
-        83.0,
-        83.0,
-        83.0,
-        83.0,
-        83.0,
-        83.0,
-        83.0,
-        82.0,
-        82.0,
-        82.0,
-        82.0,
-        82.0,
-        82.0,
-        82.0,
-        82.0,
-        82.0,
-        82.0,
-        81.0,
-        81.0
-      ],
-      "trend_signal": "sensor_38_avg",
-      "trend_label": "高压变压器 L1 温度",
-      "trend_unit": "°C"
-    },
-    {
       "id": "A-69",
       "sample_id": "CARE-A-69-20230911T0000",
       "event_id": 69,
@@ -3981,12 +3688,11 @@
       "source_sha256": "fa66f3fc0e9af250cbc23b409a78b3d76e5b9a8526a0f138ee5efaf7b9508d9b",
       "prediction": "healthy",
       "probabilities": {
-        "gearbox": 0.0077733860342556,
-        "gearbox_bearing": 0.0,
-        "generator_bearing": 0.031814711354483806,
-        "healthy": 0.8325862415066655,
-        "hydraulic": 0.06557375393317763,
-        "transformer": 0.06225190717141759
+        "gearbox": 0.01189889680384862,
+        "gearbox_bearing": 0.004098360655737705,
+        "generator_bearing": 0.03863653518427657,
+        "healthy": 0.8773350637465963,
+        "hydraulic": 0.06803114360954059
       },
       "held_out_prediction": "healthy",
       "held_out_probabilities": {
@@ -3994,8 +3700,7 @@
         "gearbox_bearing": 0.003970588235294118,
         "generator_bearing": 0.1561025735573261,
         "healthy": 0.5192722902889637,
-        "hydraulic": 0.30858177952841964,
-        "transformer": 0.0
+        "hydraulic": 0.30858177952841964
       },
       "independent_class_assets": 5,
       "validation": "asset_held_out_available",
@@ -4220,21 +3925,19 @@
       "source_sha256": "540b1b258c234ef898b087af4626aa46a86f08dc539f30836c2417f95a83533e",
       "prediction": "healthy",
       "probabilities": {
-        "gearbox": 0.004166666666666667,
-        "gearbox_bearing": 0.0,
-        "generator_bearing": 0.16051200999607693,
-        "healthy": 0.7894393859615442,
-        "hydraulic": 0.04588193737571229,
-        "transformer": 0.0
+        "gearbox": 0.012088852017183871,
+        "gearbox_bearing": 0.004166666666666667,
+        "generator_bearing": 0.17273242751101328,
+        "healthy": 0.7845878167690494,
+        "hydraulic": 0.026424237036086897
       },
       "held_out_prediction": "generator_bearing",
       "held_out_probabilities": {
-        "gearbox": 0.0041278130050976004,
-        "gearbox_bearing": 0.0037962962962962963,
-        "generator_bearing": 0.7835550025745415,
-        "healthy": 0.16793847724532152,
-        "hydraulic": 0.04058241087874327,
-        "transformer": 0.0
+        "gearbox": 0.0,
+        "gearbox_bearing": 0.004133064516129032,
+        "generator_bearing": 0.7253854327852168,
+        "healthy": 0.23610289524418346,
+        "hydraulic": 0.03437860745447064
       },
       "independent_class_assets": 5,
       "validation": "asset_held_out_available",
@@ -4459,21 +4162,19 @@
       "source_sha256": "d6071fe582077dd0ee1900597548497e17344f61c2ab4a784ecdd57529881db0",
       "prediction": "hydraulic",
       "probabilities": {
-        "gearbox": 0.018721837473001633,
-        "gearbox_bearing": 0.003792134831460674,
-        "generator_bearing": 0.14433498033819145,
-        "healthy": 0.1622445292628102,
-        "hydraulic": 0.6139366612544932,
-        "transformer": 0.05696985684004317
+        "gearbox": 0.023525920470550934,
+        "gearbox_bearing": 0.007375264660471089,
+        "generator_bearing": 0.13517247532101287,
+        "healthy": 0.1326227286011779,
+        "hydraulic": 0.7013036109467871
       },
       "held_out_prediction": "healthy",
       "held_out_probabilities": {
-        "gearbox": 0.0398061025494874,
-        "gearbox_bearing": 0.024815759637188208,
-        "generator_bearing": 0.020355574016175486,
-        "healthy": 0.47672136874779514,
-        "hydraulic": 0.3474118062572026,
-        "transformer": 0.09088938879215139
+        "gearbox": 0.04068672586627547,
+        "gearbox_bearing": 0.036186075594418256,
+        "generator_bearing": 0.0324500558134245,
+        "healthy": 0.5232660922325919,
+        "hydraulic": 0.3674110504932898
       },
       "independent_class_assets": 4,
       "validation": "asset_held_out_available",
@@ -4698,21 +4399,19 @@
       "source_sha256": "ac88e2141ec5c87c38bb3cee2c0fc084310b238f59464f1d9380cca0537c025a",
       "prediction": "hydraulic",
       "probabilities": {
-        "gearbox": 0.004166666666666667,
-        "gearbox_bearing": 0.003989361702127659,
-        "generator_bearing": 0.059794160405531496,
-        "healthy": 0.21084259682504877,
-        "hydraulic": 0.6844497294930378,
-        "transformer": 0.0367574849075876
+        "gearbox": 0.016314308920823944,
+        "gearbox_bearing": 0.0,
+        "generator_bearing": 0.06532470959870447,
+        "healthy": 0.17511697039106758,
+        "hydraulic": 0.7432440110894037
       },
-      "held_out_prediction": "healthy",
+      "held_out_prediction": "hydraulic",
       "held_out_probabilities": {
-        "gearbox": 0.028263275277032672,
-        "gearbox_bearing": 0.06914269800975645,
-        "generator_bearing": 0.09831071341995638,
-        "healthy": 0.38395269730607545,
-        "hydraulic": 0.3053415484161988,
-        "transformer": 0.11498906757098008
+        "gearbox": 0.015535918427415104,
+        "gearbox_bearing": 0.06796828586004303,
+        "generator_bearing": 0.12841525176398175,
+        "healthy": 0.379340235034882,
+        "hydraulic": 0.4087403089136783
       },
       "independent_class_assets": 4,
       "validation": "asset_held_out_available",
@@ -4937,12 +4636,11 @@
       "source_sha256": "a979ae914688dd4f4f5f3e3abd0d3ea2d607343363bca39292ad8e2de1c0a01d",
       "prediction": "healthy",
       "probabilities": {
-        "gearbox": 0.007317073170731708,
+        "gearbox": 0.020720319131319685,
         "gearbox_bearing": 0.0,
-        "generator_bearing": 0.031940983446056094,
-        "healthy": 0.8801433218245406,
-        "hydraulic": 0.08025115414865117,
-        "transformer": 0.00034746741002044437
+        "generator_bearing": 0.00863668809415983,
+        "healthy": 0.8752153383754834,
+        "hydraulic": 0.0954276543990372
       },
       "held_out_prediction": "healthy",
       "held_out_probabilities": {
@@ -4950,8 +4648,7 @@
         "gearbox_bearing": 0.0,
         "generator_bearing": 0.11707692081313863,
         "healthy": 0.4158214589197215,
-        "hydraulic": 0.38012142292790335,
-        "transformer": 0.0
+        "hydraulic": 0.38012142292790335
       },
       "independent_class_assets": 5,
       "validation": "asset_held_out_available",
@@ -5164,11 +4861,11 @@
   ],
   "limits": [
     "Historical labeled interval classification, not early warning or remaining life estimation.",
-    "Transformer and gearbox-bearing each have only one independent asset/event; no validated generalization.",
+    "Gearbox and gearbox-bearing each have only one independent asset/event; no validated generalization.",
     "Final model replay includes its training samples; held-out predictions are shown separately.",
     "Farm A only; no claim of transfer to other farms, turbine types or live field units.",
     "Anomaly score = 1 - normal class score; health display = 100 * normal score; not calibrated risk.",
     "Conflicting same-asset event intervals are excluded from both labels."
   ],
-  "training_windows": 963
+  "training_windows": 909
 }
