@@ -145,6 +145,10 @@ export function makeSupplementalTransformerGroup(model: THREE.Object3D, turbineI
   let hasGeneratorBounds = false
   model.traverse(node => {
     if (!(node instanceof THREE.Mesh) || node.userData.componentCategory !== 'GENERATOR') return
+    const source = String(node.userData.sourceCadName || node.name).toLowerCase()
+    // The generator cable is classified with the generator assembly but spans
+    // much of the nacelle. It must not determine the transformer location.
+    if (source.includes('kabl') || source.includes('cable') || source.includes('cev za elektricni')) return
     generatorBounds.expandByObject(node)
     hasGeneratorBounds = true
   })
@@ -154,10 +158,10 @@ export function makeSupplementalTransformerGroup(model: THREE.Object3D, turbineI
   const electricalReference = hasGeneratorBounds ? generatorBounds : modelBounds
   const electricalSize = electricalReference.getSize(new THREE.Vector3())
   // In a turbine nacelle the transformer cabinet sits on the service floor
-  // beside/behind the generator. Use the actual generator CAD bounds as the
-  // anchor instead of a free point in the full turbine bounding box.
-  anchor.y = electricalReference.min.y + electricalSize.y * .18
-  anchor.z = electricalReference.max.z + Math.max(electricalSize.z * .42, modelSize.z * .018)
+  // beside the generator. Anchor it to the compact stator/rotor envelope,
+  // excluding the long generator cable that otherwise pulls it to the hub.
+  anchor.y = electricalReference.min.y + electricalSize.y * .42
+  anchor.z = electricalReference.getCenter(new THREE.Vector3()).z + Math.max(electricalSize.z * .18, modelSize.z * .008)
   group.position.copy(model.worldToLocal(anchor))
   // Child geometry uses scene units while the imported CAD may use millimetres.
   // The transformed CAD has a large internal coordinate range. Keep the
