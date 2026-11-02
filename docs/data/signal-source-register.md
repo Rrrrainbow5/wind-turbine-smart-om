@@ -44,3 +44,17 @@
 ## CARE Version 6
 
 CARE 的完整登记见 `docs/data/care-dataset-register.md`。其十分钟均值、最大值、最小值、标准差等聚合量可用于趋势和事件分析，但没有被登记为可直接执行高频时频分析的原始波形。任何 FFT、STFT、小波包或包络谱结果都不得标记为 CARE 实测高频结果。
+
+## 已审核的补充公开波形来源
+
+| source_id | 数据来源 | data_origin | 已核验信号范围 | 允许用途 | 关键限制 |
+| --- | --- | --- | --- | --- | --- |
+| `SRC-WT-SWEDEN-2018` | 瑞典北部六台风机原始振动，DOI `10.5878/cbn6-c922` | `EXTERNAL_PUBLIC` | 输出轴轴承壳体轴向振动；12.8 kHz；一个已核验切片为 1.28 s / 16,384 点，含转速 | 真实风机原始波形、预处理、FFT/STFT、无监督异常研究 | 未提供逐段故障标签；不得用于多类监督故障分类或准确率报告；原始切片不随仓库分发 |
+| `SRC-MCSA-ROTORBAR-2026` | 转子条渐进钻孔 MCSA 基准，DOI `10.5281/zenodo.23438066` | `EXTERNAL_PUBLIC` | 单相电机电流 ADC count；390 个 650 点窗口 | 电流信号处理链和来源追溯演示 | 同一故障转子仅有连续钻孔阶段，不得证明跨电机或跨风机泛化 |
+| `SRC-SNU-GEAR-2026` | SNU 行星齿轮箱数据，DOI `10.6084/m9.figshare.32025606.v5` | `EXTERNAL_PUBLIC` | 原始振动和编码器；25.6 kHz；约 100 min / 工况 | 后续齿轮信号处理展示或独立子模型 | 2 kW 试验台数据，不得描述为风机现场数据；完整 16.5 GB 数据包未纳入本仓库 |
+
+瑞典风机样本的切片哈希、来源文件哈希、统计量、使用边界与 B/C/D 交接契约见：
+
+- `docs/data/public-waveform-source-verification-v0.2.md`
+- `docs/integration/wt-sweden-sample-handoff-v0.2.md`
+- `docs/integration/wt-sweden-sample-input-handoff-v0.2.json`
