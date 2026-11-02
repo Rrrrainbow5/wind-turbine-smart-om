@@ -7,7 +7,7 @@ import './datasets.css'
 type UploadInfo = { fileName: string; receivedAt: string; runId: string; source: string; prediction?: string }
 
 export default function FieldDataPanel({ turbine, onRefresh, onLocate, onMaintenance, expanded = false }: {
-  turbine?: Turbine; onRefresh: (id?: string) => Promise<void>; onLocate: () => void; onMaintenance: () => void; expanded?: boolean
+  turbine?: Turbine; onRefresh: (id?: string, destination?: 'overview' | 'signal') => Promise<void>; onLocate: () => void; onMaintenance: () => void; expanded?: boolean
 }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -52,7 +52,7 @@ export default function FieldDataPanel({ turbine, onRefresh, onLocate, onMainten
       <section><strong><Radio size={15} /> 方式二：实时采集端接入</strong><p>采集网关保留最新 36 条记录后，向同一接口持续发送；每次提交都会更新对应机组的诊断与运维闭环。</p><code>POST /api/care/field-infer</code><small>请求体与上传文件相同；模型推理后自动关联对应部件。</small></section>
     </div>
     <details><summary>近 6 小时数据包格式与模型边界</summary><p>当前已部署模型只适用于与 CARE 风场 A 一致的连续 SCADA 字段语义：36 条、每条间隔 10 分钟、共 40 个连续信号字段。它不是高采样振动波形模型，也不能把缺字段或不同口径的现场文件强行判断为故障。</p><pre>{JSON.stringify({ sample_id: 'SCADA-WT02-20261102T1200', source_reference: '风场采集系统/导出批次', data_origin: 'REAL', rows: [{ time_stamp: '2026-11-02T06:10:00+08:00', signals: { sensor_0_avg: '... 共40个CARE字段 ...', wind_speed_3_avg: '...', power_30_avg: '...' } }, '... 共36条连续记录 ...'] }, null, 2)}</pre><p>提交时，页面当前选中的机组与部件将作为关联对象；模型类别只提供候选部件方向，三维定位仍保留工程核验语义。</p></details>
-    <button disabled={busy} onClick={() => void run(async () => { const result = await syncDemoFleet(); await onRefresh(result.turbines[0]?.turbine_id); setMessage(`已同步 ${result.turbines.length} 台 CARE 演示风机；数据来源已标记为演示派生数据。`) })}><Activity size={14} /> 载入演示风场（6 台）</button>
+    <button disabled={busy} onClick={() => void run(async () => { const result = await syncDemoFleet(); const defaultTurbine = result.turbines.find(item => item.turbine_id === 'WT02')?.turbine_id || result.turbines[0]?.turbine_id; await onRefresh(defaultTurbine, 'overview'); setMessage(`已同步 ${result.turbines.length} 台 CARE 演示风机；数据来源已标记为演示派生数据。`) })}><Activity size={14} /> 载入演示风场（6 台）</button>
     {busy && <p role="status">正在校验数据并完成模型推理…</p>}{error && <p className="dataset-error" role="alert">{error}</p>}{message && <p role="status">{message}</p>}
     {uploadInfo && <div className="dataset-run-info"><strong>本次现场分析</strong><span>文件：{uploadInfo.fileName}</span><span>诊断运行编号：{uploadInfo.runId}</span><span>来源：{uploadInfo.source}</span><span>接入时间：{uploadInfo.receivedAt}</span>{uploadInfo.prediction && <b>当前模型结果：{uploadInfo.prediction}。已同步到三维定位和维护决策。</b>}</div>}
     {expanded && (record ? <FieldDiagnosisDetail record={record} onLocate={onLocate} onMaintenance={onMaintenance} /> : <p>当前机组尚未导入可追溯的近 6 小时数据包。完成上传后，这里会展示同一诊断记录的采样趋势、处理步骤、特征、分类结果与维护入口。</p>)}

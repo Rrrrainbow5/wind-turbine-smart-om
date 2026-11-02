@@ -34,6 +34,7 @@ export interface FieldDiagnosis {
   channels: Array<{ name: string; unit: string; samples: number[]; source_reference?: string; sensor_location?: string }>
   preprocessing: Array<{ name: string; method: string }>
   time_features: Record<string, number>
+  operating_condition?: Record<string, unknown>
   diagnosis: {
     model_version: string; predicted_class: string; component_key: string; mapping_status: string
     class_probabilities: Record<string, number>; uncertainty: number
@@ -196,9 +197,14 @@ export async function fetchTurbines(): Promise<Turbine[]> {
     const latest = state?.latest_ai_result
     const diagnosis = latest?.diagnosis_id ? await fetchFieldDiagnosis(latest.diagnosis_id) : undefined
     const telemetry = telemetryRows.find(record => record.component_id === state?.component_id) || telemetryRows[0]
-    const sensorTrend = telemetry?.trend
+    const telemetryTrend = telemetry?.trend
       ?.map(point => Number(point.rotor_bearing_temperature_2_c))
       .filter(value => Number.isFinite(value)) || []
+    const diagnosisChannel = diagnosis?.channels[0]
+    const sensorTrend = telemetryTrend.length ? telemetryTrend : diagnosisChannel?.samples.filter(value => Number.isFinite(value)) || []
+    const operating = diagnosis?.operating_condition || {}
+    const diagnosisPower = Number(operating.active_power_kw)
+    const diagnosisWind = Number(operating.wind_speed_ms)
     const verified = state?.mapping_status === 'VERIFIED'
     return {
       turbine_id: item.turbine_id,
@@ -212,16 +218,16 @@ export async function fetchTurbines(): Promise<Turbine[]> {
       // negative values so genuine reverse power flow remains diagnosable.
       power_kw: telemetry?.active_power_kw != null && telemetry.active_power_kw < 0 && telemetry.active_power_kw > -0.01
         ? 0
-        : telemetry?.active_power_kw ?? 0,
-      wind_ms: telemetry?.wind_speed_ms ?? 0,
+        : telemetry?.active_power_kw ?? (Number.isFinite(diagnosisPower) ? diagnosisPower : 0),
+      wind_ms: telemetry?.wind_speed_ms ?? (Number.isFinite(diagnosisWind) ? diagnosisWind : 0),
       component_id: state?.component_id || `${item.turbine_id}_COMPONENT_01`,
       component_label: diagnosis ? fieldComponentLabel(diagnosis, state.component_name) : verified ? state.component_name : '待核验关键部件',
       mapping_status: state?.mapping_status || 'UNVERIFIED',
       has_analysis: Boolean(latest),
       updated_at: latest?.timestamp || '暂无分析结果',
       trend: sensorTrend,
-      trend_label: sensorTrend.length ? '转子轴承温度 2' : '传感器趋势',
-      trend_unit: sensorTrend.length ? '°C' : undefined,
+      trend_label: sensorTrend.length ? (diagnosisChannel?.name || '转子轴承温度 2') : '传感器趋势',
+      trend_unit: sensorTrend.length ? (diagnosisChannel?.unit || '°C') : undefined,
       source: latest?.data_origin || telemetry?.data_origin || item.data_origin || 'REFERENCE',
       model_version: latest?.model_version || '未提供',
       field_diagnosis: diagnosis,
