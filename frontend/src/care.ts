@@ -24,8 +24,7 @@ export const representativeCareCases = ['A-24', 'A-0', 'A-10', 'A-22', 'A-51', '
   .map(id => careCases.find(sample => sample.id === id)!)
 
 // These categories have verified target meshes in wind-turbine-engineering.glb.
-// A transformer is an external electrical asset in this project CAD and must
-// remain a turbine-level electrical status rather than a false 3D location.
+// Transformer uses a separately identified supplemental electrical assembly.
 const cadLocatableCategories = new Set<NonNullable<Turbine['fault_category']>>([
   'GEARBOX', 'GEARBOX_BEARING', 'GENERATOR', 'HYDRAULIC', 'ROTOR_BEARING', 'DRIVETRAIN',
 ])
@@ -37,16 +36,18 @@ export function applyCareCase(turbine: Turbine, id: string): Turbine {
   const predicted = artifact.classes[sample.prediction as keyof typeof artifact.classes]
   const predictedCategory = predicted.category as Turbine['fault_category'] | null
   const cadLocatable = predictedCategory !== null && predictedCategory !== undefined && cadLocatableCategories.has(predictedCategory)
+  const supplementalTransformer = predictedCategory === 'TRANSFORMER'
+  const hasThreeDTarget = cadLocatable || supplementalTransformer
   return {
     ...turbine, source: 'EXTERNAL_PUBLIC', model_version: artifact.model_version,
     care_case: sample, event_id: sample.event_id, event_name: sample.name,
     event_description: sample.description,
-    component_label: cadLocatable ? predicted.name : predictedCategory === 'TRANSFORMER' ? '机组级电气状态' : predicted.name,
-    component_id: cadLocatable ? `${turbine.turbine_id}_${sample.prediction.toUpperCase()}` : `${turbine.turbine_id}_ELECTRICAL_STATE`,
-    fault_category: cadLocatable ? predictedCategory || undefined : undefined,
+    component_label: supplementalTransformer ? '机舱电气变压器总成' : predicted.name,
+    component_id: hasThreeDTarget ? `${turbine.turbine_id}_${sample.prediction.toUpperCase()}` : `${turbine.turbine_id}_ELECTRICAL_STATE`,
+    fault_category: hasThreeDTarget ? predictedCategory || undefined : undefined,
     failure_risk: risk, anomaly_score: risk, health_index: 100 * sample.probabilities.healthy,
     warning_level: sample.prediction === 'healthy' ? 'NORMAL' : risk >= .72 ? 'HIGH' : risk >= .42 ? 'MEDIUM' : risk >= .2 ? 'LOW' : 'NORMAL',
-    has_analysis: true, mapping_status: cadLocatable ? 'CAD_VERIFIED' : 'UNIT_LEVEL_ONLY',
+    has_analysis: true, mapping_status: supplementalTransformer ? 'SUPPLEMENTAL_3D_MODEL' : cadLocatable ? 'CAD_VERIFIED' : 'UNIT_LEVEL_ONLY',
     power_kw: sample.telemetry.power_30_avg, wind_ms: sample.telemetry.wind_speed_3_avg,
     trend: sample.trend, trend_label: `${sample.trend_label} · 同一样本 6 小时`, trend_unit: sample.trend_unit,
     updated_at: sample.end,

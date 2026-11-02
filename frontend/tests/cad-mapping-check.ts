@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import * as THREE from 'three'
-import { bindCadPartNames, makeRealGearboxBearingGroup, setFaultPartState } from '../src/WindScene'
+import { bindCadPartNames, makeRealGearboxBearingGroup, makeSupplementalTransformerGroup, setFaultPartState } from '../src/WindScene'
 import { effectiveCadCategory } from '../src/cadMapping'
 
 export function runChecks() {
@@ -18,10 +18,12 @@ export function runChecks() {
   nodes.filter(node => !node.parent).forEach(node => root.add(node))
   bindCadPartNames(root, 'WT02')
   root.add(makeRealGearboxBearingGroup(root, 'WT02'))
+  root.updateWorldMatrix(true, true)
+  root.add(makeSupplementalTransformerGroup(root, 'WT02'))
   const fastener = /bolt|screw|washer|fastener|navrt|podlo|civij|(?:^|[\s_])(?:[šs]?raf|klin)\b/i
   const source = (object: THREE.Object3D) => String(object.userData.sourceCadName || '')
   const counts: Record<string, number> = {}
-  for (const category of ['GEARBOX', 'GEARBOX_BEARING', 'HYDRAULIC', 'GENERATOR', 'ROTOR_BEARING', 'DRIVETRAIN'] as const) {
+  for (const category of ['GEARBOX', 'GEARBOX_BEARING', 'HYDRAULIC', 'GENERATOR', 'ROTOR_BEARING', 'DRIVETRAIN', 'TRANSFORMER'] as const) {
     setFaultPartState(root, category, 'HIGH')
     const overlay = root.getObjectByName('FAULT_HIGHLIGHT_OVERLAY')!
     assert.ok(overlay?.children.length, `${category} must have real CAD targets`)
@@ -36,11 +38,6 @@ export function runChecks() {
     }
     counts[category] = overlay.children.length
   }
-  // Transformer is an external electrical asset in the supplied CAD, not an
-  // imported nacelle component. It must never receive a false 3D highlight.
-  setFaultPartState(root, 'TRANSFORMER', 'HIGH')
-  assert.equal(root.getObjectByName('FAULT_HIGHLIGHT_OVERLAY'), undefined)
-  assert.equal(root.userData.faultHighlightCount, 0)
   setFaultPartState(root, undefined, 'NORMAL')
   assert.equal(root.getObjectByName('FAULT_HIGHLIGHT_OVERLAY'), undefined)
   assert.equal(root.userData.faultHighlightCount, 0)

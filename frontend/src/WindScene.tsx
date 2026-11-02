@@ -126,6 +126,71 @@ export function makeRealGearboxBearingGroup(root: THREE.Object3D, turbineId: str
   return group
 }
 
+// The supplied mechanical CAD does not contain the transformer. Add a clearly
+// identified electrical assembly so transformer events have a dedicated 3D
+// target instead of being mapped onto a mechanical CAD part.
+export function makeSupplementalTransformerGroup(model: THREE.Object3D, turbineId: string) {
+  const group = new THREE.Group()
+  group.name = `${turbineId}_SUPPLEMENTAL_TRANSFORMER_MODEL`
+  group.userData.componentId = `${turbineId}_TRANSFORMER`
+  group.userData.componentGroupId = `${turbineId}_TRANSFORMER`
+  group.userData.componentLabel = '机舱电气变压器总成'
+  group.userData.componentCategory = 'TRANSFORMER'
+  group.userData.sourceCadName = 'SYSTEM_SUPPLEMENTAL_TRANSFORMER'
+  group.userData.modelOrigin = 'SYSTEM_SUPPLEMENTAL_ELECTRICAL_MODEL'
+
+  const modelBounds = new THREE.Box3().setFromObject(model)
+  const modelSize = modelBounds.getSize(new THREE.Vector3())
+  const anchor = modelBounds.getCenter(new THREE.Vector3())
+  // Anchor within the upper nacelle volume using the normalized model bounds.
+  // This stays stable even when the source CAD changes its generator hierarchy.
+  anchor.y = modelBounds.min.y + modelSize.y * .72
+  // Place the cabinet alongside the lower nacelle service frame, where its
+  // dedicated fault highlight remains visible in the cutaway view.
+  anchor.z += modelSize.z * .12
+  group.position.copy(model.worldToLocal(anchor))
+  // Child geometry uses scene units while the imported CAD may use millimetres.
+  // The transformed CAD has a large internal coordinate range. Keep the
+  // electrical enclosure compact relative to the nacelle rather than letting
+  // its procedural scene-unit geometry fill the cutaway.
+  const inverseScale = .12 / Math.max(Math.abs(model.scale.x), .0001)
+  group.scale.setScalar(inverseScale)
+
+  const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x597680, metalness: .55, roughness: .36 })
+  const finMaterial = new THREE.MeshStandardMaterial({ color: 0x9db8bd, metalness: .65, roughness: .28 })
+  const bushingMaterial = new THREE.MeshStandardMaterial({ color: 0xc8d7d6, metalness: .32, roughness: .25 })
+  const tag = (mesh: THREE.Mesh, id: string) => {
+    mesh.name = `${turbineId}_TRANSFORMER_${id}`
+    mesh.userData.componentId = mesh.name
+    mesh.userData.componentGroupId = `${turbineId}_TRANSFORMER`
+    mesh.userData.componentLabel = '机舱电气变压器总成'
+    mesh.userData.componentCategory = 'TRANSFORMER'
+    mesh.userData.sourceCadName = `SYSTEM_TRANSFORMER_${id}`
+    mesh.userData.modelOrigin = 'SYSTEM_SUPPLEMENTAL_ELECTRICAL_MODEL'
+    group.add(mesh)
+  }
+  tag(new THREE.Mesh(new THREE.BoxGeometry(.78, .5, .5), bodyMaterial), 'ENCLOSURE')
+  for (let index = -3; index <= 3; index++) {
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(.68, .04, .66), finMaterial)
+    fin.position.set(0, index * .065, 0)
+    tag(fin, `COOLING_FIN_${index + 4}`)
+  }
+  for (let index = -1; index <= 1; index++) {
+    const bushing = new THREE.Mesh(new THREE.CylinderGeometry(.055, .055, .22, 16), bushingMaterial)
+    bushing.position.set(index * .2, .36, 0)
+    tag(bushing, `BUSHING_${index + 2}`)
+  }
+  if (typeof document !== 'undefined') {
+    const label = makeLabel('变压器', '#ff7668')
+    label.name = `${turbineId}_TRANSFORMER_LABEL`
+    label.position.set(0, .7, 0)
+    label.scale.set(6.5, 1.1, 1)
+    label.visible = false
+    group.add(label)
+  }
+  return group
+}
+
 const engineeringColors: Record<string, number> = {
   // Neutral cutaway materials. The selected fault is overlaid in red by
   // setFaultPartState; unselected parts must not look like faults.
@@ -137,6 +202,7 @@ const engineeringColors: Record<string, number> = {
   DRIVETRAIN: 0xb7c5c8,
   ROTOR: 0x80939a,
   HYDRAULIC: 0xa2b7b1,
+  TRANSFORMER: 0x809ca4,
 }
 
 function isCadExterior(object: THREE.Object3D, category: string) {
@@ -154,7 +220,7 @@ function setEngineeringCadView(model: THREE.Object3D | null, active: boolean) {
   model.traverse(object => {
     if (!(object instanceof THREE.Mesh)) return
     const category = effectiveCadCategory(object, model)
-    const highlightedInternal = ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN', 'HYDRAULIC'].includes(category)
+    const highlightedInternal = ['GENERATOR', 'GEARBOX', 'GEARBOX_BEARING', 'ROTOR_BEARING', 'BEARING', 'DRIVETRAIN', 'HYDRAULIC', 'TRANSFORMER'].includes(category)
     const source = String(object.userData.sourceCadName || '').toLowerCase()
     // Fade only outer panels, not the NACELLE parent and its mechanical children.
     const outerPanel = /^kuci_te [12]\.step/i.test(source)
@@ -282,6 +348,9 @@ function makeGear(name: string, radius: number, material: THREE.Material) {
 
 export function setFaultPartState(model: THREE.Object3D | null, category: Turbine['fault_category'], level: Turbine['warning_level']) {
   if (!model) return
+  let transformerLabel: THREE.Object3D | undefined
+  model.traverse(object => { if (/_TRANSFORMER_LABEL$/.test(object.name)) transformerLabel = object })
+  if (transformerLabel) transformerLabel.visible = category === 'TRANSFORMER' && level !== 'NORMAL'
   const oldOverlay = model.getObjectByName('FAULT_HIGHLIGHT_OVERLAY')
   if (oldOverlay) {
     const disposedMaterials = new Set<THREE.Material>()
@@ -737,6 +806,7 @@ export default function WindScene({ turbines, selectedId, onSelect, serviced, en
         })
         const realBearings = makeRealGearboxBearingGroup(imported, id)
         imported.add(realBearings)
+        imported.add(makeSupplementalTransformerGroup(imported, id))
         const cadBlades: THREE.Object3D[] = []
         imported.traverse(child => {
           const source = String(child.userData.sourceCadName || '').toLowerCase()
