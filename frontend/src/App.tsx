@@ -3,7 +3,7 @@ import { Activity, AlertTriangle, Anchor, ArrowRight, Check, ChevronDown, Clipbo
 import WindScene from './WindScene'
 import DatasetPanel from './DatasetPanel'
 import FieldDataPanel from './FieldDataPanel'
-import CarePanel, { CareSelector } from './CarePanel'
+import CarePanel from './CarePanel'
 import { applyCareCase, defaultCareCases } from './care'
 import type { BearingPart, SampleMapping } from './SampleAssociation'
 import { executeMaintenance, fetchRetests, fetchTurbines, optimizeMaintenance, replanMaintenance, type ApiMaintenancePlan, type ApiRetest } from './api'
@@ -250,7 +250,7 @@ export default function App() {
   const [turbineStates, setTurbineStates] = useState<Record<string, TurbinePersistedState>>({})
   const [turbineStatesHydrated, setTurbineStatesHydrated] = useState(false)
   const [view, setView] = useState<View>('overview')
-  const [demoInput, setDemoInput] = useState<'cases' | 'parameters'>('cases')
+  const [demoInput] = useState<'cases' | 'parameters'>('cases')
   const [weatherRestricted, setWeatherRestricted] = useState(false)
   const [weather, setWeather] = useState<WeatherState>({ wind: 9.4, wave: 1.1, visibility: 8.6 })
   const [selectedPlan, setSelectedPlan] = useState('inspect')
@@ -293,21 +293,8 @@ export default function App() {
   const [replacementRecommended, setReplacementRecommended] = useState(false)
   const [decisionConfirm, setDecisionConfirm] = useState<string | null>(null)
   const [decisionFeedback, setDecisionFeedback] = useState('')
-  const [caseSelections, setCaseSelections] = useState<Record<string, string>>(defaultCareCases)
+  const [caseSelections] = useState<Record<string, string>>(defaultCareCases)
   const faultEventId = caseSelections[selectedId] || 'A-10'
-  const setFaultEventId = (id: string) => {
-    setCaseSelections(current => ({ ...current, [selectedId]: id }))
-    setServiced(false); setDiagnosticTouched(false); setEngineeringView(true)
-    setRetestPhase('idle'); setBeforeRetest(null); setAfterRetest(null)
-    setApiPlan(null); setSelectedPlan('inspect'); setMaintenanceRecordId(''); setRetests([])
-    setMaintenanceAttempts(0); setDecisionFeedback(''); setDecisionConfirm(null); setEvidencePanel(null)
-    setReplacementPending(false)
-    setTurbineStates(current => {
-      const next = { ...current }
-      delete next[selectedId]
-      return next
-    })
-  }
   const [personnelAvailable, setPersonnelAvailable] = useState(true)
   const [spareAvailable, setSpareAvailable] = useState(true)
   const [shutdownAllowed, setShutdownAllowed] = useState(true)
@@ -403,7 +390,7 @@ export default function App() {
   useEffect(() => {
     setWeatherRestricted(weatherClosed)
   }, [weatherClosed])
-  const createRetestSnapshot = (improved: boolean, baseline = false): RetestSnapshot => {
+  const createRetestSnapshot = (improved: boolean): RetestSnapshot => {
     const monitoring = selectedPlan === 'monitor' || decisionAction === 'CONTINUE_MONITORING'
     const inspection = selectedPlan === 'inspect' || decisionAction === 'SCHEDULE_INSPECTION'
     const baseHealth = selected.health_index
@@ -644,7 +631,7 @@ export default function App() {
 
   const executePlan = async () => {
     if (!selected) return
-    setBeforeRetest(createRetestSnapshot(false, true)); setAfterRetest(null); setError('')
+    setBeforeRetest(createRetestSnapshot(false)); setAfterRetest(null); setError('')
     if (mode === 'api') {
       if (!apiPlan) { setError('尚未生成可执行的维护方案。'); return }
       try {
@@ -746,6 +733,8 @@ export default function App() {
     else if (guide.active && guide.step === 2) setGuide(state => ({ ...state, step: 3 }))
     else if (guide.active && guide.step === 3) setGuide(state => ({ ...state, step: 4 }))
   }
+  const guideDecisionChanged = guide.step === 4 && Boolean(demoInput)
+  const confirmGuidePlan = () => { if (guideDecisionChanged) closeGuide() }
   const startGuideDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
     if ((event.target as HTMLElement).closest('button')) return
     const rect = event.currentTarget.parentElement?.getBoundingClientRect()
