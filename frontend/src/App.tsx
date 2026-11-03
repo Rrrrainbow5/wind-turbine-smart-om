@@ -290,7 +290,7 @@ export default function App() {
   const [afterRetest, setAfterRetest] = useState<RetestSnapshot | null>(null)
   const [maintenanceAttempts, setMaintenanceAttempts] = useState(0)
   const [replacementRecommended, setReplacementRecommended] = useState(false)
-  const [replacementPending, setReplacementPending] = useState(false)
+  const replacementPending = replacementRecommended
   const [decisionConfirm, setDecisionConfirm] = useState<string | null>(null)
   const [decisionFeedback, setDecisionFeedback] = useState('')
   const [caseSelections, setCaseSelections] = useState<Record<string, string>>(defaultCareCases)
@@ -301,12 +301,7 @@ export default function App() {
     setRetestPhase('idle'); setBeforeRetest(null); setAfterRetest(null)
     setApiPlan(null); setSelectedPlan('inspect'); setMaintenanceRecordId(''); setRetests([])
     setMaintenanceAttempts(0); setDecisionFeedback(''); setDecisionConfirm(null); setEvidencePanel(null)
-    setReplacementPending(false)
-    setTurbineStates(current => {
-      const next = { ...current }
-      delete next[selectedId]
-      return next
-    })
+    setTurbineStates(current => { const next = { ...current }; delete next[selectedId]; return next })
   }
   const [personnelAvailable, setPersonnelAvailable] = useState(true)
   const [spareAvailable, setSpareAvailable] = useState(true)
@@ -386,6 +381,7 @@ export default function App() {
   const plan = plans.find(p => p.id === selectedPlan) || plans[0]
   const highCount = sceneTurbines.filter(t => t.has_analysis !== false && t.warning_level === 'HIGH').length
   const retest = retests[0]
+  const selectedHistory = turbineStates[selectedId]?.maintenanceLog || []
   const activeFault = Boolean(selected && !serviced && selected.has_analysis !== false && selected.warning_level !== 'NORMAL')
   const conditionSummary = `人员${personnelAvailable ? '✓' : '✗'} 备件${spareAvailable ? '✓' : '✗'} 天气${weatherRestricted ? '✗' : '✓'} 停机${shutdownAllowed ? '✓' : '✗'}`
   const weatherClosed = weather.wind > 12 || weather.wave > 2
@@ -665,7 +661,7 @@ export default function App() {
         if (selectedPlan === 'monitor' || decisionAction === 'CONTINUE_MONITORING') {
           setTurbineStates(current => ({ ...current, [selectedId]: { ...(current[selectedId] || { params: diagnosticParams, fault: null, maintenanceLog: [], loaded: true }), status: 'monitoring' } }))
         }
-        setDecisionFeedback('已记录人工提交的维护执行信息，等待现场复测数据；当前故障状态不会自动清除。')
+        setDecisionFeedback('维护执行已记录。下一步请等待现场采集复测数据，或点击下方“同步现场复测结果”；在复测通过前，设备故障状态不会自动清除。')
         setRetestPhase('idle'); setServiced(false); logAction('维护执行已记录，待现场复测')
       } catch (reason) { setError(reason instanceof Error ? reason.message : '维护请求失败'); setRetestPhase('idle') }
       finally { setLoading(false) }
@@ -700,7 +696,7 @@ export default function App() {
       return
     }
     if (passed) {
-      setServiced(true); setRetestPhase('idle'); setReplacementPending(false)
+       setServiced(true); setRetestPhase('idle'); setReplacementRecommended(false)
       setDiagnosticParams(defaultDiagnosticParams)
       setTurbineStates(current => ({ ...current, [selectedId]: { ...(current[selectedId] || { maintenanceLog: [], loaded: true }), params: defaultDiagnosticParams, fault: null, status: 'maintained' } }))
       logAction('复测确认通过：设备状态恢复正常')
@@ -816,7 +812,7 @@ export default function App() {
               <button onClick={() => openEvidence('context', 'Event 51 说明')}><ClipboardList size={15} />Event 51 说明</button>
               <button onClick={() => openEvidence('review', '人工复核')}><ShieldCheck size={15} />标记待人工核查</button>
             </div></div>
-            <div className="evidence-panel">{evidencePanel === 'evidence' && <><strong>异常证据</strong><p>当前部件风险评分 {selected.failure_risk.toFixed(3)}，健康指数 {selected.health_index.toFixed(1)}。该评分用于相对排序，不是校准故障概率。</p></>}{evidencePanel === 'trend' && <><strong>{selected.trend_label || '传感器趋势'}</strong><Sparkline values={selected.trend} level={selected.warning_level} /><p>趋势依据当前案例记录整理。</p></>}{evidencePanel === 'history' && <><strong>维护历史</strong><p>暂无可核验的历史维护记录。执行后将保留 plan_id、record_id 和复测状态。</p></>}{evidencePanel === 'context' && <><strong>CARE Version 6 · Event {selected.event_id ?? 51}</strong><p>当前场景为海上风场演示，部件为 {selected.component_label}。</p></>}{evidencePanel === 'review' && <><strong>待人工核查（仅页面标记）</strong><p>请工程人员确认数据记录和维护窗口；尚未创建工单或通知现场人员，也不将复核视为故障确认。</p></>}</div>
+             <div className="evidence-panel">{evidencePanel === 'evidence' && <><strong>异常证据</strong><p>当前部件风险评分 {selected.failure_risk.toFixed(3)}，健康指数 {selected.health_index.toFixed(1)}。该评分用于相对排序，不是校准故障概率。</p></>}{evidencePanel === 'trend' && <><strong>{selected.trend_label || '传感器趋势'}</strong><Sparkline values={selected.trend} level={selected.warning_level} /><p>趋势依据 {mode === 'api' ? selected.source === 'DERIVED' ? 'CARE 聚合记录' : '接口诊断记录' : '演示样本'}。</p></>}{evidencePanel === 'history' && <><strong>维护历史</strong>{selectedHistory.length ? selectedHistory.slice(0, 8).map((item, index) => <p key={`${item.time}-${index}`}>{item.time} · {item.action} · {item.detail} · {item.result}</p>) : <p>当前机组尚无操作记录。</p>}</>}{evidencePanel === 'context' && <><strong>{mode === 'api' ? '当前数据来源' : `CARE Version 6 · Event ${selected.event_id || 51}`}</strong><p>{mode === 'api' ? `${selected.source} · ${selected.updated_at} · 当前部件 ${selected.component_label}` : `当前场景为海上风场演示，部件为 ${selected.component_label}。`}</p></>}{evidencePanel === 'review' && <><strong>已标记待人工核查（演示）</strong><p>请工程人员核对数据来源、测点和维护窗口。该标记不会确认故障，也不会自动创建维修工单。</p></>}</div>
             <div className="workbench-block"><div className="workbench-title"><h3>工程资源与约束</h3><span>改变条件后重新生成方案</span></div><div className="resource-grid">
               <button className={personnelAvailable ? 'resource-on' : ''} onClick={() => { setPersonnelAvailable(v => !v); logAction(`维护人员${personnelAvailable ? '不可用' : '可用'}`) }}><UserRound size={15} />人员 {personnelAvailable ? '可用' : '不可用'}</button>
               <button className={spareAvailable ? 'resource-on' : ''} onClick={() => { setSpareAvailable(v => !v); logAction(`备件${spareAvailable ? '不可用' : '可用'}`) }}><PackageCheck size={15} />备件 {spareAvailable ? '可用' : '不可用'}</button>
@@ -834,11 +830,12 @@ export default function App() {
              {retestPhase === 'executing' && <div className="retest-progress-card"><strong>{selectedPlan === 'monitor' ? '继续监测记录中，预计停机 0 小时' : selectedPlan === 'inspect' ? '现场检查记录中，预计停机 3 小时' : '预防性维护执行中，预计停机 6 小时'}</strong><div className="retest-progress-track"><span style={{ width: `${retestProgress}%` }} /></div><small>{Math.round(retestProgress)}% · 请保持页面打开</small></div>}
             {retestPhase === 'retesting' && <div className="retest-progress-card"><strong>正在重新检测设备状态</strong><div className="retest-spinner" /><small>AI 正在重新推理传感器数据</small></div>}
              {retestPhase === 'result' && beforeRetest && afterRetest && <div className="retest-result-card"><div className="retest-head"><span>{selectedPlan === 'service' ? '维护后复测对比' : selectedPlan === 'inspect' ? '现场检查结果' : '监测复评结果'}</span><em>{afterRetest.conclusion}</em></div><div className="retest-compare"><div><small>执行前</small><strong>{beforeRetest.location}</strong><span>风险 {beforeRetest.risk.toFixed(2)} · 健康 {beforeRetest.health.toFixed(1)}</span></div><ArrowRight size={18} /><div className={afterRetest.risk < beforeRetest.risk ? 'improved' : 'worsened'}><small>执行后</small><strong>{afterRetest.location}</strong><span>风险 {afterRetest.risk.toFixed(2)} · 健康 {afterRetest.health.toFixed(1)}</span></div></div><p className={afterRetest.risk > beforeRetest.risk ? 'retest-warning' : ''}>{afterRetest.conclusion}</p>{selectedPlan === 'service' ? <div className="retest-actions"><button className="primary-action" disabled={!retestPassed(afterRetest)} title={retestPassed(afterRetest) ? '复测通过，可确认修复' : `当前故障仍未消除（置信度 ${(afterRetest.confidence * 100).toFixed(0)}%），请进行二次维护`} onClick={() => confirmRetest(true)}><Check size={16} /> 确认维护复测</button><button className="secondary-action" onClick={() => confirmRetest(false)}><AlertTriangle size={16} /> 维护未达标</button></div> : <div className="decision-feedback"><strong>{selectedPlan === 'inspect' ? '检查结论' : '监测结论'}</strong><span>{selectedPlan === 'inspect' ? '检查本身不会清除故障，请根据检查结果决定是否安排维护。' : '继续监测不会清除故障，建议在条件满足后重新评估。'}</span></div>}</div>}
-            {retestPhase === 'idle' && !serviced && <button className="primary-action" data-guide-target="execute-plan" disabled={loading || Boolean(planLockReason(decisionAction)) || (mode === 'api' && !apiPlan)} title={planLockReason(decisionAction)} onClick={executePlan}><Check size={17} /> {mode === 'api' ? '记录维护执行' : '模拟执行方案'} <ArrowRight size={17} /></button>}
+            {replacementRecommended && !serviced && <div className="condition-notice"><AlertTriangle size={15} /><span>连续两次复测未通过，当前案例已停止重复执行同一维护方案。请转入部件更换评估或请求人工复核。</span></div>}
+            {retestPhase === 'idle' && !serviced && <button className="primary-action" data-guide-target="execute-plan" disabled={loading || replacementRecommended || Boolean(planLockReason(decisionAction)) || (mode === 'api' && !apiPlan)} title={replacementRecommended ? '连续复测未通过，请先进行部件更换评估' : planLockReason(decisionAction)} onClick={executePlan}><Check size={17} /> {mode === 'api' ? '记录维护执行' : '模拟执行方案'} <ArrowRight size={17} /></button>}
             {serviced && <div className="success-message"><Check size={17} /><div><strong>维护复测已确认</strong><span>设备状态已恢复正常，故障标记已清除。</span></div></div>}
             <div className="log-panel"><div className="workbench-title"><h3>操作日志</h3><span>{activityLog.length} 条</span></div>{activityLog.length ? activityLog.map((item, i) => <div key={`${item}-${i}`}><Clock3 size={12} />{item}</div>) : <p>尚未进行工程操作</p>}</div>
-            {mode === 'api' && (maintenanceRecordId || retestLoading) && <div className="retest-card"><div className="retest-head"><span>维护后复测</span><em>{retestLoading ? '查询中' : '复测记录'}</em></div>{retest ? <><div className="retest-values"><div><span>健康指数</span><strong>{retest.health_index.toFixed(1)}</strong></div><div><span>相对风险</span><strong>{retest.failure_risk.toFixed(3)}</strong></div></div><p>{retest.conclusion}</p><small>复测结果需结合现场检查确认。</small></> : <p>{retestLoading ? '正在查询复测记录...' : '待复测。当前没有后端复测结果。'}</p>}</div>}
-            {mode === 'api' && maintenanceRecordId && <div><small>执行记录：{maintenanceRecordId} · 采集端通过 POST /api/retests 提交此记录的复测结果。</small><button className="secondary-action" disabled={retestLoading} onClick={() => void refreshRetests()}>同步现场复测结果</button></div>}
+            {mode === 'api' && (maintenanceRecordId || retestLoading) && <div className="retest-card api-followup-card"><div className="retest-head"><span>下一步：维护后复测</span><em>{retestLoading ? '查询中' : retest ? '已收到复测' : '等待现场数据'}</em></div>{retest ? <><div className="retest-values"><div><span>健康指数</span><strong>{retest.health_index.toFixed(1)}</strong></div><div><span>相对风险</span><strong>{retest.failure_risk.toFixed(3)}</strong></div></div><p>{retest.conclusion}</p><small>请结合现场检查确认后，再返回设备状态。</small></> : <><p>{retestLoading ? '正在查询复测记录...' : '执行记录已保存，当前尚未收到后端复测结果。'}</p><button className="primary-action" disabled={retestLoading} onClick={() => void refreshRetests()}><Activity size={16} /> 同步现场复测结果 <ArrowRight size={16} /></button></>}</div>}
+            {mode === 'api' && maintenanceRecordId && <div className="retest-source-note"><small>执行记录：{maintenanceRecordId} · 采集端通过 POST /api/retests 提交此记录的复测结果。</small></div>}
             <button className="secondary-action" onClick={() => { setView('overview') }}><RotateCcw size={16} /> 返回设备状态</button>
           </>}
           <div className="data-footnote"><span>{selected.care_case ? 'CARE 数据集' : selected.source === 'SIMULATED' ? '参数规则模拟' : '数据记录'}</span><span>{selected.model_version}{!selected.care_case && ` · ${selected.updated_at}`}</span></div>
