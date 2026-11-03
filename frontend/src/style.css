@@ -250,3 +250,4 @@ body{background:#07141d}
 .app-shell .confidence-row{font-size:12px}
 .app-shell .history-clear{border:1px solid #4c8088;background:#123541;color:#dffaff;border-radius:3px;padding:2px 7px;font-size:11px}
 .app-shell .history-clear:disabled{opacity:.45}
+.guide-retry-continue{position:fixed;left:300px;top:430px;z-index:30;border:1px solid #6fe0d0;background:#0b4b54;color:#eaffff;border-radius:4px;padding:8px 12px;font-size:11px;cursor:pointer;box-shadow:0 4px 16px #00141a88}
