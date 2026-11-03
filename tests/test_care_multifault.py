@@ -139,6 +139,8 @@ def test_demo_fleet_sync_populates_same_six_turbines(tmp_path):
         assert [item["turbine_id"] for item in body["turbines"]] == ["WT01", "WT02", "WT03", "WT04", "WT05", "WT06"]
         turbines = client.get("/api/turbines").json()
         assert {item["turbine_id"] for item in turbines}.issuperset({"WT01", "WT02", "WT03", "WT04", "WT05", "WT06"})
+        wt01 = client.get("/api/turbines/WT01/state").json()
+        assert wt01[0]["latest_ai_result"]["warning_level"] == "NORMAL"
 
 
 def test_shippable_gearbox_upload_example_is_accepted(tmp_path):

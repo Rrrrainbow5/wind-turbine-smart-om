@@ -1,5 +1,6 @@
 {
   "sample_id": "CARE-A-10-20231014T1200-UPLOAD",
+  "event_id": "10",
   "source_reference": "CARE to Compare Version 6 / Wind Farm A / event 10.csv / Gearbox failure",
   "data_origin": "EXTERNAL_PUBLIC",
   "rows": [

@@ -41,6 +41,7 @@ class FieldScadaWindow(ScadaWindow):
 
     turbine_id: str = Field(min_length=1, max_length=120)
     sample_id: str | None = Field(default=None, min_length=1, max_length=200)
+    event_id: str | None = Field(default=None, min_length=1, max_length=120)
     source_reference: str = Field(min_length=1, max_length=1000)
     data_origin: DataOrigin = DataOrigin.REAL
 
@@ -195,6 +196,7 @@ def create_care_router(database: Database) -> APIRouter:
             sample_id=sample_id,
             turbine_id=window.turbine_id,
             component_id=component_id,
+            event_id=window.event_id,
             data_origin=window.data_origin,
             sampling_rate_hz=1 / 600,
             channels=[SignalChannel(
@@ -226,7 +228,7 @@ def create_care_router(database: Database) -> APIRouter:
                 health_index=100 * probabilities["healthy"],
                 anomaly_score=risk,
                 failure_risk=risk,
-                warning_level=warning_level(risk),
+                warning_level=WarningLevel.NORMAL if prediction == "healthy" else warning_level(risk),
                 rationale=(
                     f"连续6小时SCADA窗口经{MODEL_VERSION}推理，"
                     f"当前最匹配状态为 {prediction}。部件定位基于模型类别与所选部件的候选映射，需结合现场核验。"
@@ -305,7 +307,7 @@ def create_care_router(database: Database) -> APIRouter:
                     health_index=100 * probabilities["healthy"],
                     anomaly_score=risk,
                     failure_risk=risk,
-                    warning_level=warning_level(risk),
+                    warning_level=WarningLevel.NORMAL if prediction == "healthy" else warning_level(risk),
                     rationale=f"CARE 演示场景同步：{sample['sample_id']} 的六小时窗口经 {MODEL_VERSION} 重算。",
                 ),
             ))

@@ -78,9 +78,13 @@ export function getDemoPlans(weatherRestricted: boolean): MaintenancePlan[] {
 }
 
 export function getScheduledMaintenancePlans(weatherRestricted: boolean): MaintenancePlan[] {
-  return [
-    { id: 'routine_inspection', title: '例行检查', timing: '本维护周期', action: '执行例行检查、润滑和紧固', risk: '低', downtime: '1 h', cost: '低', recommended: true, available: !weatherRestricted },
-    { id: 'scheduled_service', title: '计划维护', timing: '下一可用窗口', action: '按维护周期执行预防性维护', risk: '低', downtime: '2 h', cost: '中', available: !weatherRestricted },
-    { id: 'monitor', title: '常规监测', timing: '持续', action: '保持当前监测频率并按周期复评', risk: '低', downtime: '0 h', cost: '低', recommended: weatherRestricted },
+  return weatherRestricted ? [
+    { id: 'routine_inspection', title: '窗口恢复后例行检查', timing: '下一个可用窗口', action: '完成外观、紧固与润滑例行检查', risk: '低', downtime: '0.5 h', cost: '¥0.2 万', recommended: true },
+    { id: 'scheduled_service', title: '纳入下次计划维护', timing: '计划窗口', action: '按维护周期安排润滑、紧固和功能检查', risk: '低', downtime: '2 h', cost: '¥0.6 万' },
+    { id: 'monitor', title: '保持常规监测', timing: '持续', action: '维持当前状态监测频率', risk: '低', downtime: '0 h', cost: '¥0' },
+  ] : [
+    { id: 'routine_inspection', title: '安排例行检查', timing: '本周期内', action: '完成外观、紧固与润滑例行检查', risk: '低', downtime: '0.5 h', cost: '¥0.2 万', recommended: true },
+    { id: 'scheduled_service', title: '纳入计划维护', timing: '下一个计划窗口', action: '按维护周期安排润滑、紧固和功能检查', risk: '低', downtime: '2 h', cost: '¥0.6 万' },
+    { id: 'monitor', title: '保持常规监测', timing: '持续', action: '维持当前状态监测频率', risk: '低', downtime: '0 h', cost: '¥0' },
   ]
 }

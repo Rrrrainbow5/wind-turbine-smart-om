@@ -26,6 +26,7 @@ export interface FieldDiagnosis {
   sample_id: string
   turbine_id: string
   component_id: string
+  event_id?: string
   event_name?: string
   data_origin: SourceKind
   created_at: string
