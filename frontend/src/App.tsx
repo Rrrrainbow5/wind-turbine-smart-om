@@ -411,7 +411,7 @@ export default function App() {
     const risk = monitoring ? Math.min(.99, Math.max(baseRisk + .25, baseRisk * 1.8)) : improved ? .06 : Math.max(.12, baseRisk - (inspection ? .04 : .12))
     const health = monitoring ? Math.max(28, baseHealth - 14.8) : improved ? Math.max(86, Math.min(96, baseHealth + 27)) : Math.min(82, baseHealth + (inspection ? 2 : 8))
     return {
-      location: monitoring ? selected.component_label : improved ? '无异常' : selected.component_label,
+      location: monitoring ? selected.component_label : improved ? '正常运行' : selected.component_label,
       confidence: monitoring ? Math.min(.99, risk + .08) : improved ? 0 : Math.max(.18, baseRisk - (inspection ? .02 : .13)),
       risk,
       health,
@@ -680,7 +680,10 @@ export default function App() {
         return
       }
       await runRetestProgress()
-      const simulatedMaintenancePassed = selected.failure_risk <= .8
+      // B is the actual maintenance plan in demo mode. Once it is executed,
+      // the demo must provide a successful post-maintenance retest so the
+      // user can complete the intended maintenance loop.
+      const simulatedMaintenancePassed = selectedPlan === 'service'
       setAfterRetest(createRetestSnapshot(simulatedMaintenancePassed))
       setDecisionFeedback('预防性维护已执行，已进入维修后复测。演示结果为 SIMULATED，不代表现场测量。')
       setRetestPhase('result'); playConfirmSound(); logAction('演示维护完成，已生成复测结果')
