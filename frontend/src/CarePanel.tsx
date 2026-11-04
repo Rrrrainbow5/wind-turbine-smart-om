@@ -17,10 +17,17 @@ const points = (values: number[], width: number, height: number) => { const low 
 
 export default function CarePanel({ sample, turbineId, expanded = false }: { sample: CareCase; turbineId: string; expanded?: boolean }) {
   const [status, setStatus] = useState(''); const [busy, setBusy] = useState(false); const [verified, setVerified] = useState(false)
-  const [modelSelection, setModelSelection] = useState<{ sample: string; model: 'forest' | 'fusion' }>({ sample: sample.sample_id, model: 'forest' })
+  const [modelSelection, setModelSelection] = useState<{ sample: string; model: 'forest' | 'fusion' }>({ sample: sample.sample_id, model: 'fusion' })
   const replay = (fusionArtifact.cases as Record<string, typeof fusionArtifact.cases[keyof typeof fusionArtifact.cases]>)[sample.sample_id]
   const model = modelSelection.sample === sample.sample_id && replay ? modelSelection.model : 'forest'
   const modelScores = Object.entries(model === 'fusion' ? replay.probabilities : sample.probabilities).filter(([label]) => label !== 'transformer').sort((a, b) => b[1] - a[1])
+  const activePrediction = model === 'fusion' ? replay.prediction : sample.prediction
+  const activeMatches = activePrediction === sample.label
+  const fusionBranches = replay ? [
+    ['统计特征分支', 'XGBoost', replay.branches[0], replay.weights[0]],
+    ['时序特征分支', '1D CNN', replay.branches[1], replay.weights[1]],
+    ['关联特征分支', '关系网络', replay.branches[2], replay.weights[2]],
+  ] as const : []
   const recompute = async () => {
     setBusy(true); setStatus('')
     try {
@@ -41,7 +48,6 @@ export default function CarePanel({ sample, turbineId, expanded = false }: { sam
     ['标准差', standardDeviation(sample.trend), sample.trend_unit, sample.trend_signal, `${sample.row_count}条窗口`],
     ['首尾变化', sample.trend.at(-1)! - sample.trend[0], sample.trend_unit, sample.trend_signal, `${sample.start.slice(11)} → ${sample.end.slice(11)}`],
   ] as const
-  const scores = Object.entries(sample.probabilities).filter(([label]) => label !== 'transformer').sort((a, b) => b[1] - a[1])
   return <section className="care-results" aria-label="CARE 多故障训练结果">
     <div className="care-title" data-guide-target="signal-start"><Database size={15} /><strong>信号诊断 · {turbineId} · 目标机组</strong><span>{verified ? '后端重算' : '训练案例回放'}</span></div>
     <div className="care-signal-meta"><span>当前样本 <b>{sample.sample_id}</b></span><span>来源 <b>CARE Wind Farm A · 原机组 {sample.source_asset}</b></span><span>窗口 <b>{sample.row_count} 条 · 每 10 min · 共 6 h</b></span></div>
@@ -49,11 +55,14 @@ export default function CarePanel({ sample, turbineId, expanded = false }: { sam
       <div className="done"><b>01</b><span>原始采集</span><small>SCADA 十分钟聚合</small><svg viewBox="0 0 220 54" preserveAspectRatio="none"><polyline points={points(sample.trend, 220, 54)} /></svg></div><i />
       <div className="done"><b>02</b><span>预处理</span><small>质量检查 · 缺失填补</small><svg viewBox="0 0 220 54" preserveAspectRatio="none"><polyline className="temp-a" points={points(sample.trend, 220, 54)} /></svg></div><i />
       <div className="done"><b>03</b><span>特征提取</span><small>中位数 · 标准差 · 首尾变化</small><div className="feature-bars">{featureEvidence.map(([, value], index) => <i key={index} title={value.toFixed(2)} style={{ height: `${Math.min(90, 32 + Math.abs(value) * 4)}%` }} />)}</div></div><i />
-      <div className="active"><b>04</b><span>模型推理</span><small>{model === 'fusion' ? 'SCADA 三分支融合 · 研究回放' : '随机森林状态分类'}</small><div className="pipeline-score">{modelScores.slice(0, 3).map(([label, value]) => <div key={label}><em>{careClassName(label)}</em><span><i style={{ width: `${value * 100}%` }} /></span><b>{(value * 100).toFixed(0)}%</b></div>)}</div></div>
+      <div className="active"><b>04</b><span>模型推理</span><small>{model === 'fusion' ? 'SCADA 三分支融合' : '随机森林状态分类'}</small>{model === 'fusion' ? <div className="pipeline-fusion-mini"><div>{['特征', '时序', '关联'].map((name, index) => { const branch = replay.branches[index]; const label = fusionArtifact.classes[branch.indexOf(Math.max(...branch))]; return <span key={name}>{name}<b>{careClassName(label)}</b></span> })}</div><strong>门控融合 → {careClassName(replay.prediction)}</strong></div> : <div className="pipeline-score">{modelScores.slice(0, 3).map(([label, value]) => <div key={label}><em>{careClassName(label)}</em><span><i style={{ width: `${value * 100}%` }} /></span><b>{(value * 100).toFixed(0)}%</b></div>)}</div>}</div>
     </div>
-    <article className={`care-prediction-single ${finalMatches ? 'match' : 'mismatch'}`}><small>当前案例诊断结果</small><strong>{careClassName(sample.prediction)}</strong><p>数据集事件标签：{sample.name}</p><b>{finalMatches ? '诊断结果与事件标签一致' : '诊断结果已记录'}</b></article>
-    <p className="care-label-note">事件标签、分析窗口与模型版本均已关联到当前诊断记录，支持从结果回溯至对应数据来源。</p>
-    <div className="care-scores">{scores.map(([label, value]) => <div key={label}><span>{careClassName(label)}</span><meter min={0} max={1} value={value} /><b>{(value * 100).toFixed(1)}%</b></div>)}</div>
+    {model === 'fusion' ? <section className="care-fusion-result" aria-label="三分支融合诊断结果">
+      <div className="care-fusion-head"><div><small>三分支融合诊断结果</small><strong>{careClassName(activePrediction)}</strong><p>数据集事件标签：{sample.name}</p></div><b className={activeMatches ? 'match' : 'mismatch'}>{activeMatches ? '诊断结果与事件标签一致' : '诊断结果已记录'}</b></div>
+      <div className="care-fusion-branches">{fusionBranches.map(([name, algorithm, probabilities, weight]) => { const bestIndex = probabilities.indexOf(Math.max(...probabilities)); return <div key={name}><small>{name}</small><b>{algorithm}</b><span>输出：{careClassName(fusionArtifact.classes[bestIndex])}</span><em>门控权重 {(weight * 100).toFixed(1)}%</em></div> })}</div>
+      <div className="care-fusion-output"><span>门控融合</span><i>→</i><strong>{careClassName(activePrediction)}</strong></div>
+      <div className="care-scores">{modelScores.map(([label, value]) => <div key={label}><span>{careClassName(label)}</span><meter min={0} max={1} value={value} /><b>{(value * 100).toFixed(1)}%</b></div>)}</div>
+    </section> : <><article className={`care-prediction-single ${finalMatches ? 'match' : 'mismatch'}`}><small>当前案例诊断结果</small><strong>{careClassName(activePrediction)}</strong><p>数据集事件标签：{sample.name}</p><b>{activeMatches ? '诊断结果与事件标签一致' : '诊断结果已记录'}</b></article><p className="care-label-note">事件标签、分析窗口与模型版本均已关联到当前诊断记录，支持从结果回溯至对应数据来源。</p><div className="care-scores">{modelScores.map(([label, value]) => <div key={label}><span>{careClassName(label)}</span><meter min={0} max={1} value={value} /><b>{(value * 100).toFixed(1)}%</b></div>)}</div></>}
     <small className="care-provenance">模型输出各状态的匹配度；健康指数由当前诊断的正常状态匹配度换算生成。</small>
     <button className="care-recompute" onClick={() => void recompute()} disabled={busy}><RotateCcw size={14} className={busy ? 'care-spin' : ''} />{busy ? '正在计算…' : '后端重新推理'}</button>{status && <p className="care-provenance" role="status">{status}</p>}
     {expanded && <>
