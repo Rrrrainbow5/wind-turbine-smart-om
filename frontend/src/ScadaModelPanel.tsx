@@ -11,7 +11,7 @@ export default function ScadaModelPanel({ sample, model, onModelChange }: { samp
     <header><b>04</b><div><strong>模型推理与模型选择</strong><small>{fusion ? artifact.version : '随机森林 · 原有推理'}</small></div></header>
     <div className="model-view-switch" role="group" aria-label="推理模型选择">
       <button type="button" className={model === 'fusion' ? 'active' : ''} aria-pressed={model === 'fusion'} disabled={!replay} onClick={() => onModelChange('fusion')}>SCADA 三分支融合</button>
-      <button type="button" className={model === 'forest' ? 'active' : ''} aria-pressed={model === 'forest'} onClick={() => onModelChange('forest')}>随机森林 · 当前推理</button>
+      <button type="button" className={model === 'forest' ? 'active' : ''} aria-pressed={model === 'forest'} onClick={() => onModelChange('forest')}>随机森林</button>
     </div>
     <p>切换用于比较同一窗口的模型输出，仅作用于本板块；设备状态、三维定位和维护流程继续采用原有随机森林结果。</p>
     {!replay && <p role="status">当前案例没有经过源文件核验的三分支回放，因此暂不提供切换；继续展示原有随机森林结果。</p>}
