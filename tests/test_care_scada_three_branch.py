@@ -1,5 +1,11 @@
-import numpy as np
-import torch
+import pytest
+
+# Training dependencies are optional in the lightweight API test environment.
+np = pytest.importorskip('numpy')
+torch = pytest.importorskip('torch')
+pytest.importorskip('xgboost')
+pytest.importorskip('pandas')
+pytest.importorskip('sklearn')
 
 from ai.care_scada_three_branch import CLASSES, Gate, Temporal, fit_gate, relations, weights_for
 
