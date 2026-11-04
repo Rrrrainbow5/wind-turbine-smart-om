@@ -19,7 +19,7 @@ export const careArtifact = artifact
 export const careCases = (artifact.cases as CareCase[]).filter(sample => sample.prediction !== 'transformer')
 export const careClassName = (key: string) => artifact.classes[key as keyof typeof artifact.classes]?.name || key
 export const defaultCareCases: Record<string, string> = {
-  WT01: 'A-24', WT02: 'A-10', WT03: 'A-13', WT04: 'A-51',
+  WT01: 'A-24', WT02: 'A-10', WT03: 'A-92', WT04: 'A-51',
   WT05: 'A-22', WT06: 'A-0', WT07: 'A-0', WT08: 'A-26',
 }
 // Keep a deterministic representative per label, without selecting by prediction.
