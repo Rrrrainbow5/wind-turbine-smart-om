@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Database, RotateCcw } from 'lucide-react'
 import { request } from './api'
 import ScadaModelPanel from './ScadaModelPanel'
+import fusionArtifact from './scada-three-branch.json'
 import { careArtifact, careCases, representativeCareCases, careClassName, type CareCase } from './care'
 
 export function CareSelector({ value, turbineId, onChange }: { value: string; turbineId: string; onChange: (id: string) => void }) {
@@ -16,6 +17,10 @@ const points = (values: number[], width: number, height: number) => { const low 
 
 export default function CarePanel({ sample, turbineId, expanded = false }: { sample: CareCase; turbineId: string; expanded?: boolean }) {
   const [status, setStatus] = useState(''); const [busy, setBusy] = useState(false); const [verified, setVerified] = useState(false)
+  const [modelSelection, setModelSelection] = useState<{ sample: string; model: 'forest' | 'fusion' }>({ sample: sample.sample_id, model: 'forest' })
+  const replay = (fusionArtifact.cases as Record<string, typeof fusionArtifact.cases[keyof typeof fusionArtifact.cases]>)[sample.sample_id]
+  const model = modelSelection.sample === sample.sample_id && replay ? modelSelection.model : 'forest'
+  const modelScores = Object.entries(model === 'fusion' ? replay.probabilities : sample.probabilities).filter(([label]) => label !== 'transformer').sort((a, b) => b[1] - a[1])
   const recompute = async () => {
     setBusy(true); setStatus('')
     try {
@@ -44,7 +49,7 @@ export default function CarePanel({ sample, turbineId, expanded = false }: { sam
       <div className="done"><b>01</b><span>原始采集</span><small>SCADA 十分钟聚合</small><svg viewBox="0 0 220 54" preserveAspectRatio="none"><polyline points={points(sample.trend, 220, 54)} /></svg></div><i />
       <div className="done"><b>02</b><span>预处理</span><small>质量检查 · 缺失填补</small><svg viewBox="0 0 220 54" preserveAspectRatio="none"><polyline className="temp-a" points={points(sample.trend, 220, 54)} /></svg></div><i />
       <div className="done"><b>03</b><span>特征提取</span><small>中位数 · 标准差 · 首尾变化</small><div className="feature-bars">{featureEvidence.map(([, value], index) => <i key={index} title={value.toFixed(2)} style={{ height: `${Math.min(90, 32 + Math.abs(value) * 4)}%` }} />)}</div></div><i />
-      <div className="active"><b>04</b><span>模型推理</span><small>随机森林状态分类</small><div className="pipeline-score">{scores.slice(0, 3).map(([label, value]) => <div key={label}><em>{careClassName(label)}</em><span><i style={{ width: `${value * 100}%` }} /></span><b>{(value * 100).toFixed(0)}%</b></div>)}</div></div>
+      <div className="active"><b>04</b><span>模型推理</span><small>{model === 'fusion' ? 'SCADA 三分支融合 · 研究回放' : '随机森林状态分类'}</small><div className="pipeline-score">{modelScores.slice(0, 3).map(([label, value]) => <div key={label}><em>{careClassName(label)}</em><span><i style={{ width: `${value * 100}%` }} /></span><b>{(value * 100).toFixed(0)}%</b></div>)}</div></div>
     </div>
     <article className={`care-prediction-single ${finalMatches ? 'match' : 'mismatch'}`}><small>当前案例诊断结果</small><strong>{careClassName(sample.prediction)}</strong><p>数据集事件标签：{sample.name}</p><b>{finalMatches ? '诊断结果与事件标签一致' : '诊断结果已记录'}</b></article>
     <p className="care-label-note">事件标签、分析窗口与模型版本均已关联到当前诊断记录，支持从结果回溯至对应数据来源。</p>
@@ -56,7 +61,7 @@ export default function CarePanel({ sample, turbineId, expanded = false }: { sam
         <section className="care-process-step"><header><b>01</b><div><strong>原始采集</strong><small>{sample.trend_label} · {sample.trend_signal} · {sample.trend_unit}</small></div></header><p>读取 {sample.row_count} 条连续 SCADA 记录，按10分钟间隔组成6小时分析窗口。</p><div className="care-waveform care-waveform-large"><div><strong>原始采样趋势</strong><small>{sample.start} 至 {sample.end}</small></div><svg viewBox="0 0 720 150" preserveAspectRatio="none"><line x1="0" y1="30" x2="720" y2="30" /><line x1="0" y1="75" x2="720" y2="75" /><line x1="0" y1="120" x2="720" y2="120" /><polyline points={points(sample.trend, 720, 150)} /></svg><div className="wave-axis"><span>{sample.start}</span><span>{sample.end}</span></div></div></section>
         <section className="care-process-step"><header><b>02</b><div><strong>预处理</strong><small>质量检查、时间对齐与缺失值处理</small></div></header><p>对采集窗口进行时间排序、有效性检查与中位数填补，形成可用于特征计算的标准化输入。</p><div className="care-preprocess-status"><span>记录完整性</span><b>{sample.row_count} / {sample.row_count} 条</b><span>时间窗长度</span><b>6 小时连续窗口</b><span>处理输出</span><b>标准化时序特征</b></div></section>
         <section className="care-process-step"><header><b>03</b><div><strong>特征提取</strong><small>有名称、有数值、有来源</small></div></header><p>对清洗后的窗口计算稳健统计特征。下表展示当前趋势通道的可核验特征；其他连续通道执行相同计算。</p><div className="care-feature-table"><div className="head"><span>特征</span><span>数值</span><span>来源字段</span><span>计算范围</span></div>{featureEvidence.map(([name, value, unit, field, range]) => <div key={name}><b>{name}</b><strong>{value.toFixed(2)} {unit}</strong><code>{field}</code><span>{range}</span></div>)}</div></section>
-        <ScadaModelPanel key={sample.sample_id} sample={sample} />
+        <ScadaModelPanel sample={sample} model={model} onModelChange={next => setModelSelection({ sample: sample.sample_id, model: next })} />
       </div>
       <div className="care-step-data"><h4>采集数据摘要</h4><p className="care-summary-note"><code>*_avg</code> 表示数据源中的10分钟平均字段；页面按6小时分析窗口汇总展示各传感器的中位数与趋势特征。</p><div className="care-measurements">{measurements.map(([label, field, value, unit]) => <div key={label}><span>{label}</span><strong>{value.toFixed(1)} <small>{unit}</small></strong><code>{field}</code></div>)}</div><div className="care-raw-data"><div className="care-raw-head"><strong>分析字段说明</strong><small>6小时窗口统计</small></div><table><thead><tr><th>字段</th><th>窗口中位数</th><th>单位</th><th>含义</th></tr></thead><tbody>{measurements.slice(1, 3).concat(measurements.slice(5)).map(([label, field, value, unit]) => <tr key={field}><td>{field}</td><td>{value.toFixed(1)}</td><td>{unit}</td><td>{label}</td></tr>)}</tbody></table></div></div>
       <details className="care-trace"><summary>样本和模型溯源</summary><p>风场 A · 原机组 {sample.source_asset} · 事件 {sample.event_id}</p><p>{sample.start} 至 {sample.end} · {sample.row_count} 条记录</p><p>映射至演示风机，非该机组现场诊断。</p><p>{sample.sample_id}</p><p>{careArtifact.model_version}</p><p>模型 SHA256<br />{careArtifact.model_sha256}</p><p>源文件 SHA256<br />{sample.source_sha256}</p></details>
