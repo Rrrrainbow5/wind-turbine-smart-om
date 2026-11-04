@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://rrrrainbow5.github.io/wind-turbine-smart-om/sitemap.xml
