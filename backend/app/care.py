@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from functools import lru_cache
+from hashlib import sha256 as hash_sha256
 import json
 import math
 from pathlib import Path
@@ -57,9 +58,9 @@ CLASS_TO_COMPONENT = {
 DEMO_FLEET_CASES = (
     ("WT01", "A-24"),  # normal operation
     ("WT02", "A-10"),  # gearbox
-    ("WT03", "A-13"),  # normal operation; model prediction agrees with label
+    ("WT03", "A-92"),  # normal operation with positive grid power
     ("WT04", "A-51"),  # gearbox bearing
-    ("WT05", "A-22"),  # hydraulic
+    ("WT05", "A-14"),  # normal operation; model prediction agrees with label
     ("WT06", "A-0"),   # generator bearing
 )
 
@@ -275,8 +276,17 @@ def create_care_router(database: Database) -> APIRouter:
                 "hydraulic": ("sensor_41_avg", "液压油温", "°C"),
                 "gearbox_bearing": ("sensor_11_avg", "齿轮箱高速轴轴承温度", "°C"),
             }[prediction]
+            # The identity includes immutable registration metadata. Older demo
+            # imports may have used the same case with a different prediction,
+            # component or event; never overwrite those historical records.
+            identity = json.dumps(
+                [turbine_id, sample["sample_id"], component_id, str(sample["event_id"]),
+                 DataOrigin.DERIVED.value, MODEL_VERSION],
+                ensure_ascii=False, separators=(",", ":"),
+            )
+            sample_id = f"DEMO-{turbine_id}-{sample['sample_id']}-{hash_sha256(identity.encode()).hexdigest()[:12]}"
             diagnosis = persist_diagnosis(database, DiagnosisAnalyzeRequest(
-                sample_id=f"DEMO-{turbine_id}-{sample['sample_id']}",
+                sample_id=sample_id,
                 turbine_id=turbine_id,
                 component_id=component_id,
                 event_id=str(sample["event_id"]),

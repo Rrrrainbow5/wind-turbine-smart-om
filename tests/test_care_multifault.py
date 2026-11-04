@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 import json
+import sqlite3
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -137,10 +138,34 @@ def test_demo_fleet_sync_populates_same_six_turbines(tmp_path):
         assert body["source"] == "CARE_DEMO_SYNC"
         assert body["data_origin"] == "DERIVED"
         assert [item["turbine_id"] for item in body["turbines"]] == ["WT01", "WT02", "WT03", "WT04", "WT05", "WT06"]
+        assert client.post("/api/care/sync-demo-fleet").status_code == 200
         turbines = client.get("/api/turbines").json()
         assert {item["turbine_id"] for item in turbines}.issuperset({"WT01", "WT02", "WT03", "WT04", "WT05", "WT06"})
         wt01 = client.get("/api/turbines/WT01/state").json()
         assert wt01[0]["latest_ai_result"]["warning_level"] == "NORMAL"
+        wt03 = client.get("/api/turbines/WT03/state").json()
+        assert wt03[0]["latest_ai_result"]["sample_id"].startswith("DEMO-WT03-CARE-A-92-")
+        wt05 = client.get("/api/turbines/WT05/state").json()
+        assert wt05[0]["latest_ai_result"]["warning_level"] == "NORMAL"
+
+
+def test_demo_fleet_sync_keeps_conflicting_legacy_sample(tmp_path):
+    db_path = tmp_path / "care-legacy-demo.db"
+    with TestClient(create_app(db_path)) as client:
+        assert client.post("/api/care/sync-demo-fleet").status_code == 200
+        # Simulate an old import that reused the historical ID for a different
+        # component. The new sync must not overwrite or reject that record.
+        with sqlite3.connect(db_path) as connection:
+            connection.execute(
+                "UPDATE diagnosis_samples SET sample_id = ?, component_id = ? WHERE turbine_id = ?",
+                ("DEMO-WT03-CARE-A-92-20230409T1800", "WT03_GEARBOX", "WT03"),
+            )
+        response = client.post("/api/care/sync-demo-fleet")
+        assert response.status_code == 200
+        with sqlite3.connect(db_path) as connection:
+            assert connection.execute(
+                "SELECT COUNT(*) FROM diagnosis_samples WHERE turbine_id = 'WT03'"
+            ).fetchone()[0] == 2
 
 
 def test_shippable_gearbox_upload_example_is_accepted(tmp_path):
