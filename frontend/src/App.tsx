@@ -766,7 +766,7 @@ export default function App() {
   }
   const stopGuideDrag = () => { guideDragRef.current = null }
 
-  const presentationCopy = new URLSearchParams(window.location.search).has('presentation')
+  const presentationCopy = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('presentation')
   return <div className={`app-shell mode-${mode} ${presentationCopy ? 'presentation-copy' : ''}`}>
     <header className="topbar">
       <div className="brand"><span className="brand-mark"><Activity size={20} strokeWidth={2.2} /></span><span><strong>WindCare</strong><small>风电装备智能运维</small></span></div>
