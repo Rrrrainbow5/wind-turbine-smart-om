@@ -680,10 +680,10 @@ export default function App() {
         return
       }
       await runRetestProgress()
-      // B is the actual maintenance plan in demo mode. Once it is executed,
-      // the demo must provide a successful post-maintenance retest so the
-      // user can complete the intended maintenance loop.
-      const simulatedMaintenancePassed = selectedPlan === 'service'
+      // The first maintenance attempt intentionally remains unqualified so
+      // the demo can show the required "retest failed -> second maintenance"
+      // loop. A subsequent service attempt produces the successful retest.
+      const simulatedMaintenancePassed = selectedPlan === 'service' && maintenanceAttempts >= 1
       setAfterRetest(createRetestSnapshot(simulatedMaintenancePassed))
       setDecisionFeedback('预防性维护已执行，已进入维修后复测。演示结果为 SIMULATED，不代表现场测量。')
       setRetestPhase('result'); playConfirmSound(); logAction('演示维护完成，已生成复测结果')
