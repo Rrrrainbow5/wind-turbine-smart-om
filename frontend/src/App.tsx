@@ -675,8 +675,9 @@ export default function App() {
         return
       }
       if (selectedPlan === 'inspect' || decisionAction === 'SCHEDULE_INSPECTION') {
-        setDecisionFeedback('现场检查记录已生成：该动作只核验异常和准备资源，不代表维修完成，也不生成维修后复测。')
-        setRetestPhase('idle'); setServiced(false); playConfirmSound(); logAction('现场检查已记录：故障状态保持不变')
+        setSelectedPlan('service'); setDecisionAction('SCHEDULE_MAINTENANCE')
+        setDecisionFeedback('现场检查已完成：异常仍未消除，已转入二次维护。请执行方案 B，完成维修后复测。')
+        setRetestPhase('idle'); setServiced(false); playConfirmSound(); logAction('现场检查已记录：异常未消除，转入二次维护')
         return
       }
       await runRetestProgress()
