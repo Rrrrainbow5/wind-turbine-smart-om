@@ -266,6 +266,42 @@ body{background:#07141d}
 .presentation-copy .inspector{background:linear-gradient(180deg,#0b2029 0%,#07151d 100%);border-left-color:#1d4a56}
 .presentation-copy .signal-panel-blue,.presentation-copy .care-results,.presentation-copy .demo-panel{background:#0a202a}
 .presentation-copy .signal-source-card,.presentation-copy .signal-feature-card,.presentation-copy .signal-result-card,.presentation-copy .care-process-step{background:#0b2833;border-color:#285b66}
+
+/* Jury view: the application keeps the same state machine, but the primary
+   information can be read from a projection screen without browser zoom. */
+@media (min-width:1100px){
+  .presentation-copy .topbar{min-height:92px;padding-inline:28px}
+  .presentation-copy .brand strong{font-size:25px}
+  .presentation-copy .brand small{font-size:13px}
+  .presentation-copy .top-nav{gap:20px}
+  .presentation-copy .top-nav button{min-height:72px;padding-inline:18px;font-size:18px}
+  .presentation-copy .mode-switch button,.presentation-copy .icon-button{min-height:46px;padding-inline:16px;font-size:16px}
+  .presentation-copy .scene-heading h1{font-size:37px}
+  .presentation-copy .scene-heading p,.presentation-copy .eyebrow{font-size:16px}
+  .presentation-copy .scene-weather{min-width:300px;padding:15px 18px}
+  .presentation-copy .scene-weather b,.presentation-copy .scene-weather span,.presentation-copy .scene-weather small{font-size:14px}
+  .presentation-copy .fleet-summary span,.presentation-copy .section-kicker{font-size:15px}
+  .presentation-copy .fleet-summary strong{font-size:31px}
+  .presentation-copy .selector-row h2{font-size:26px}
+  .presentation-copy .turbine-tabs button{min-height:52px;font-size:16px}
+  .presentation-copy .status-badge{font-size:15px;padding:7px 11px}
+  .presentation-copy .section-title h3,.presentation-copy .component-line strong{font-size:21px}
+  .presentation-copy .section-title span,.presentation-copy .component-line span{font-size:14px}
+  .presentation-copy .reading-label,.presentation-copy .metric-grid span{font-size:15px}
+  .presentation-copy .reading-number{font-size:43px}
+  .presentation-copy .reading-number small,.presentation-copy .metric-grid small{font-size:13px}
+  .presentation-copy .metric-grid strong{font-size:25px}
+  .presentation-copy .info-section{padding-block:18px}
+  .presentation-copy .primary-action,.presentation-copy .secondary-action{min-height:48px;padding-inline:16px;font-size:16px}
+  .presentation-copy .decision-intro h3{font-size:25px}
+  .presentation-copy .decision-intro p,.presentation-copy .decision-intro small{font-size:15px;line-height:1.55}
+  .presentation-copy .constraint-row span,.presentation-copy .constraint-row strong{font-size:15px}
+  .presentation-copy .plan-option summary{min-height:84px;padding:15px}
+  .presentation-copy .plan-copy strong{font-size:18px}
+  .presentation-copy .plan-copy small,.presentation-copy .plan-copy>span,.presentation-copy .plan-details p,.presentation-copy .plan-details small{font-size:14px;line-height:1.55}
+  .presentation-copy .decision-explanation strong,.presentation-copy .decision-explanation span,.presentation-copy .decision-feedback{font-size:15px;line-height:1.6}
+  .presentation-copy .log-panel{font-size:14px}
+}
 .app-shell .history-clear{border:1px solid #4c8088;background:#123541;color:#dffaff;border-radius:3px;padding:2px 7px;font-size:11px}
 .app-shell .history-clear:disabled{opacity:.45}
 .guide-retry-continue{position:fixed;left:300px;top:430px;z-index:30;border:1px solid #6fe0d0;background:#0b4b54;color:#eaffff;border-radius:4px;padding:8px 12px;font-size:11px;cursor:pointer;box-shadow:0 4px 16px #00141a88}
