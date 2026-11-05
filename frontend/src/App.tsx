@@ -700,6 +700,15 @@ export default function App() {
     if (passed) {
        setServiced(true); setRetestPhase('idle'); setReplacementRecommended(false)
       setDiagnosticParams(defaultDiagnosticParams)
+      setTurbines(current => current.map(turbine => turbine.turbine_id === selectedId ? {
+        ...turbine,
+        warning_level: 'NORMAL',
+        event_name: '正常运行',
+        component_label: '正常运行',
+        failure_risk: 0.05,
+        anomaly_score: 0.05,
+        health_index: 96,
+      } : turbine))
       setTurbineStates(current => ({ ...current, [selectedId]: { ...(current[selectedId] || { maintenanceLog: [], loaded: true }), params: defaultDiagnosticParams, fault: null, status: 'maintained' } }))
       logAction('复测确认通过：设备状态恢复正常')
       return
