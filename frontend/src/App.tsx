@@ -767,7 +767,7 @@ export default function App() {
   const stopGuideDrag = () => { guideDragRef.current = null }
 
   const presentationCopy = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('presentation')
-  return <div className={`app-shell mode-${mode} ${presentationCopy ? 'presentation-copy' : ''}`}>
+  return <div className={`app-shell mode-${mode} view-${view} ${presentationCopy ? 'presentation-copy' : ''}`}>
     <header className="topbar">
       <div className="brand"><span className="brand-mark"><Activity size={20} strokeWidth={2.2} /></span><span><strong>WindCare</strong><small>风电装备智能运维</small></span></div>
       <nav className="top-nav" aria-label="主导航"><button className={view === 'overview' ? 'active' : ''} onClick={() => setView('overview')}>风场总览</button><button className={view === 'signal' ? 'active' : ''} onClick={() => setView('signal')} disabled={mode === 'demo' && !selected}>信号诊断</button><button hidden={mode !== 'demo'} className={view === 'demo' ? 'active' : ''} onClick={() => selected && setView('demo')} disabled={!selected}>参数演示</button><button className={view === 'maintenance' ? 'active' : ''} onClick={openMaintenance} disabled={!selected}>维护决策</button></nav>
