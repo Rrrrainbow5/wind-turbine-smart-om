@@ -250,7 +250,7 @@ body{background:#07141d}
 .app-shell .confidence-row{font-size:12px}
 
 /* Jury-facing copy: enabled only with ?presentation=1; the default page is unchanged. */
-.presentation-copy .guide-coach-v2{font-size:24px;line-height:1.8;background:#dff4f1;border:3px solid #168f86;color:#123b3c;box-shadow:0 12px 34px #00131b66}
+.presentation-copy .guide-coach-v2{font-size:24px;line-height:1.8;background:#c7e8e3;border:3px solid #168f86;color:#123b3c;box-shadow:0 12px 34px #00131b66}
 .presentation-copy .guide-coach-v2{left:auto!important;right:calc(32vw + 120px)!important;top:45vh!important;bottom:auto!important;transform:none!important;width:min(430px,calc(68vw - 48px))!important;max-height:calc(55vh - 24px);overflow-y:auto}
 .presentation-copy.view-signal .guide-coach-v2{right:calc(40vw + 20px)!important}
 .presentation-copy.view-maintenance .guide-coach-v2{right:calc(34vw + 60px)!important}
@@ -258,10 +258,10 @@ body{background:#07141d}
 .presentation-copy .guide-coach-v2 p{font-size:21px;line-height:1.65;color:#123b3c}
 .presentation-copy .guide-coach-v2 strong{font-size:24px;color:#073f40}
 .presentation-copy .guide-coach-v2 .guide-drag-handle span{font-size:15px;color:#39706e}
-.presentation-copy .guide-coach-v2 button{font-size:16px;color:#124f50;border-color:#168f86;background:#f4fffd}
-.presentation-copy .inspector{background:linear-gradient(180deg,#123f4b 0%,#0b2935 100%);border-left-color:#55d5df}
-.presentation-copy .signal-panel-blue,.presentation-copy .care-results,.presentation-copy .demo-panel{background:#0b3340}
-.presentation-copy .signal-source-card,.presentation-copy .signal-feature-card,.presentation-copy .signal-result-card,.presentation-copy .care-process-step{background:#104453;border-color:#4b9da8}
+.presentation-copy .guide-coach-v2 button{font-size:16px;color:#124f50;border-color:#168f86;background:#e9faf7}
+.presentation-copy .inspector{background:linear-gradient(180deg,#0b2029 0%,#07151d 100%);border-left-color:#1d4a56}
+.presentation-copy .signal-panel-blue,.presentation-copy .care-results,.presentation-copy .demo-panel{background:#0a202a}
+.presentation-copy .signal-source-card,.presentation-copy .signal-feature-card,.presentation-copy .signal-result-card,.presentation-copy .care-process-step{background:#0b2833;border-color:#285b66}
 .app-shell .history-clear{border:1px solid #4c8088;background:#123541;color:#dffaff;border-radius:3px;padding:2px 7px;font-size:11px}
 .app-shell .history-clear:disabled{opacity:.45}
 .guide-retry-continue{position:fixed;left:300px;top:430px;z-index:30;border:1px solid #6fe0d0;background:#0b4b54;color:#eaffff;border-radius:4px;padding:8px 12px;font-size:11px;cursor:pointer;box-shadow:0 4px 16px #00141a88}
