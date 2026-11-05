@@ -251,11 +251,11 @@ body{background:#07141d}
 
 /* Jury-facing copy: enabled only with ?presentation=1; the default page is unchanged. */
 .presentation-copy .guide-coach-v2{font-size:32px;line-height:1.8;background:#dff4f1;border:3px solid #168f86;color:#123b3c;box-shadow:0 12px 34px #00131b66}
-.presentation-copy .guide-coach-v2{left:50%;right:auto;top:92px;bottom:auto;transform:translateX(-50%);width:min(560px,calc(100vw - 620px));max-height:calc(100vh - 150px);overflow-y:auto}
-.presentation-copy .guide-coach-v2 p{font-size:32px;line-height:1.75;color:#123b3c}
-.presentation-copy .guide-coach-v2 strong{font-size:36px;color:#073f40}
+.presentation-copy .guide-coach-v2{left:50%;right:auto;top:180px;bottom:auto;transform:translateX(-50%);width:min(500px,calc(100vw - 620px));max-height:calc(100vh - 220px);overflow-y:auto}
+.presentation-copy .guide-coach-v2 p{font-size:28px;line-height:1.65;color:#123b3c}
+.presentation-copy .guide-coach-v2 strong{font-size:32px;color:#073f40}
 .presentation-copy .guide-coach-v2 .guide-drag-handle span{font-size:15px;color:#39706e}
-.presentation-copy .guide-coach-v2 button{font-size:24px;color:#124f50;border-color:#168f86;background:#f4fffd}
+.presentation-copy .guide-coach-v2 button{font-size:21px;color:#124f50;border-color:#168f86;background:#f4fffd}
 .presentation-copy .inspector{background:linear-gradient(180deg,#123f4b 0%,#0b2935 100%);border-left-color:#55d5df}
 .presentation-copy .signal-panel-blue,.presentation-copy .care-results,.presentation-copy .demo-panel{background:#0b3340}
 .presentation-copy .signal-source-card,.presentation-copy .signal-feature-card,.presentation-copy .signal-result-card,.presentation-copy .care-process-step{background:#104453;border-color:#4b9da8}
